@@ -317,6 +317,20 @@ function openKeurmeesterModal(idx) {
       <label class="form-label">Naam</label>
       <input class="form-input" id="kmNaam" value="${km?.naam || ''}" placeholder="Volledige naam">
     </div>
+    ${idx === undefined ? `
+    <div class="form-group">
+      <label class="form-label">E-mailadres</label>
+      <input class="form-input" type="email" id="kmEmail" placeholder="naam@bedrijf.nl" autocomplete="off">
+      <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">De keurmeester ontvangt een uitnodigingsmail om in te loggen.</div>
+    </div>
+    <div id="kmUitnodigingStatus" style="font-size:13px;margin-top:4px;"></div>
+    ` : `
+    <div class="form-group">
+      <label class="form-label">E-mailadres</label>
+      <input class="form-input" type="email" id="kmEmail" value="${km?.email || ''}" placeholder="naam@bedrijf.nl" disabled style="opacity:0.6;">
+      <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">E-mailadres kan niet worden gewijzigd.</div>
+    </div>
+    `}
     <div class="form-group">
       <label class="form-label">Handtekening</label>
       <div style="background:white;border:1px solid var(--border);border-radius:var(--radius);padding:12px;text-align:center;min-height:60px;display:flex;align-items:center;justify-content:center;">
@@ -348,9 +362,12 @@ function openKeurmeesterModal(idx) {
         if (nm) nm.textContent = naam;
       }
     } else {
+      const email = document.getElementById('kmEmail')?.value?.trim();
+      if (!email) { toast('Vul een e-mailadres in', 'error'); return; }
       if (store.keurmeesters.some(k => k.naam === naam)) { toast('Keurmeester bestaat al', 'error'); return; }
-      store.keurmeesters.push({ naam, handtekening });
-      if (store.keurmeesters.length === 1) store.settings.keurmeester = naam;
+      // Verstuur uitnodiging en voeg toe
+      verstuurKeurmeesterUitnodiging(naam, email, handtekening);
+      return; // modal wordt gesloten door de uitnodigingsfunctie
     }
     saveStore(store);
     sbSaveKeurmeesters(store.keurmeesters).catch(console.error);
@@ -359,6 +376,98 @@ function openKeurmeesterModal(idx) {
     navigateTo('keurmeesters');
   });
 }
+
+/**
+ * verstuurKeurmeesterUitnodiging — maak account aan en stuur uitnodiging
+ */
+async function verstuurKeurmeesterUitnodiging(naam, email, handtekening) {
+  const statusEl = document.getElementById('kmUitnodigingStatus');
+  if (statusEl) {
+    statusEl.textContent = 'Uitnodiging versturen...';
+    statusEl.style.color = 'var(--text-muted)';
+  }
+
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) throw new Error('Niet ingelogd');
+
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/quick-action`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        email,
+        klant_id: null,
+        klant_naam: naam,
+        redirect_to: 'https://klimkeurpro.github.io/klimkeur-pro/',
+        rol: 'keurmeester',
+      }),
+    });
+
+    const result = await res.json();
+
+    if (!res.ok) {
+      if (statusEl) {
+        statusEl.textContent = result.error?.includes('already') 
+          ? '⚠ Dit e-mailadres heeft al een account. De keurmeester kan direct inloggen.'
+          : `Fout: ${result.error || 'Onbekende fout'}`;
+        statusEl.style.color = result.error?.includes('already') ? 'var(--warning)' : 'var(--danger)';
+      }
+      // Voeg toch toe aan store zonder uitnodiging
+      if (!store.keurmeesters) store.keurmeesters = [];
+      store.keurmeesters.push({ naam, handtekening, email });
+      saveStore(store);
+      sbSaveKeurmeesters(store.keurmeesters).catch(console.error);
+      // Voeg ook toe aan keurmeesters tabel in Supabase
+      if (result.user_id) {
+        await sb.from('keurmeesters').upsert({
+          id: generateId(),
+          naam,
+          bedrijf: 'Safety Green B.V.',
+          bedrijf_id: _huidigBedrijfId,
+          auth_user_id: result.user_id,
+        }, { onConflict: 'auth_user_id' });
+      }
+      setTimeout(() => { closeModal(); navigateTo('keurmeesters'); }, 2000);
+      return;
+    }
+
+    // Succes
+    if (!store.keurmeesters) store.keurmeesters = [];
+    store.keurmeesters.push({ naam, handtekening, email });
+    saveStore(store);
+    sbSaveKeurmeesters(store.keurmeesters).catch(console.error);
+
+    // Voeg toe aan keurmeesters tabel in Supabase
+    if (result.user_id) {
+      try {
+        await sb.from('keurmeesters').upsert({
+          id: generateId(),
+          naam,
+          bedrijf: 'Safety Green B.V.',
+          bedrijf_id: _huidigBedrijfId,
+          auth_user_id: result.user_id,
+        }, { onConflict: 'auth_user_id' });
+      } catch(err) {
+        console.error('Keurmeester koppelen fout:', err);
+      }
+    }
+
+    toast(`Uitnodiging verstuurd naar ${email}`);
+    closeModal();
+    navigateTo('keurmeesters');
+
+  } catch(e) {
+    console.error('Uitnodiging keurmeester fout:', e);
+    if (statusEl) {
+      statusEl.textContent = 'Fout bij versturen uitnodiging';
+      statusEl.style.color = 'var(--danger)';
+    }
+  }
+}
+
 
 function previewKmHandtekening(input) {
   const file = input.files[0];
@@ -451,4 +560,3 @@ function uploadImage(type, input) {
   };
   reader.readAsDataURL(file);
 }
-
