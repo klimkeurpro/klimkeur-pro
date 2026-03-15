@@ -201,6 +201,7 @@ function renderKeurmeesters(el) {
                 </div>
                 <div style="flex:1;">
                   <div style="font-size:16px;font-weight:600;">${km.naam}</div>
+                  ${km.email ? `<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${km.email}</div>` : ''}
                   ${store.settings.keurmeester === km.naam
                     ? `<span class="badge badge-green" style="font-size:11px;margin-top:4px;display:inline-block;">Standaard</span>`
                     : `<button class="btn btn-sm" style="margin-top:6px;font-size:11px;" onclick="setStandaardKeurmeester('${km.naam}')">Instellen als standaard</button>`}
