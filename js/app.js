@@ -241,4 +241,3 @@ function checkResponsive() {
 }
 window.addEventListener('resize', checkResponsive);
 checkResponsive();
-</script>
