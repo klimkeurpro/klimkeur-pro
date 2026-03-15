@@ -1,0 +1,454 @@
+// ============================================================
+// instellingen.js — instellingen pagina, keurmeesters, afkeurcodes, branding
+// ============================================================
+
+function renderInstellingen(el) {
+  const s = store.settings;
+  el.innerHTML = `
+    <div class="fade-in">
+      <div class="tabs">
+        <div class="tab active"       onclick="switchSettingsTab(this,'general')">Algemeen</div>
+        <div class="tab"              onclick="switchSettingsTab(this,'certificaat')">Certificaat</div>
+        <div class="tab"              onclick="switchSettingsTab(this,'klantapp')">Klant App</div>
+        <div class="tab"              onclick="switchSettingsTab(this,'database')">Database</div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════
+           TAB 1 — ALGEMEEN
+      ═══════════════════════════════════════════════ -->
+      <div id="settingsGeneral" class="card" style="margin-bottom:20px;">
+        <div class="card-header"><h3>Bedrijfsgegevens</h3></div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Bedrijfsnaam</label>
+              <input class="form-input" id="setBedrijf" value="${s.bedrijfsnaam||''}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">KvK Nummer</label>
+              <input class="form-input" id="setKvk" value="${s.kvk||''}">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Adres</label>
+              <input class="form-input" id="setAdres" value="${s.adres||''}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Telefoon</label>
+              <input class="form-input" id="setTel" value="${s.telefoon||''}">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input class="form-input" id="setEmail" value="${s.email||''}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Standaard keurmeester</label>
+            <select class="form-select" id="setKeurmeester">
+              ${(store.keurmeesters||[]).map(k=>`<option value="${k.naam}" ${s.keurmeester===k.naam?'selected':''}>${k.naam}</option>`).join('')}
+            </select>
+          </div>
+          <div style="display:flex;gap:20px;margin-top:16px;">
+            <div>
+              <label class="form-label">Logo</label>
+              <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);padding:12px;text-align:center;min-width:200px;">
+                ${s.logo ? `<img src="${s.logo}" style="max-height:60px;">` : '<span style="color:var(--text-muted);font-size:13px;">Geen logo</span>'}
+              </div>
+              <input type="file" id="logoUpload" accept="image/*" style="margin-top:8px;font-size:12px;" onchange="uploadImage('logo',this)">
+            </div>
+            <div>
+              <label class="form-label">Handtekening</label>
+              <div style="background:white;border:1px solid var(--border);border-radius:var(--radius);padding:12px;text-align:center;min-width:200px;">
+                ${s.handtekening ? `<img src="${s.handtekening}" style="max-height:60px;">` : '<span style="color:var(--text-muted);font-size:13px;">Geen handtekening</span>'}
+              </div>
+              <input type="file" id="handtekeningUpload" accept="image/*" style="margin-top:8px;font-size:12px;" onchange="uploadImage('handtekening',this)">
+            </div>
+          </div>
+          <button class="btn btn-primary" style="margin-top:20px;" onclick="saveSettings()">Opslaan</button>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════
+           TAB 2 — CERTIFICAAT
+      ═══════════════════════════════════════════════ -->
+      <div id="settingsCertificaat" class="card" style="display:none;margin-bottom:20px;">
+        <div class="card-header"><h3>Certificaat Instellingen</h3></div>
+        <div class="card-body">
+          <div class="form-group">
+            <label class="form-label">Certificaat tekst (boven)</label>
+            <textarea class="form-textarea" id="setCertTekst" rows="5">${s.certificaatTekst||''}</textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Certificaat tekst (onder)</label>
+            <textarea class="form-textarea" id="setCertTekstOnder" rows="3" placeholder="Optionele tekst onder het certificaat">${s.certificaatTekstOnder||''}</textarea>
+          </div>
+          <button class="btn btn-primary" style="margin-top:8px;margin-bottom:24px;" onclick="saveCertSettings()">Teksten Opslaan</button>
+
+          <div class="form-group" style="margin-bottom:20px;">
+            <label class="form-label" style="margin-bottom:10px;display:block;">Certificaat kolommen</label>
+            <div style="display:flex;gap:16px;flex-wrap:wrap;">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+                <input type="checkbox" id="certColMateriaal" ${s.certColumns?.materiaal ? 'checked' : ''}
+                  onchange="store.settings.certColumns.materiaal=this.checked;saveStore(store);sbSaveSettings(store.settings).catch(console.error);toast('Opgeslagen');">
+                Materiaal
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+                <input type="checkbox" id="certColEnNorm" ${s.certColumns?.enNorm ? 'checked' : ''}
+                  onchange="store.settings.certColumns.enNorm=this.checked;saveStore(store);sbSaveSettings(store.settings).catch(console.error);toast('Opgeslagen');">
+                EN-norm
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+                <input type="checkbox" id="certColBreuksterkte" ${s.certColumns?.breuksterkte ? 'checked' : ''}
+                  onchange="store.settings.certColumns.breuksterkte=this.checked;saveStore(store);sbSaveSettings(store.settings).catch(console.error);toast('Opgeslagen');">
+                Breuksterkte
+              </label>
+            </div>
+            <div style="font-size:11px;color:var(--text-secondary);margin-top:6px;">De kolommen Gebruiker, Opmerking en In gebruik worden automatisch verborgen als ze leeg zijn.</div>
+          </div>
+
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+              <label class="form-label" style="margin:0;">Afkeurcodes</label>
+              <button class="btn btn-sm btn-primary" onclick="openAfkeurcodeModal()">+ Toevoegen</button>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;font-size:13px;" id="afkeurcodesGrid">
+              ${getAfkeurcodes().map((c, i) => `
+                <div style="padding:6px 10px;background:var(--bg-input);border-radius:var(--radius);display:flex;gap:8px;align-items:center;justify-content:space-between;">
+                  <div style="display:flex;gap:8px;">
+                    <span style="color:var(--sg-green);font-weight:700;min-width:24px;">${c.code}</span>
+                    <span>${c.tekst}</span>
+                  </div>
+                  <div style="display:flex;gap:2px;">
+                    <button class="btn-icon" title="Bewerken" onclick="openAfkeurcodeModal(${i})">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </button>
+                    <button class="btn-icon" title="Verwijderen" onclick="deleteAfkeurcode(${i})">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════
+           TAB 3 — KLANT APP
+      ═══════════════════════════════════════════════ -->
+      <div id="settingsKlantapp" class="card" style="display:none;margin-bottom:20px;">
+        <div class="card-header"><h3>Klant App</h3></div>
+        <div class="card-body">
+
+          <p style="font-size:13px;color:var(--text-secondary);margin-bottom:20px;">
+            De Klant App is een los HTML-bestand dat je naar je klant stuurt. De klant vult er zijn materiaal in
+            en stuurt het bestand terug. Jij importeert dat als nieuwe keuring.
+          </p>
+
+          <!-- Stap 1: Genereren -->
+          <div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:20px;">
+            <div style="background:var(--sg-green);color:white;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;">1</div>
+            <div style="flex:1;">
+              <div style="font-size:13px;font-weight:600;margin-bottom:4px;">Klant App genereren en versturen</div>
+              <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">
+                Genereer één HTML-bestand met de actuele productlijst er al in verwerkt. Stuur dit naar je klant — werkt in elke browser, ook offline.
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn btn-primary btn-sm" onclick="exportKlantApp()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Genereer KlimKeur Klant App (HTML)
+                </button>
+                <button class="btn btn-sm" onclick="exportKlantProductlijst()" style="font-size:11px;">
+                  Alleen productenlijst (JSON)
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div style="border-top:1px solid var(--border);margin-bottom:20px;"></div>
+
+          <!-- Stap 2: Importeren -->
+          <div style="display:flex;align-items:flex-start;gap:16px;">
+            <div style="background:var(--sg-green);color:white;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;">2</div>
+            <div style="flex:1;">
+              <div style="font-size:13px;font-weight:600;margin-bottom:4px;">Klantaanmelding importeren</div>
+              <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">
+                Ontvang je een ingevulde JSON van je klant? Importeer hem hier direct als nieuwe keuring.
+              </div>
+              <label class="btn btn-primary btn-sm" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;position:relative;overflow:hidden;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Importeer klant JSON
+                <input type="file" accept=".json,.txt,*/*" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0,0,0,0);" onchange="importKlantJSON(this)">
+              </label>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════
+           TAB 4 — DATABASE
+      ═══════════════════════════════════════════════ -->
+      <div id="settingsDatabase" class="card" style="display:none;margin-bottom:20px;">
+        <div class="card-header"><h3>Database &amp; Backup</h3></div>
+        <div class="card-body">
+
+          <!-- PRODUCTEN -->
+          <div style="margin-bottom:24px;">
+            <h4 style="font-size:13px;font-weight:700;color:var(--sg-green);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;">Productendatabase</h4>
+            <p style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">
+              Exporteer de productendatabase als Excel of CSV om te bewerken in Excel/Numbers.
+              Importeer het bestand daarna terug om de database bij te werken.
+              <strong>CSV</strong> is het handigste formaat voor bewerken buiten Excel.
+            </p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+              <button class="btn btn-sm" onclick="exportProductenExcel()">↓ Excel (.xlsx)</button>
+              <button class="btn btn-sm" onclick="exportProductsCSV()">↓ CSV</button>
+            </div>
+            <label class="btn btn-sm" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              ↑ Importeer productendatabase (Excel of CSV)
+              <input type="file" accept=".xlsx,.xls,.csv" style="display:none;" onchange="importProductenExcel(this)">
+            </label>
+            <div style="margin-top:8px;font-size:11px;color:var(--text-muted);">Let op: importeren vervangt de volledige productendatabase (${store.products.length} producten).</div>
+          </div>
+
+          <div style="border-top:1px solid var(--border);margin-bottom:24px;"></div>
+
+          <!-- HISTORISCHE CERTIFICATEN -->
+          <div style="margin-bottom:24px;">
+            <h4 style="font-size:13px;font-weight:700;color:var(--sg-green);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;">Historische certificaten importeren</h4>
+            <p style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">
+              Upload een certificaat-Excel uit het oude systeem. KlimKeur Pro leest klantgegevens,
+              keuringsdatum en alle items automatisch uit.
+            </p>
+            <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;">
+              <div>
+                <input type="file" id="certImportFile" accept=".xlsx,.xls" style="font-size:12px;">
+                <button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="importCertificaatExcel()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  Importeer certificaat Excel
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div style="border-top:1px solid var(--border);margin-bottom:24px;"></div>
+
+          <!-- BACKUP -->
+          <div style="margin-bottom:24px;">
+            <h4 style="font-size:13px;font-weight:700;color:var(--sg-green);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;">Volledige backup</h4>
+            <p style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">
+              Sla alle data op als één JSON-bestand (klanten, keuringen, producten, instellingen).
+              Bewaar dit regelmatig als reservekopie.
+            </p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn btn-sm" onclick="exportAllData()">↓ Download backup (JSON)</button>
+              <label class="btn btn-sm" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;position:relative;overflow:hidden;">
+                ↑ Herstel backup (JSON)
+                <input type="file" accept=".json,.txt,*/*" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0,0,0,0);" onchange="importData(this)">
+              </label>
+            </div>
+            <div style="margin-top:8px;padding:8px;background:rgba(231,76,60,0.1);border:1px solid var(--danger);border-radius:var(--radius);font-size:11px;color:var(--danger);">
+              Let op: backup herstellen overschrijft alle huidige data!
+            </div>
+          </div>
+
+          <div style="border-top:1px solid var(--border);margin-bottom:24px;"></div>
+
+          <!-- KLANTEN EXPORTEREN -->
+          <div style="margin-bottom:24px;">
+            <h4 style="font-size:13px;font-weight:700;color:var(--sg-green);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;">Klanten exporteren</h4>
+            <p style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">
+              Exporteer de klantenlijst als Excel — handig voor administratie of boekhoudprogramma.
+            </p>
+            <button class="btn btn-sm" onclick="exportKlantenExcel()">↓ Klanten als Excel (.xlsx)</button>
+          </div>
+
+          <div style="border-top:1px solid var(--border);padding-top:20px;">
+            <h4 style="font-size:13px;font-weight:700;color:var(--danger);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">Gevaarzone</h4>
+            <p style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">Verwijdert alle data en zet KlimKeur Pro terug naar de fabrieksinstellingen.</p>
+            <button class="btn btn-danger btn-sm" onclick="resetAllData()">Reset naar standaard</button>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  `;
+}
+
+function switchSettingsTab(tab, section) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+  document.getElementById('settingsGeneral').style.display     = section==='general'    ? '' : 'none';
+  document.getElementById('settingsCertificaat').style.display = section==='certificaat'? '' : 'none';
+  document.getElementById('settingsKlantapp').style.display    = section==='klantapp'   ? '' : 'none';
+  document.getElementById('settingsDatabase').style.display    = section==='database'   ? '' : 'none';
+}
+
+
+function saveSettings() {
+  store.settings.bedrijfsnaam = document.getElementById('setBedrijf').value;
+  store.settings.kvk = document.getElementById('setKvk').value;
+  store.settings.adres = document.getElementById('setAdres').value;
+  store.settings.telefoon = document.getElementById('setTel').value;
+  store.settings.email = document.getElementById('setEmail').value;
+  store.settings.keurmeester = document.getElementById('setKeurmeester').value;
+  saveStore(store);
+  sbSaveSettings(store.settings).catch(console.error);
+  toast('Instellingen opgeslagen');
+}
+
+function saveCertSettings() {
+  store.settings.certificaatTekst = document.getElementById('setCertTekst').value;
+  store.settings.certificaatTekstOnder = document.getElementById('setCertTekstOnder')?.value || '';
+  saveStore(store);
+  sbSaveSettings(store.settings).catch(console.error);
+  toast('Certificaat teksten opgeslagen');
+}
+
+function openKeurmeesterModal(idx) {
+  const km = idx !== undefined ? (store.keurmeesters||[])[idx] : null;
+  showModal(km ? 'Keurmeester Bewerken' : 'Nieuwe Keurmeester', `
+    <input type="hidden" id="kmIdx" value="${idx !== undefined ? idx : -1}">
+    <div class="form-group">
+      <label class="form-label">Naam</label>
+      <input class="form-input" id="kmNaam" value="${km?.naam || ''}" placeholder="Volledige naam">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Handtekening</label>
+      <div style="background:white;border:1px solid var(--border);border-radius:var(--radius);padding:12px;text-align:center;min-height:60px;display:flex;align-items:center;justify-content:center;">
+        ${km?.handtekening ? `<img id="kmHandtekeningPreview" src="${km.handtekening}" style="max-height:55px;">` : '<span id="kmHandtekeningPreview" style="color:var(--text-muted);font-size:13px;">Geen handtekening</span>'}
+      </div>
+      <input type="hidden" id="kmHandtekening" value="${km?.handtekening || ''}">
+      <input type="file" accept="image/*" style="margin-top:8px;font-size:12px;" onchange="previewKmHandtekening(this)">
+      ${km?.handtekening ? `<button type="button" class="btn btn-sm" style="margin-top:4px;color:var(--danger);" onclick="document.getElementById('kmHandtekening').value='';document.getElementById('kmHandtekeningPreview').outerHTML='<span id=\\'kmHandtekeningPreview\\' style=\\'color:var(--text-muted);font-size:13px;\\'>Geen handtekening</span>'">Handtekening verwijderen</button>` : ''}
+    </div>
+  `, () => {
+    const i = parseInt(document.getElementById('kmIdx').value);
+    const naam = document.getElementById('kmNaam').value.trim();
+    const handtekening = document.getElementById('kmHandtekening').value;
+    if (!naam) { toast('Vul een naam in', 'error'); return; }
+    if (!store.keurmeesters) store.keurmeesters = [];
+    if (i >= 0) {
+      const oudeNaam = store.keurmeesters[i].naam;
+      store.keurmeesters[i] = { naam, handtekening };
+      // Als dit de ingelogde keurmeester is: update user_metadata en actieve keurmeester
+      if (oudeNaam === store.settings.keurmeester) {
+        store.settings.keurmeester = naam;
+        sbSaveSettings(store.settings).catch(console.error);
+        // Update ook de koppeling in Supabase Auth zodat de naam klopt bij volgende login
+        if (_currentUser) {
+          sb.auth.updateUser({ data: { keurmeester_naam: naam } }).catch(console.error);
+        }
+        // Sidebar bijwerken
+        const nm = document.getElementById('sidebarUserNaam');
+        if (nm) nm.textContent = naam;
+      }
+    } else {
+      if (store.keurmeesters.some(k => k.naam === naam)) { toast('Keurmeester bestaat al', 'error'); return; }
+      store.keurmeesters.push({ naam, handtekening });
+      if (store.keurmeesters.length === 1) store.settings.keurmeester = naam;
+    }
+    saveStore(store);
+    sbSaveKeurmeesters(store.keurmeesters).catch(console.error);
+    closeModal();
+    toast(i >= 0 ? 'Keurmeester bijgewerkt' : 'Keurmeester toegevoegd');
+    navigateTo('keurmeesters');
+  });
+}
+
+function previewKmHandtekening(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('kmHandtekening').value = e.target.result;
+    const prev = document.getElementById('kmHandtekeningPreview');
+    if (prev.tagName === 'IMG') {
+      prev.src = e.target.result;
+    } else {
+      prev.outerHTML = `<img id="kmHandtekeningPreview" src="${e.target.result}" style="max-height:55px;">`;
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function verwijderKeurmeester(idx) {
+  const km = (store.keurmeesters||[])[idx];
+  if (!km) return;
+  if (!confirm(`Keurmeester "${km.naam}" verwijderen?`)) return;
+  store.keurmeesters.splice(idx, 1);
+  if (store.settings.keurmeester === km.naam && store.keurmeesters.length > 0) {
+    store.settings.keurmeester = store.keurmeesters[0].naam;
+  }
+  saveStore(store);
+  sbSaveKeurmeesters(store.keurmeesters).catch(console.error);
+  toast('Keurmeester verwijderd');
+  navigateTo('keurmeesters');
+}
+
+function openAfkeurcodeModal(idx) {
+  const codes = getAfkeurcodes();
+  const c = idx !== undefined ? codes[idx] : null;
+  showModal(c ? 'Afkeurcode Bewerken' : 'Nieuwe Afkeurcode', `
+    <input type="hidden" id="afkeurIdx" value="${idx !== undefined ? idx : -1}">
+    <div class="form-row">
+      <div class="form-group" style="max-width:100px;">
+        <label class="form-label">Code</label>
+        <input class="form-input" id="afkeurCode" value="${c?.code || ''}" placeholder="Nr." ${c ? 'readonly style="opacity:0.7;"' : ''}>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Omschrijving</label>
+        <input class="form-input" id="afkeurTekst" value="${c?.tekst || ''}" placeholder="Omschrijving van de afkeurcode">
+      </div>
+    </div>
+  `, () => {
+    const i = parseInt(document.getElementById('afkeurIdx').value);
+    const code = document.getElementById('afkeurCode').value.trim();
+    const tekst = document.getElementById('afkeurTekst').value.trim();
+    if (!code || !tekst) { toast('Vul code en omschrijving in', 'error'); return; }
+
+    if (!store.afkeurcodes) store.afkeurcodes = JSON.parse(JSON.stringify(CERT_INFO.afkeurcodes));
+    if (i >= 0) {
+      store.afkeurcodes[i] = { code, tekst };
+    } else {
+      if (store.afkeurcodes.some(c => c.code === code)) { toast('Code bestaat al', 'error'); return; }
+      store.afkeurcodes.push({ code, tekst });
+    }
+    saveStore(store);
+    sbSaveAfkeurcodes(store.afkeurcodes).catch(console.error);
+    closeModal();
+    toast(i >= 0 ? 'Afkeurcode bijgewerkt' : 'Afkeurcode toegevoegd');
+    renderInstellingen(document.getElementById('pageContent'));
+    switchSettingsTab(document.querySelector('.tab:nth-child(2)'), 'certificaat');
+  });
+}
+
+function deleteAfkeurcode(idx) {
+  if (!confirm('Afkeurcode verwijderen?')) return;
+  if (!store.afkeurcodes) store.afkeurcodes = JSON.parse(JSON.stringify(CERT_INFO.afkeurcodes));
+  store.afkeurcodes.splice(idx, 1);
+  saveStore(store);
+  sbSaveAfkeurcodes(store.afkeurcodes).catch(console.error);
+  toast('Afkeurcode verwijderd');
+  renderInstellingen(document.getElementById('pageContent'));
+  switchSettingsTab(document.querySelector('.tab:nth-child(2)'), 'certificaat');
+}
+
+function uploadImage(type, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    store.settings[type] = e.target.result;
+    saveStore(store);
+    sbSaveSettings(store.settings).catch(console.error);
+    toast(type === 'logo' ? 'Logo bijgewerkt' : 'Handtekening bijgewerkt');
+    renderInstellingen(document.getElementById('pageContent'));
+  };
+  reader.readAsDataURL(file);
+}
+
