@@ -21,25 +21,25 @@ function formatDate(d) {
   return dt.toLocaleDateString('nl-NL');
 }
 
-COLUMN_LABELS = {
-  omschrijving: 'Omschrijving', merk: 'Merk', materiaal: 'Materiaal',
-  bijzonderheden: 'Bijzonderheden', maxLeeftijd: 'Max Leeftijd',
-  maxLeeftijdUSE: 'Max USE', maxLeeftijdMFR: 'Max MFR',
-  enNorm: 'EN-Norm', breuksterkte: 'Breuksterkte',
-  handleiding: 'Handleiding', link: 'Link'
-};
 
-MAANDEN = ['','Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
 
-// ============================================================
-// NAVIGATION
-// ============================================================
-currentPage = 'dashboard';
-productSort = { col: 'omschrijving', asc: true };
-keuringItemSort = { col: 'omschrijving', asc: true };
-productFilter = { merk: '', materiaal: '', search: '' };
-productPage = 0;
-PAGE_SIZE = 50;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 function navigateTo(page) {
   // Sluit sidebar op mobiel bij navigeren
@@ -248,4 +248,3 @@ function filterKlantDropdown() {
     updateCertNr();
   }
 }
-
