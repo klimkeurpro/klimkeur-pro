@@ -130,11 +130,49 @@ async function handleAuthState(session) {
     // Niet ingelogd: toon loginscherm
     _currentUser = null;
     _appStarted  = false;
+    _huidigBedrijfId = null;
+    _isPlatformAdmin = false;
+    _bedrijfInfo = null;
     if (overlay) {
+      // Herstel het loginscherm als de overlay overschreven was door de laadindicator
+      if (!document.getElementById('authLogin')) {
+        overlay.innerHTML = `
+          <div class="auth-box fade-in" id="authLogin">
+            <div class="auth-logo">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--sg-green)" stroke-width="2.5">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                <path d="M9 12l2 2 4-4"/>
+              </svg>
+              <div class="auth-logo-text">
+                <strong>KlimKeur Pro</strong>
+                <span>Safety Green B.V.</span>
+              </div>
+            </div>
+            <div class="auth-title">Inloggen</div>
+            <div class="auth-sub">Log in met je KlimKeur account om door te gaan.</div>
+            <div class="auth-field">
+              <label>E-mailadres</label>
+              <input type="email" id="authEmail" placeholder="naam@safetygreen.nl" autocomplete="email" onkeydown="if(event.key==='Enter')authLogin()">
+            </div>
+            <div class="auth-field">
+              <label>Wachtwoord</label>
+              <input type="password" id="authPassword" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')authLogin()">
+            </div>
+            <button class="auth-btn" id="authLoginBtn" onclick="authLogin()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+              Inloggen
+            </button>
+            <div class="auth-error" id="authError"></div>
+          </div>
+        `;
+      }
       overlay.style.display = 'flex';
-      document.getElementById('authLogin').style.display = 'block';
-      document.getElementById('authError').classList.remove('visible');
-      document.getElementById('authPassword').value = '';
+      const loginEl = document.getElementById('authLogin');
+      if (loginEl) loginEl.style.display = 'block';
+      const errorEl = document.getElementById('authError');
+      if (errorEl) errorEl.classList.remove('visible');
+      const pwEl = document.getElementById('authPassword');
+      if (pwEl) pwEl.value = '';
     }
     return;
   }
