@@ -178,10 +178,11 @@ function renderKeurmeesters(el) {
     <div class="fade-in">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
         <h2 style="font-size:20px;">Keurmeesters</h2>
+        ${_isPlatformAdmin ? `
         <button class="btn btn-primary" onclick="openKeurmeesterModal()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:6px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Keurmeester toevoegen
-        </button>
+        </button>` : ''}
       </div>
 
       ${kms.length === 0 ? `
