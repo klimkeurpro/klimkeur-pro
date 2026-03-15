@@ -46,6 +46,103 @@ async function authLogout() {
   // onAuthStateChange toont het loginscherm
 }
 
+
+/**
+ * authWachtwoordVergeten — stuur resetmail naar keurmeester
+ */
+async function authWachtwoordVergeten() {
+  const email = document.getElementById('authEmail').value.trim();
+  const errEl = document.getElementById('authError');
+  errEl.classList.remove('visible');
+  errEl.style.color = '';
+
+  if (!email) {
+    errEl.textContent = 'Vul eerst je e-mailadres in.';
+    errEl.classList.add('visible');
+    return;
+  }
+
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: 'https://klimkeurpro.github.io/klimkeur-pro/'
+  });
+
+  if (error) {
+    errEl.textContent = 'Fout: ' + error.message;
+    errEl.classList.add('visible');
+  } else {
+    errEl.style.color = 'var(--sg-green)';
+    errEl.textContent = 'Resetmail verzonden! Controleer je inbox.';
+    errEl.classList.add('visible');
+    setTimeout(() => { errEl.style.color = ''; }, 5000);
+  }
+}
+
+/**
+ * authNieuwWachtwoord — sla nieuw wachtwoord op
+ */
+async function authNieuwWachtwoord() {
+  const ww1   = document.getElementById('authNieuwWw').value;
+  const ww2   = document.getElementById('authNieuwWw2').value;
+  const errEl = document.getElementById('authResetError');
+  const btn   = document.getElementById('authResetBtn');
+
+  errEl.classList.remove('visible');
+
+  if (!ww1 || ww1.length < 6) {
+    errEl.textContent = 'Wachtwoord moet minimaal 6 tekens zijn.';
+    errEl.classList.add('visible');
+    return;
+  }
+  if (ww1 !== ww2) {
+    errEl.textContent = 'Wachtwoorden komen niet overeen.';
+    errEl.classList.add('visible');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Opslaan...';
+
+  const { error } = await sb.auth.updateUser({ password: ww1 });
+
+  btn.disabled = false;
+  btn.textContent = 'Wachtwoord instellen';
+
+  if (error) {
+    errEl.textContent = 'Fout: ' + error.message;
+    errEl.classList.add('visible');
+  } else {
+    const resetOverlay = document.getElementById('authResetOverlay');
+    if (resetOverlay) resetOverlay.remove();
+    toast('Wachtwoord succesvol ingesteld!');
+  }
+}
+
+/**
+ * toonResetScherm — toon wachtwoord-instellen overlay
+ */
+function toonResetScherm() {
+  let overlay = document.getElementById('authResetOverlay');
+  if (overlay) { overlay.style.display = 'flex'; return; }
+  overlay = document.createElement('div');
+  overlay.id = 'authResetOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:var(--bg-primary);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = '<div class="auth-box fade-in">' +
+    '<div class="auth-logo">' +
+    '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--sg-green)" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>' +
+    '<div class="auth-logo-text"><strong>KlimKeur Pro</strong><span>Nieuw wachtwoord</span></div>' +
+    '</div>' +
+    '<div class="auth-title">Wachtwoord instellen</div>' +
+    '<div class="auth-sub">Kies een nieuw wachtwoord voor je account.</div>' +
+    '<div class="auth-field"><label>Nieuw wachtwoord</label>' +
+    '<input type="password" id="authNieuwWw" placeholder="Minimaal 6 tekens" autocomplete="new-password"></div>' +
+    '<div class="auth-field"><label>Herhaal wachtwoord</label>' +
+    '<input type="password" id="authNieuwWw2" placeholder="Herhaal wachtwoord" autocomplete="new-password"></div>' +
+    '<button class="auth-btn" id="authResetBtn" onclick="authNieuwWachtwoord()">Wachtwoord instellen</button>' +
+    '<div class="auth-error" id="authResetError"></div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+}
+
 /**
  * Naam afleiden uit email-adres
  * bijv. c.van.den.hoogen@safetygreen.nl  →  C. Van Den Hoogen
@@ -274,5 +371,9 @@ async function handleAuthState(session) {
 
 // Start auth listener — dit is het enige startpunt
 sb.auth.onAuthStateChange((event, session) => {
+  if (event === 'PASSWORD_RECOVERY') {
+    toonResetScherm();
+    return;
+  }
   handleAuthState(session);
 });
