@@ -276,6 +276,3 @@ async function handleAuthState(session) {
 sb.auth.onAuthStateChange((event, session) => {
   handleAuthState(session);
 });
-
-DB_KEY = 'klimkeur_pro_v2'; // nog gebruikt voor theme/backup meta
-
