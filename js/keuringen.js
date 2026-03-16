@@ -659,48 +659,62 @@ async function _doOmschrZoeken(val) {
     const merkVal = document.getElementById('itemMerk')?.value?.trim() || '';
     const matVal  = document.getElementById('itemMateriaal')?.value?.trim() || '';
 
-    // Bouw query op: omschrijving bevat q, optioneel gefilterd op merk/materiaal
+    // Bouw query op met alle filters
     let query = sb.from('producten')
       .select('omschrijving, merk, materiaal, max_leeftijd, max_leeftijd_use, max_leeftijd_mfr, norm, bijzonderheden, handleiding, breuksterkte')
       .ilike('omschrijving', `%${q}%`)
-      .limit(15);
+      .limit(50); // Meer ophalen zodat we goed kunnen sorteren
 
     // Admin zoekt over alle bedrijven; keurmeester ziet alleen eigen bedrijf
     if (!_isPlatformAdmin && _huidigBedrijfId) {
       query = query.eq('bedrijf_id', _huidigBedrijfId);
     }
 
-    if (merkVal) query = query.ilike('merk', `%${merkVal}%`);
-    if (matVal)  query = query.ilike('materiaal', `%${matVal}%`);
+    // Punt 1: Als merk én materiaal allebei zijn ingevuld — exacte filter op beide
+    if (merkVal && matVal) {
+      query = query.ilike('merk', `%${merkVal}%`).ilike('materiaal', `%${matVal}%`);
+    } else if (merkVal) {
+      query = query.ilike('merk', `%${merkVal}%`);
+    } else if (matVal) {
+      query = query.ilike('materiaal', `%${matVal}%`);
+    }
 
     const { data, error } = await query;
     if (error) throw error;
 
-    const results = data || [];
+    // Punt 2: Sorteer — items die beginnen met zoekterm komen bovenaan
+    const ql = q.toLowerCase();
+    const gesorteerd = (data || []).sort((a, b) => {
+      const aBegin = a.omschrijving.toLowerCase().startsWith(ql) ? 0 : 1;
+      const bBegin = b.omschrijving.toLowerCase().startsWith(ql) ? 0 : 1;
+      if (aBegin !== bBegin) return aBegin - bBegin;
+      return a.omschrijving.localeCompare(b.omschrijving, 'nl');
+    }).slice(0, 15);
 
-    if (results.length === 0) {
+    if (gesorteerd.length === 0) {
       dropdown.innerHTML = '<div style="padding:10px 12px;font-size:13px;color:var(--text-muted);font-style:italic;">Geen producten gevonden — typ zelf in</div>';
       return;
     }
 
     omschrDropIndex = -1;
 
-    dropdown.innerHTML = results.map((p, i) => {
+    dropdown.innerHTML = gesorteerd.map((p, i) => {
       const o = p.omschrijving;
       const lo = o.toLowerCase();
-      const ql = q.toLowerCase();
       const idx = lo.indexOf(ql);
       let label = o;
       if (idx >= 0) {
         label = o.slice(0, idx) +
-          '<strong style="color:var(--primary);">' + o.slice(idx, idx + q.length) + '</strong>' +
+          '<strong style="color:var(--sg-green);">' + o.slice(idx, idx + q.length) + '</strong>' +
           o.slice(idx + q.length);
       }
       const sub = [p.merk, p.materiaal].filter(Boolean).join(' · ');
+      // Punt 3: Duidelijke hover stijl op donkere achtergrond
       return `<div class="omschr-drop-item" data-val="${o}" data-idx="${i}"
         onmousedown="selectOmschrItem(this)"
-        style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid rgba(255,255,255,0.07);color:#e8eaf0;"
-        onmouseover="highlightOmschrItem(${i})">
+        style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid rgba(255,255,255,0.07);color:var(--text-primary);transition:background 0.1s;"
+        onmouseover="highlightOmschrItem(${i})"
+        onmouseout="if(omschrDropIndex!==${i})this.style.background=''">
         <div>${label}</div>
         ${sub ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${sub}</div>` : ''}
       </div>`;
@@ -727,7 +741,7 @@ function hideOmschrDropdown() {
 function highlightOmschrItem(idx) {
   omschrDropIndex = idx;
   document.querySelectorAll('.omschr-drop-item').forEach((el, i) => {
-    el.style.background = i === idx ? 'rgba(74,144,226,0.3)' : ''; el.style.color = '#fff';
+    el.style.background = i === idx ? 'var(--sg-green-dark,#3D7A1A)' : ''; el.style.color = i === idx ? '#fff' : 'var(--text-primary)';
   });
 }
 
