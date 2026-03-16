@@ -72,8 +72,8 @@ function openKlantModal(id) {
         <input class="form-input" id="klantTel" value="${klant?.telefoon || ''}" placeholder="Telefoonnummer">
       </div>
       <div class="form-group">
-        <label class="form-label">Email</label>
-        <input class="form-input" id="klantEmail" value="${klant?.email || ''}" placeholder="Email">
+        <label class="form-label">Email <span style="font-weight:400;color:var(--text-muted);">wordt ook gebruikt voor klant-login</span></label>
+        <input class="form-input" id="klantEmail" value="${klant?.email || ''}" placeholder="naam@voorbeeld.nl">
       </div>
     </div>
     <div class="form-row" style="grid-template-columns:3fr 1fr;">
@@ -105,12 +105,11 @@ function openKlantModal(id) {
       <textarea class="form-textarea" id="klantOpm">${klant?.opmerkingen || ''}</textarea>
     </div>
     <div class="form-group">
-      <label class="form-label">Gekoppeld account <span style="font-weight:400;color:var(--text-muted);">e-mailadres van klant-login</span></label>
-      <div style="display:flex;gap:8px;">
-        <input class="form-input" id="klantAuthEmail" value="${klant?.authEmail || ''}" placeholder="naam@voorbeeld.nl" style="flex:1;">
+      <div style="display:flex;gap:8px;margin-top:4px;">
         <button type="button" class="btn btn-secondary btn-sm" onclick="zoekAuthUser()" style="white-space:nowrap;">Opzoeken</button>
         <button type="button" class="btn btn-primary btn-sm" onclick="verstuurKlantUitnodiging()" style="white-space:nowrap;">✉ Uitnodigen</button>
       </div>
+      <input type="hidden" id="klantAuthEmail" value="${klant?.email || klant?.authEmail || ''}">
       <input type="hidden" id="klantAuthUserId" value="${klant?.auth_user_id || ''}">
       <div id="authUserStatus" style="font-size:12px;margin-top:4px;color:var(--text-muted);">${klant?.auth_user_id ? '✓ Account gekoppeld' : ''}</div>
     </div>
@@ -130,7 +129,7 @@ function openKlantModal(id) {
       adres: `${document.getElementById('klantStraat').value} ${document.getElementById('klantHuisnr').value}, ${document.getElementById('klantPostcode').value} ${document.getElementById('klantPlaats').value}`.trim().replace(/^,\s*|,\s*$/g, ''),
       opmerkingen: document.getElementById('klantOpm').value,
       auth_user_id: document.getElementById('klantAuthUserId').value || null,
-      authEmail: document.getElementById('klantAuthEmail').value || '',
+      authEmail: document.getElementById('klantEmail').value || '',
     };
     if (!data.bedrijf) { toast('Vul een bedrijfsnaam in', 'error'); return; }
     const idx = store.klanten.findIndex(k => k.id === data.id);
@@ -225,7 +224,7 @@ function keuringNodigStatus(inGebruik) {
 }
 
 async function zoekAuthUser() {
-  const email = document.getElementById('klantAuthEmail').value.trim();
+  const email = document.getElementById('klantEmail')?.value?.trim() || document.getElementById('klantAuthEmail')?.value?.trim() || '';
   const statusEl = document.getElementById('authUserStatus');
   if (!email) { statusEl.textContent = 'Vul eerst een e-mailadres in'; statusEl.style.color = 'var(--danger)'; return; }
 
@@ -251,7 +250,7 @@ async function zoekAuthUser() {
 }
 
 async function verstuurKlantUitnodiging() {
-  const email = document.getElementById('klantAuthEmail').value.trim();
+  const email = document.getElementById('klantEmail')?.value?.trim() || document.getElementById('klantAuthEmail')?.value?.trim() || '';
   const klantId = document.getElementById('klantId').value;
   const klantNaam = document.getElementById('klantBedrijf').value.trim();
   const statusEl = document.getElementById('authUserStatus');
