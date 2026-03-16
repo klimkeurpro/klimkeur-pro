@@ -721,7 +721,7 @@ async function _doOmschrZoeken(val) {
     }).join('');
 
     // Sla producten op in dataset voor gebruik bij selectie
-    results.forEach((p, i) => {
+    gesorteerd.forEach((p, i) => {
       const el = dropdown.querySelectorAll('.omschr-drop-item')[i];
       if (el) el._prodData = p;
     });
