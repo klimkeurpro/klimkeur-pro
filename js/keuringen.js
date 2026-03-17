@@ -255,7 +255,7 @@ function openKeuringDetail(id) {
 
   const goed = (k.items||[]).filter(i => i.status === 'goedgekeurd').length;
   const afk = (k.items||[]).filter(i => i.status === 'afgekeurd').length;
-  const open = (k.items||[]).filter(i => !i.status).length;
+  const open = (k.items||[]).filter(i => !i.status || i.status === 'niet_aangeboden').length;
 
   el.innerHTML = `
     <div class="fade-in">
@@ -380,6 +380,7 @@ function openKeuringDetail(id) {
               <select class="form-select" id="itemStatus" tabindex="8">
                 <option value="goedgekeurd">Goed</option>
                 <option value="afgekeurd">Afgekeurd</option>
+                <option value="niet_aangeboden">Niet aangeboden</option>
               </select>
             </div>
             <div class="form-group">
@@ -507,6 +508,7 @@ function openKeuringDetail(id) {
                       <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
                         <button class="btn btn-sm ${isGoed?'btn-goed-active':'btn-goed'}" onclick="quickBeoordeel('${id}',${i},'goedgekeurd')" title="Goedkeuren">✓ Goed</button>
                         <button class="btn btn-sm ${isAfk?'btn-afk-active':'btn-afk'}" onclick="quickBeoordeel('${id}',${i},'afgekeurd')" title="Afkeuren">✗ Afkeur</button>
+                        <button class="btn btn-sm ${item.status==='niet_aangeboden'?'btn-secondary':'btn-secondary'}" onclick="quickBeoordeel('${id}',${i},'niet_aangeboden')" title="Niet aangeboden die dag" style="${item.status==='niet_aangeboden'?'opacity:1;border-color:var(--warning);color:var(--warning);':'opacity:0.5;'}">— N/A</button>
                         ${isAfk ? `<select class="form-select" style="width:auto;min-width:60px;height:28px;font-size:11px;padding:2px 4px;" onchange="setAfkeurCode('${id}',${i},this.value)">
                           <option value="">Code</option>
                           ${getAfkeurcodes().map(c => `<option value="${c.code}" ${String(item.afkeurcode)==String(c.code)?'selected':''}>${c.code}</option>`).join('')}
@@ -545,8 +547,8 @@ function openKeuringDetail(id) {
   const codeSel = document.getElementById('itemCode');
   if (statusSel && codeSel) {
     statusSel.onchange = () => {
-      codeSel.disabled = statusSel.value === 'goedgekeurd';
-      if (statusSel.value === 'goedgekeurd') codeSel.value = '';
+      codeSel.disabled = statusSel.value !== 'afgekeurd';
+      if (statusSel.value !== 'afgekeurd') codeSel.value = '';
     };
   }
 
@@ -987,7 +989,7 @@ function quickBeoordeel(keuringId, idx, newStatus) {
     item.afkeurcode = '';
   } else {
     item.status = newStatus;
-    if (newStatus === 'goedgekeurd') item.afkeurcode = '';
+    if (newStatus !== 'afgekeurd') item.afkeurcode = '';
   }
 
   // Audit trail
@@ -1049,7 +1051,7 @@ function finishKeuring(id) {
   if (!k) return;
 
   // Check for unrated items
-  const open = (k.items||[]).filter(i => !i.status).length;
+  const open = (k.items||[]).filter(i => !i.status || i.status === 'niet_aangeboden').length;
   if (open > 0) {
     if (!confirm(`Er zijn nog ${open} items zonder beoordeling. Toch afronden?`)) return;
   }
@@ -1143,6 +1145,7 @@ function editKeuringItem(keuringId, idx) {
           <option value="" ${!item.status?'selected':''}>— Nog beoordelen —</option>
           <option value="goedgekeurd" ${item.status==='goedgekeurd'?'selected':''}>Goedgekeurd</option>
           <option value="afgekeurd" ${item.status==='afgekeurd'?'selected':''}>Afgekeurd</option>
+          <option value="niet_aangeboden" ${item.status==='niet_aangeboden'?'selected':''}>Niet aangeboden</option>
         </select>
       </div>
       <div class="form-group">
