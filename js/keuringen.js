@@ -1107,10 +1107,17 @@ function finishKeuring(id) {
   const k = store.keuringen.find(ke => ke.id === id);
   if (!k) return;
 
-  // Check for unrated items
-  const open = (k.items||[]).filter(i => !i.status).length;
-  if (open > 0) {
-    if (!confirm(`Er zijn nog ${open} items zonder beoordeling. Toch afronden?`)) return;
+  // Items zonder beoordeling worden verwijderd bij afronden
+  // Zo blijft de vorige status intact in de historie
+  const teVerwijderen = (k.items||[]).filter(i => !i.status);
+  if (teVerwijderen.length > 0) {
+    const open = teVerwijderen.length;
+    if (!confirm(`Er zijn ${open} items zonder beoordeling. Deze worden niet opgeslagen — de vorige keuringsstatus blijft geldig. Doorgaan?`)) return;
+    // Verwijder lege items uit de keuring
+    teVerwijderen.forEach(item => {
+      if (item.itemId) sbDeleteKeuringItem(item.itemId).catch(console.error);
+    });
+    k.items = k.items.filter(i => i.status);
   }
 
   k.afgerond = true;
