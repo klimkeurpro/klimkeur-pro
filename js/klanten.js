@@ -107,7 +107,7 @@ function openKlantModal(id) {
     <div class="form-group">
       <div style="display:flex;gap:8px;margin-top:4px;">
         <button type="button" class="btn btn-secondary btn-sm" onclick="zoekAuthUser()" style="white-space:nowrap;">Opzoeken</button>
-        <button type="button" class="btn btn-primary btn-sm" onclick="verstuurKlantUitnodiging()" style="white-space:nowrap;">✉ Uitnodigen</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="verstuurKlantUitnodiging()" style="white-space:nowrap;" ${!id ? 'disabled title="Sla de klant eerst op"' : ''}>✉ Uitnodigen</button>
       </div>
       <input type="hidden" id="klantAuthEmail" value="${klant?.email || klant?.authEmail || ''}">
       <input type="hidden" id="klantAuthUserId" value="${klant?.auth_user_id || ''}">
