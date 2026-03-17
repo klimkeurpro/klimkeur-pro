@@ -571,6 +571,7 @@ function exportSingleKeuringExcel(id) {
     ['Totaal items', (k.items||[]).length],
     ['Goedgekeurd', (k.items||[]).filter(i=>i.status==='goedgekeurd').length],
     ['Afgekeurd', (k.items||[]).filter(i=>i.status==='afgekeurd').length],
+    ['Niet aangeboden', (k.items||[]).filter(i=>i.status==='niet_aangeboden').length],
     ['Afgerond', k.afgerond ? 'Ja' : 'Nee'],
   ];
   const wsInfo = XLSX.utils.aoa_to_sheet(infoRows);
@@ -580,4 +581,3 @@ function exportSingleKeuringExcel(id) {
   XLSX.writeFile(wb, `Data_${k.certificaatNr || k.klantNaam}_${k.datum}.xlsx`);
   toast('Excel data geëxporteerd — plak in je eigen template');
 }
-
