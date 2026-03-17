@@ -116,6 +116,20 @@ function openKeuringModal() {
       </div>
     </div>
 
+    <!-- Aangemeld materiaal door klant -->
+    <div id="aangemeldBox" style="display:none;margin-bottom:16px;padding:14px;background:rgba(243,156,18,0.08);border:1px solid var(--warning);border-radius:var(--radius-lg);">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--warning);">Klant heeft materiaal aangemeld</div>
+          <div id="aangemeldInfo" style="font-size:12px;color:var(--text-secondary);margin-top:2px;"></div>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;white-space:nowrap;">
+          <input type="checkbox" id="aangemeldOvernemen" style="accent-color:var(--warning);" checked>
+          Ook overnemen
+        </label>
+      </div>
+    </div>
+
     <div class="form-group">
       <label class="form-label">Opmerkingen</label>
       <textarea class="form-textarea" id="keuringOpm" placeholder="Eventuele opmerkingen"></textarea>
@@ -153,6 +167,24 @@ function openKeuringModal() {
           opmerking: '',       // Schone lei
         }));
       }
+    }
+
+    // Voeg aangemeld materiaal van klant toe als ook dat aangevinkt is
+    const aangemeldBox = document.getElementById('aangemeldBox');
+    const aangemeldOvernemen = document.getElementById('aangemeldOvernemen')?.checked;
+    if (aangemeldOvernemen && aangemeldBox?._items?.length > 0) {
+      aangemeldBox._items.forEach(item => {
+        keuring.items.push({
+          itemId: item.id,
+          omschrijving: item.omschrijving || '',
+          merk: item.merk || '',
+          materiaal: item.materiaal || '',
+          serienummer: item.serienummer || '',
+          status: '',
+          afkeurcode: '',
+          opmerking: '',
+        });
+      });
     }
 
     store.keuringen.push(keuring);
@@ -228,7 +260,7 @@ function updateCertNr() {
   certEl.value = certNr;
 }
 
-function checkVorigeKeuring() {
+async function checkVorigeKeuring() {
 
   // Also update cert nr when klant changes
   const klantId = document.getElementById('keuringKlant').value;
@@ -244,6 +276,31 @@ function checkVorigeKeuring() {
     info.innerHTML = `${result.keuringenCount} eerdere keuring${result.keuringenCount>1?'en':''} — <strong>${result.items.length} unieke items</strong> gevonden (${goed} goed, ${afk} afgekeurd)`;
   } else {
     box.style.display = 'none';
+  }
+
+  // Controleer aangemeld materiaal van de klant (items zonder keuring_id) via Supabase
+  const aangemeldBox = document.getElementById('aangemeldBox');
+  const aangemeldInfo = document.getElementById('aangemeldInfo');
+  if (!aangemeldBox) return;
+
+  try {
+    const { data: losse } = await sb.from('keuring_items')
+      .select('id, omschrijving, merk, materiaal, serienummer')
+      .eq('klant_id', klantId)
+      .is('keuring_id', null);
+
+    if (losse && losse.length > 0) {
+      aangemeldBox.style.display = 'block';
+      aangemeldInfo.textContent = `${losse.length} item${losse.length > 1 ? 's' : ''} aangemeld door klant`;
+      // Sla op voor gebruik bij aanmaken keuring
+      aangemeldBox._items = losse;
+    } else {
+      aangemeldBox.style.display = 'none';
+      aangemeldBox._items = [];
+    }
+  } catch(e) {
+    console.error('Aangemeld materiaal ophalen mislukt:', e);
+    aangemeldBox.style.display = 'none';
   }
 }
 
