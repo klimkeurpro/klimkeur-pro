@@ -255,7 +255,7 @@ function openKeuringDetail(id) {
 
   const goed = (k.items||[]).filter(i => i.status === 'goedgekeurd').length;
   const afk = (k.items||[]).filter(i => i.status === 'afgekeurd').length;
-  const open = (k.items||[]).filter(i => !i.status || i.status === 'niet_aangeboden').length;
+  const open = (k.items||[]).filter(i => !i.status).length;
 
   el.innerHTML = `
     <div class="fade-in">
@@ -1051,7 +1051,7 @@ function finishKeuring(id) {
   if (!k) return;
 
   // Check for unrated items
-  const open = (k.items||[]).filter(i => !i.status || i.status === 'niet_aangeboden').length;
+  const open = (k.items||[]).filter(i => !i.status).length;
   if (open > 0) {
     if (!confirm(`Er zijn nog ${open} items zonder beoordeling. Toch afronden?`)) return;
   }
