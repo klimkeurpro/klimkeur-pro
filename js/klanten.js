@@ -301,9 +301,25 @@ async function verstuurKlantUitnodiging() {
       return;
     }
 
-    // Succes — update auth_user_id in het formulier
+    // Succes — sla auth_user_id direct op in Supabase zodat de klant direct gekoppeld is
     if (result.user_id) {
       document.getElementById('klantAuthUserId').value = result.user_id;
+      // Direct opslaan in database — geen handmatige opslag nodig
+      try {
+        const { error } = await sb.from('klanten')
+          .update({ auth_user_id: result.user_id, email: email })
+          .eq('id', klantId);
+        if (error) throw error;
+        // Update ook de lokale store
+        const klant = store.klanten.find(k => k.id === klantId);
+        if (klant) {
+          klant.auth_user_id = result.user_id;
+          klant.email = email;
+          saveStore(store);
+        }
+      } catch(saveErr) {
+        console.error('auth_user_id opslaan mislukt:', saveErr);
+      }
     }
     statusEl.innerHTML = `✓ Uitnodiging verstuurd naar <strong>${email}</strong>`;
     statusEl.style.color = 'var(--success)';
