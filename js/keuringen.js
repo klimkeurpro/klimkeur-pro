@@ -1125,21 +1125,7 @@ function finishKeuring(id) {
   saveStore(store);
   sbUpsertKeuring(k).catch(console.error);
 
-  // Automatische backup bij afronden
-  try {
-    const blob = new Blob([JSON.stringify(store, null, 2)], {type: 'application/json'});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    const datumStr = new Date().toISOString().split('T')[0];
-    a.download = `klimkeur_backup_${datumStr}_${(k.certificaatNr || k.klantNaam || 'keuring').replace(/[^a-zA-Z0-9\-]/g,'_')}.json`;
-    a.click();
-    // Reset backup reminder teller
-    localStorage.setItem(DB_KEY + '_changesSinceBackup', '0');
-    localStorage.setItem(DB_KEY + '_lastBackup', Date.now().toString());
-    toast('✓ Keuring afgerond — backup automatisch gedownload');
-  } catch(e) {
-    toast('Keuring afgerond (backup mislukt: ' + e.message + ')', 'warning');
-  }
+toast('✓ Keuring afgerond');
 
   openKeuringDetail(id);
 }
