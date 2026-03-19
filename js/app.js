@@ -2,50 +2,16 @@
 // app.js — initialisatie, navigatie, modals, global search, sidebar, utilities
 // ============================================================
 
-function importData(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    try {
-      const imported = JSON.parse(e.target.result);
-      if (!imported.products) throw new Error('Ongeldig bestand');
-      store = imported;
-      saveStore(store);
-
-      // Sync alles naar Supabase
-      const syncBeloften = [];
-      (store.klanten || []).forEach(k => syncBeloften.push(sbUpsertKlant(k)));
-      (store.keuringen || []).forEach(k => {
-        syncBeloften.push(sbUpsertKeuring(k).then(() => sbSyncAllKeuringItems(k)));
-      });
-      if (store.settings) syncBeloften.push(sbSaveSettings(store.settings));
-      if (store.keurmeesters) syncBeloften.push(sbSaveKeurmeesters(store.keurmeesters));
-      if (store.snData) syncBeloften.push(sbSaveSnData(store.snData));
-      if (store.afkeurcodes) syncBeloften.push(sbSaveAfkeurcodes(store.afkeurcodes));
-
-      Promise.all(syncBeloften)
-        .then(() => toast('Data geïmporteerd en gesynchroniseerd met Supabase'))
-        .catch(err => {
-          console.error('Supabase sync na import mislukt:', err);
-          toast('Data geïmporteerd (lokaal — Supabase sync mislukt)', 'warning');
-        });
-
-      navigateTo('dashboard');
-    } catch(err) {
-      toast('Fout bij importeren: ' + err.message, 'error');
-    }
-  };
-  reader.readAsText(file);
-}
+// importData is verwijderd — JSON backup-import is niet meer nodig
+// omdat alle data in Supabase staat. Gebruik exportAllData() voor
+// een noodkopie die je zelf bewaart.
 
 function resetAllData() {
-  if (!confirm('WAARSCHUWING: Dit verwijdert alle klanten, keuringen en wijzigingen. Weet je het zeker?')) return;
-  if (!confirm('Echt zeker? Dit kan niet ongedaan worden gemaakt.')) return;
+  if (!confirm('Dit herlaadt alle data vanuit Supabase. Lokale wijzigingen die nog niet gesynchroniseerd zijn gaan verloren. Doorgaan?')) return;
   localStorage.removeItem(DB_KEY);
   initStore().then(s => {
     store = s;
-    toast('Data gereset naar standaard');
+    toast('Data opnieuw geladen vanuit Supabase');
     navigateTo('dashboard');
   });
 }
