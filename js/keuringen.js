@@ -967,7 +967,7 @@ function addKeuringItem(keuringId) {
   const matVal = document.getElementById('itemMateriaal')?.value || '';
 
   const item = {
-    itemId: store.nextItemId++,
+    itemId: generateId(),
     omschrijving: omschr,
     merk: merkVal || prod?.merk || '',
     materiaal: matVal || prod?.materiaal || '',
@@ -1000,7 +1000,7 @@ function duplicateKeuringItem(keuringId, idx) {
   // Maak een kopie met nieuw item ID, leeg serienummer en geen status
   const kopie = {
     ...JSON.parse(JSON.stringify(original)),
-    itemId: store.nextItemId++,
+    itemId: generateId(),
     serienummer: '',
     status: '',
     afkeurcode: '',
