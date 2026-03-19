@@ -236,22 +236,15 @@ function renderInstellingen(el) {
 
           <div style="border-top:1px solid var(--border);margin-bottom:24px;"></div>
 
-          <!-- BACKUP -->
+          <!-- BACKUP — alleen download, geen import meer -->
           <div style="margin-bottom:24px;">
-            <h4 style="font-size:13px;font-weight:700;color:var(--sg-green);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;">Volledige backup</h4>
+            <h4 style="font-size:13px;font-weight:700;color:var(--sg-green);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;">Noodkopie downloaden</h4>
             <p style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">
-              Sla alle data op als één JSON-bestand (klanten, keuringen, producten, instellingen).
-              Bewaar dit regelmatig als reservekopie.
+              Download een kopie van alle data als JSON-bestand. Alle data staat veilig in Supabase —
+              dit is een extra vangnet voor het geval dat.
             </p>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <button class="btn btn-sm" onclick="exportAllData()">↓ Download backup (JSON)</button>
-              <label class="btn btn-sm" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;position:relative;overflow:hidden;">
-                ↑ Herstel backup (JSON)
-                <input type="file" accept=".json,.txt,*/*" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0,0,0,0);" onchange="importData(this)">
-              </label>
-            </div>
-            <div style="margin-top:8px;padding:8px;background:rgba(231,76,60,0.1);border:1px solid var(--danger);border-radius:var(--radius);font-size:11px;color:var(--danger);">
-              Let op: backup herstellen overschrijft alle huidige data!
             </div>
           </div>
 
@@ -268,8 +261,8 @@ function renderInstellingen(el) {
 
           <div style="border-top:1px solid var(--border);padding-top:20px;">
             <h4 style="font-size:13px;font-weight:700;color:var(--danger);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">Gevaarzone</h4>
-            <p style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">Verwijdert alle data en zet KlimKeur Pro terug naar de fabrieksinstellingen.</p>
-            <button class="btn btn-danger btn-sm" onclick="resetAllData()">Reset naar standaard</button>
+            <p style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">Herlaadt alle data vanuit Supabase. Handig als er iets mis lijkt met de lokale weergave.</p>
+            <button class="btn btn-danger btn-sm" onclick="resetAllData()">Data herladen vanuit Supabase</button>
           </div>
 
         </div>
@@ -425,7 +418,7 @@ async function verstuurKeurmeesterUitnodiging(naam, email, handtekening) {
         await sb.from('keurmeesters').upsert({
           id: generateId(),
           naam,
-          bedrijf: 'Safety Green B.V.',
+          bedrijf: (_bedrijfInfo && _bedrijfInfo.naam) || 'Safety Green B.V.',
           bedrijf_id: _huidigBedrijfId,
           auth_user_id: result.user_id,
         }, { onConflict: 'auth_user_id' });
@@ -446,7 +439,7 @@ async function verstuurKeurmeesterUitnodiging(naam, email, handtekening) {
         await sb.from('keurmeesters').upsert({
           id: generateId(),
           naam,
-          bedrijf: 'Safety Green B.V.',
+          bedrijf: (_bedrijfInfo && _bedrijfInfo.naam) || 'Safety Green B.V.',
           bedrijf_id: _huidigBedrijfId,
           auth_user_id: result.user_id,
         }, { onConflict: 'auth_user_id' });
