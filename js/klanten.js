@@ -22,7 +22,7 @@ function renderKlanten(el) {
             <th>Bedrijf / Naam</th><th>Klantnr.</th><th>Contactpersoon</th><th>Telefoon</th><th>Email</th><th>Keuringen</th><th>Aangemeld</th><th></th>
           </tr></thead>
           <tbody id="klantenBody">
-            ${klanten.length === 0 ? '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:40px;">Nog geen klanten. Voeg een klant toe om te beginnen.</td></tr>' :
+            ${klanten.length === 0 ? '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:40px;">Nog geen klanten. Voeg een klant toe om te beginnen.</td></tr>' :
               klanten.map(k => `
                 <tr>
                   <td><strong>${k.bedrijf || k.naam || ''}</strong></td>
@@ -34,7 +34,6 @@ function renderKlanten(el) {
                   <td id="aangemeld-${k.id}"><span class="badge badge-gray">—</span></td>
                   <td>
                     <button class="btn btn-sm" onclick="openKlantModal('${k.id}')">Bewerk</button>
-                    <button class="btn btn-sm" onclick="toonAangemeldMateriaal('${k.id}','${k.bedrijf||k.naam||''}')">Materiaal</button>
                     <button class="btn btn-sm btn-danger" onclick="deleteKlant('${k.id}')">Verwijder</button>
                   </td>
                 </tr>
@@ -283,14 +282,13 @@ async function verstuurKlantUitnodiging() {
         email,
         klant_id: klantId,
         klant_naam: klantNaam,
-        redirect_to: 'https://klimkeurpro.github.io/klimkeur-klant/', // pas aan naar jouw klant-app URL
+        redirect_to: 'https://klimkeurpro.github.io/klimkeur-klant/',
       }),
     });
 
     const result = await res.json();
 
     if (!res.ok) {
-      // Al uitgenodigd of al een account? Geef duidelijke melding
       if (result.error?.includes('already been invited') || result.error?.includes('already registered')) {
         statusEl.innerHTML = '⚠ Dit e-mailadres heeft al een account of uitnodiging. Gebruik <em>Opzoeken</em> om te koppelen.';
         statusEl.style.color = 'var(--warning)';
@@ -304,13 +302,11 @@ async function verstuurKlantUitnodiging() {
     // Succes — sla auth_user_id direct op in Supabase zodat de klant direct gekoppeld is
     if (result.user_id) {
       document.getElementById('klantAuthUserId').value = result.user_id;
-      // Direct opslaan in database — geen handmatige opslag nodig
       try {
         const { error } = await sb.from('klanten')
           .update({ auth_user_id: result.user_id, email: email })
           .eq('id', klantId);
         if (error) throw error;
-        // Update ook de lokale store
         const klant = store.klanten.find(k => k.id === klantId);
         if (klant) {
           klant.auth_user_id = result.user_id;
