@@ -179,34 +179,6 @@ function zoekKoppeling(user) {
 }
 
 /**
- * Keurmeester aanmaken en koppelen aan ingelogde user
- */
-async function maakKeurmeesterEnKoppel(user) {
-  const naam = naamUitEmail(user.email);
-
-  // Voeg toe aan keurmeesters als nog niet aanwezig
-  if (!store.keurmeesters) store.keurmeesters = [];
-  const bestaatAl = store.keurmeesters.some(
-    k => k.naam.toLowerCase() === naam.toLowerCase()
-  );
-  if (!bestaatAl) {
-    store.keurmeesters.push({ naam, handtekening: '' });
-    await sbSaveKeurmeesters(store.keurmeesters).catch(console.error);
-  }
-
-  // Sla koppeling op in Supabase user metadata
-  await sb.auth.updateUser({ data: { keurmeester_naam: naam } });
-
-  // Stel in als actieve keurmeester
-  store.settings.keurmeester = naam;
-  await sbSaveSettings(store.settings).catch(console.error);
-  saveStore(store);
-
-  toast(`Welkom, ${naam}!`);
-  return naam;
-}
-
-/**
  * Verberg de auth overlay en update de sidebar
  */
 function verbergAuthOverlay(keurmeesterNaam) {
@@ -298,6 +270,44 @@ async function handleAuthState(session) {
     `;
   }
 
+  // ── BEVEILIGINGSCHECK ──
+  // Controleer of deze gebruiker een geregistreerde keurmeester is
+  // met een geldig bedrijf_id. Zo niet → uitloggen en foutmelding tonen.
+  // Dit voorkomt dat klant-accounts toegang krijgen tot KlimKeur Pro.
+  try {
+    const { data: kmCheck } = await sb.from('keurmeesters')
+      .select('bedrijf_id')
+      .eq('auth_user_id', session.user.id)
+      .maybeSingle();
+
+    if (!kmCheck || !kmCheck.bedrijf_id) {
+      // Geen keurmeester-record of geen bedrijf_id → geen toegang
+      console.warn('Geen keurmeester-record gevonden voor:', session.user.email);
+      _appStarted = false;
+      await sb.auth.signOut();
+      // Toon loginscherm met foutmelding
+      if (overlay) {
+        // Herstel loginscherm (handleAuthState wordt opnieuw aangeroepen door signOut)
+        // maar we tonen alvast de foutmelding
+        setTimeout(() => {
+          const errEl = document.getElementById('authError');
+          if (errEl) {
+            errEl.textContent = 'Geen toegang. Dit account is niet gekoppeld als keurmeester. Neem contact op met je beheerder.';
+            errEl.classList.add('visible');
+          }
+        }, 500);
+      }
+      return;
+    }
+
+    // Keurmeester gevonden — sla bedrijf_id alvast op
+    _huidigBedrijfId = kmCheck.bedrijf_id;
+  } catch(err) {
+    console.error('Beveiligingscheck fout:', err);
+    // Bij een fout toch doorlaten (bijv. netwerkprobleem) —
+    // de RLS policies in Supabase beschermen de data sowieso
+  }
+
   // Store laden
   try {
     store = await initStore();
@@ -326,21 +336,31 @@ async function handleAuthState(session) {
       saveStore(store);
     }
   } else {
-    // Automatisch aanmaken op basis van email
-    keurmeesterNaam = await maakKeurmeesterEnKoppel(_currentUser);
+    // Keurmeester staat in de database (beveiligingscheck hierboven is geslaagd)
+    // maar is nog niet gekoppeld in de lokale store. Koppel nu.
+    keurmeesterNaam = naamUitEmail(_currentUser.email);
+
+    if (!store.keurmeesters) store.keurmeesters = [];
+    const bestaatAl = store.keurmeesters.some(
+      k => k.naam.toLowerCase() === keurmeesterNaam.toLowerCase()
+    );
+    if (!bestaatAl) {
+      store.keurmeesters.push({ naam: keurmeesterNaam, handtekening: '' });
+      await sbSaveKeurmeesters(store.keurmeesters).catch(console.error);
+    }
+
+    // Sla koppeling op in Supabase user metadata
+    await sb.auth.updateUser({ data: { keurmeester_naam: keurmeesterNaam } });
+
+    // Stel in als actieve keurmeester
+    store.settings.keurmeester = keurmeesterNaam;
+    await sbSaveSettings(store.settings).catch(console.error);
+    saveStore(store);
+
+    toast(`Welkom, ${keurmeesterNaam}!`);
   }
 
-  // Bedrijf_id, admin-status en bedrijfsinfo laden
-  try {
-    const { data: kmData } = await sb.from('keurmeesters')
-      .select('bedrijf_id')
-      .eq('auth_user_id', session.user.id)
-      .maybeSingle();
-    if (kmData) _huidigBedrijfId = kmData.bedrijf_id;
-  } catch(err) {
-    console.error('Fout bij laden bedrijf_id:', err);
-  }
-
+  // Admin-status laden
   try {
     const { data: adminCheck } = await sb.from('platform_admins')
       .select('auth_user_id')
@@ -351,6 +371,7 @@ async function handleAuthState(session) {
     console.error('Fout bij admin-check:', err);
   }
 
+  // Bedrijfsinfo laden
   if (_huidigBedrijfId) {
     try {
       const { data: bedrijf } = await sb.from('bedrijven')
