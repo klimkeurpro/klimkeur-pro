@@ -521,6 +521,7 @@ function openKeuringDetail(id) {
                   const isGoed = item.status === 'goedgekeurd';
                   const isAfk = item.status === 'afgekeurd';
                   const isOpen = !item.status;
+                  const isAfgerond = k.afgerond;
 
                   const historieKnoopje = (item.itemId || item.serienummer)
                     ? `<button class="btn-icon" title="Keuringshistorie artikel ID ${item.itemId||''}" onclick="showHistoriePopup(${item.itemId||'null'},'${(item.serienummer||'').replace(/'/g,"\\'")}','${(item.omschrijving||'').replace(/'/g,"\\'")}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>`
@@ -563,10 +564,10 @@ function openKeuringDetail(id) {
                     <td style="font-size:12px;">${item.inGebruik ? formatDate(item.inGebruik) : ''}</td>
                     <td>
                       <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
-                        <button class="btn btn-sm ${isGoed?'btn-goed-active':'btn-goed'}" onclick="quickBeoordeel('${id}',${i},'goedgekeurd')" title="Goedkeuren">✓ Goed</button>
-                        <button class="btn btn-sm ${isAfk?'btn-afk-active':'btn-afk'}" onclick="quickBeoordeel('${id}',${i},'afgekeurd')" title="Afkeuren">✗ Afkeur</button>
-                        <button class="btn btn-sm ${item.status==='niet_aangeboden'?'btn-secondary':'btn-secondary'}" onclick="quickBeoordeel('${id}',${i},'niet_aangeboden')" title="Niet aangeboden die dag" style="${item.status==='niet_aangeboden'?'opacity:1;border-color:var(--warning);color:var(--warning);':'opacity:0.5;'}">— N/A</button>
-                        ${isAfk ? `<select class="form-select" style="width:auto;min-width:60px;height:28px;font-size:11px;padding:2px 4px;" onchange="setAfkeurCode('${id}',${i},this.value)">
+                        <button class="btn btn-sm ${isGoed?'btn-goed-active':'btn-goed'}" onclick="quickBeoordeel('${id}',${i},'goedgekeurd')" title="Goedkeuren" ${isAfgerond?'disabled style="opacity:0.4;cursor:not-allowed;"':''}>✓ Goed</button>
+                        <button class="btn btn-sm ${isAfk?'btn-afk-active':'btn-afk'}" onclick="quickBeoordeel('${id}',${i},'afgekeurd')" title="Afkeuren" ${isAfgerond?'disabled style="opacity:0.4;cursor:not-allowed;"':''}>✗ Afkeur</button>
+                        <button class="btn btn-sm ${item.status==='niet_aangeboden'?'btn-secondary':'btn-secondary'}" onclick="quickBeoordeel('${id}',${i},'niet_aangeboden')" title="Niet aangeboden die dag" ${isAfgerond?'disabled style="opacity:0.4;cursor:not-allowed;"':`style="${item.status==='niet_aangeboden'?'opacity:1;border-color:var(--warning);color:var(--warning);':'opacity:0.5;'}"`}>— N/A</button>
+                        ${isAfk ? `<select class="form-select" style="width:auto;min-width:60px;height:28px;font-size:11px;padding:2px 4px;" onchange="setAfkeurCode('${id}',${i},this.value)" ${isAfgerond?'disabled':''}>
                           <option value="">Code</option>
                           ${getAfkeurcodes().map(c => `<option value="${c.code}" ${String(item.afkeurcode)==String(c.code)?'selected':''}>${c.code}</option>`).join('')}
                         </select>` : ''}
@@ -1036,6 +1037,7 @@ function removeKeuringItem(keuringId, idx) {
 function quickBeoordeel(keuringId, idx, newStatus) {
   const k = store.keuringen.find(ke => ke.id === keuringId);
   if (!k) return;
+  if (k.afgerond) { toast('Keuring is afgerond — heropen eerst om wijzigingen te maken', 'error'); return; }
   const item = k.items[idx];
   if (!item) return;
 
@@ -1066,7 +1068,7 @@ function quickBeoordeel(keuringId, idx, newStatus) {
 
 function setAfkeurCode(keuringId, idx, code) {
   const k = store.keuringen.find(ke => ke.id === keuringId);
-  if (!k) return;
+  if (!k || k.afgerond) return;
   k.items[idx].afkeurcode = code;
   saveStore(store);
   sbUpsertKeuringItem(k.items[idx], keuringId, k.klantId).catch(console.error);
@@ -1190,8 +1192,8 @@ function editKeuringItem(keuringId, idx) {
         <input class="form-input" type="date" id="editInGebruik" value="${item.inGebruik||''}">
       </div>
       <div class="form-group">
-        <label class="form-label">Status</label>
-        <select class="form-select" id="editStatus" onchange="document.getElementById('editCode').disabled=this.value!=='afgekeurd';if(this.value!=='afgekeurd')document.getElementById('editCode').value='';">
+        <label class="form-label">Status${k.afgerond?' <span style="font-size:11px;color:var(--text-muted);">(vergrendeld)</span>':''}</label>
+        <select class="form-select" id="editStatus" ${k.afgerond?'disabled':''} onchange="document.getElementById('editCode').disabled=this.value!=='afgekeurd';if(this.value!=='afgekeurd')document.getElementById('editCode').value='';">
           <option value="" ${!item.status?'selected':''}>— Nog beoordelen —</option>
           <option value="goedgekeurd" ${item.status==='goedgekeurd'?'selected':''}>Goedgekeurd</option>
           <option value="afgekeurd" ${item.status==='afgekeurd'?'selected':''}>Afgekeurd</option>
@@ -1200,7 +1202,7 @@ function editKeuringItem(keuringId, idx) {
       </div>
       <div class="form-group">
         <label class="form-label">Afkeurcode</label>
-        <select class="form-select" id="editCode" ${item.status!=='afgekeurd'?'disabled':''}>
+        <select class="form-select" id="editCode" ${k.afgerond||item.status!=='afgekeurd'?'disabled':''}>
           <option value="">--</option>
           ${getAfkeurcodes().map(c => `<option value="${c.code}" ${String(item.afkeurcode)==String(c.code)?'selected':''}>${c.code} - ${c.tekst}</option>`).join('')}
         </select>
