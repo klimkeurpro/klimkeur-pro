@@ -9,7 +9,6 @@ function renderInstellingen(el) {
       <div class="tabs">
         <div class="tab active"       onclick="switchSettingsTab(this,'general')">Algemeen</div>
         <div class="tab"              onclick="switchSettingsTab(this,'certificaat')">Certificaat</div>
-        <div class="tab"              onclick="switchSettingsTab(this,'klantapp')">Klant App</div>
         <div class="tab"              onclick="switchSettingsTab(this,'database')">Database</div>
       </div>
 
@@ -135,86 +134,11 @@ function renderInstellingen(el) {
       </div>
 
       <!-- ═══════════════════════════════════════════════
-           TAB 3 — KLANT APP
-      ═══════════════════════════════════════════════ -->
-      <div id="settingsKlantapp" class="card" style="display:none;margin-bottom:20px;">
-        <div class="card-header"><h3>Klant App</h3></div>
-        <div class="card-body">
-
-          <p style="font-size:13px;color:var(--text-secondary);margin-bottom:20px;">
-            De Klant App is een los HTML-bestand dat je naar je klant stuurt. De klant vult er zijn materiaal in
-            en stuurt het bestand terug. Jij importeert dat als nieuwe keuring.
-          </p>
-
-          <!-- Stap 1: Genereren -->
-          <div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:20px;">
-            <div style="background:var(--sg-green);color:white;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;">1</div>
-            <div style="flex:1;">
-              <div style="font-size:13px;font-weight:600;margin-bottom:4px;">Klant App genereren en versturen</div>
-              <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">
-                Genereer één HTML-bestand met de actuele productlijst er al in verwerkt. Stuur dit naar je klant — werkt in elke browser, ook offline.
-              </div>
-              <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                <button class="btn btn-primary btn-sm" onclick="exportKlantApp()">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                  Genereer KlimKeur Klant App (HTML)
-                </button>
-                <button class="btn btn-sm" onclick="exportKlantProductlijst()" style="font-size:11px;">
-                  Alleen productenlijst (JSON)
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div style="border-top:1px solid var(--border);margin-bottom:20px;"></div>
-
-          <!-- Stap 2: Importeren -->
-          <div style="display:flex;align-items:flex-start;gap:16px;">
-            <div style="background:var(--sg-green);color:white;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;">2</div>
-            <div style="flex:1;">
-              <div style="font-size:13px;font-weight:600;margin-bottom:4px;">Klantaanmelding importeren</div>
-              <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">
-                Ontvang je een ingevulde JSON van je klant? Importeer hem hier direct als nieuwe keuring.
-              </div>
-              <label class="btn btn-primary btn-sm" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;position:relative;overflow:hidden;">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                Importeer klant JSON
-                <input type="file" accept=".json,.txt,*/*" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0,0,0,0);" onchange="importKlantJSON(this)">
-              </label>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- ═══════════════════════════════════════════════
-           TAB 4 — DATABASE
+           TAB 3 — DATABASE
       ═══════════════════════════════════════════════ -->
       <div id="settingsDatabase" class="card" style="display:none;margin-bottom:20px;">
         <div class="card-header"><h3>Database &amp; Backup</h3></div>
         <div class="card-body">
-
-          <!-- PRODUCTEN -->
-          <div style="margin-bottom:24px;">
-            <h4 style="font-size:13px;font-weight:700;color:var(--sg-green);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;">Productendatabase</h4>
-            <p style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">
-              Exporteer de productendatabase als Excel of CSV om te bewerken in Excel/Numbers.
-              Importeer het bestand daarna terug om de database bij te werken.
-              <strong>CSV</strong> is het handigste formaat voor bewerken buiten Excel.
-            </p>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-              <button class="btn btn-sm" onclick="exportProductenExcel()">↓ Excel (.xlsx)</button>
-              <button class="btn btn-sm" onclick="exportProductsCSV()">↓ CSV</button>
-            </div>
-            <label class="btn btn-sm" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              ↑ Importeer productendatabase (Excel of CSV)
-              <input type="file" accept=".xlsx,.xls,.csv" style="display:none;" onchange="importProductenExcel(this)">
-            </label>
-            <div style="margin-top:8px;font-size:11px;color:var(--text-muted);">Let op: importeren vervangt de volledige productendatabase (${store.products.length} producten).</div>
-          </div>
-
-          <div style="border-top:1px solid var(--border);margin-bottom:24px;"></div>
 
           <!-- HISTORISCHE CERTIFICATEN -->
           <div style="margin-bottom:24px;">
@@ -277,7 +201,6 @@ function switchSettingsTab(tab, section) {
   tab.classList.add('active');
   document.getElementById('settingsGeneral').style.display     = section==='general'    ? '' : 'none';
   document.getElementById('settingsCertificaat').style.display = section==='certificaat'? '' : 'none';
-  document.getElementById('settingsKlantapp').style.display    = section==='klantapp'   ? '' : 'none';
   document.getElementById('settingsDatabase').style.display    = section==='database'   ? '' : 'none';
 }
 
@@ -342,15 +265,12 @@ function openKeurmeesterModal(idx) {
     if (i >= 0) {
       const oudeNaam = store.keurmeesters[i].naam;
       store.keurmeesters[i] = { naam, handtekening };
-      // Als dit de ingelogde keurmeester is: update user_metadata en actieve keurmeester
       if (oudeNaam === store.settings.keurmeester) {
         store.settings.keurmeester = naam;
         sbSaveSettings(store.settings).catch(console.error);
-        // Update ook de koppeling in Supabase Auth zodat de naam klopt bij volgende login
         if (_currentUser) {
           sb.auth.updateUser({ data: { keurmeester_naam: naam } }).catch(console.error);
         }
-        // Sidebar bijwerken
         const nm = document.getElementById('sidebarUserNaam');
         if (nm) nm.textContent = naam;
       }
@@ -358,9 +278,8 @@ function openKeurmeesterModal(idx) {
       const email = document.getElementById('kmEmail')?.value?.trim();
       if (!email) { toast('Vul een e-mailadres in', 'error'); return; }
       if (store.keurmeesters.some(k => k.naam === naam)) { toast('Keurmeester bestaat al', 'error'); return; }
-      // Verstuur uitnodiging en voeg toe
       verstuurKeurmeesterUitnodiging(naam, email, handtekening);
-      return; // modal wordt gesloten door de uitnodigingsfunctie
+      return;
     }
     saveStore(store);
     sbSaveKeurmeesters(store.keurmeesters).catch(console.error);
@@ -408,12 +327,10 @@ async function verstuurKeurmeesterUitnodiging(naam, email, handtekening) {
           : `Fout: ${result.error || 'Onbekende fout'}`;
         statusEl.style.color = result.error?.includes('already') ? 'var(--warning)' : 'var(--danger)';
       }
-      // Voeg toch toe aan store zonder uitnodiging
       if (!store.keurmeesters) store.keurmeesters = [];
       store.keurmeesters.push({ naam, handtekening, email });
       saveStore(store);
       sbSaveKeurmeesters(store.keurmeesters).catch(console.error);
-      // Voeg ook toe aan keurmeesters tabel in Supabase
       if (result.user_id) {
         await sb.from('keurmeesters').upsert({
           id: generateId(),
@@ -433,7 +350,6 @@ async function verstuurKeurmeesterUitnodiging(naam, email, handtekening) {
     saveStore(store);
     sbSaveKeurmeesters(store.keurmeesters).catch(console.error);
 
-    // Voeg toe aan keurmeesters tabel in Supabase
     if (result.user_id) {
       try {
         await sb.from('keurmeesters').upsert({
