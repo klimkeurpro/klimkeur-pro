@@ -410,7 +410,7 @@ function openKeuringDetail(id) {
             </div>
             <div class="form-group">
               <label class="form-label">Serienummer</label>
-              <input class="form-input" id="itemSerial" placeholder="Serienummer" tabindex="4">
+            <div style="display:flex;gap:4px;"><input class="form-input" id="itemSerial" placeholder="Serienummer" tabindex="4" style="flex:1;"><button type="button" class="btn btn-sm" onclick="openScanner('itemSerial')" title="Scan barcode/DataMatrix" style="padding:4px 8px;white-space:nowrap;">📷</button></div>
             </div>
             <div class="form-group">
               <label class="form-label">Fabr. Jaar</label>
