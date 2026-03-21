@@ -3,7 +3,12 @@
 // ============================================================
 
 function exportAllData() {
-  const blob = new Blob([JSON.stringify(store, null, 2)], {type: 'application/json'});
+  const exportData = JSON.parse(JSON.stringify(store));
+  if (!_isPlatformAdmin) {
+    exportData.products = [];
+    toast('Backup zonder productdatabase (alleen beschikbaar voor beheerders)', 'warning', 4000);
+  }
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], {type: 'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `klimkeur_backup_${new Date().toISOString().split('T')[0]}.json`;
