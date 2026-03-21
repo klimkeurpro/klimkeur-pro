@@ -802,6 +802,7 @@ function highlightOmschrItem(idx) {
   omschrDropIndex = idx;
   document.querySelectorAll('.omschr-drop-item').forEach((el, i) => {
     el.style.background = i === idx ? 'var(--sg-green-dark,#3D7A1A)' : ''; el.style.color = i === idx ? '#fff' : 'var(--text-primary)';
+    if (i === idx) el.scrollIntoView({ block: 'nearest' });
   });
 }
 
