@@ -394,7 +394,7 @@ function openKeuringDetail(id) {
                   onfocus="onItemOmschrInput(this.value)"
                   onblur="setTimeout(()=>hideOmschrDropdown(),180)">
                 <div id="omschrDropdown" style="display:none;position:fixed;z-index:9999;
-                  background:#1e2530;border:1px solid var(--primary);border-radius:6px;
+                  background:var(--bg-card);border:1px solid var(--primary);border-radius:6px;
                   box-shadow:0 4px 20px rgba(0,0,0,.7);max-height:320px;overflow-y:auto;"></div>
               </div>
             </div>
