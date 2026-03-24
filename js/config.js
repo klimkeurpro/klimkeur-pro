@@ -26,7 +26,7 @@ const PAGE_SIZE      = 50;
 
 const COLUMN_LABELS  = {
   omschrijving: 'Omschrijving', merk: 'Merk', materiaal: 'Materiaal',
-  bijzonderheden: 'Bijzonderheden', maxLeeftijd: 'Max leeftijd',
+  bijzonderheden: 'Bijzonderheden',
   maxLeeftijdUSE: 'Max USE', maxLeeftijdMFR: 'Max MFR',
   enNorm: 'EN Norm', breuksterkte: 'Breuksterkte',
   handleiding: 'Handleiding', link: 'Link'
