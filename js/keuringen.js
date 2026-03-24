@@ -2,6 +2,10 @@
 // keuringen.js — keuringen aanmaken, items beheren, beoordelen, afkeurcodes
 // ============================================================
 
+// Afgevoerde item-IDs opgehaald uit Supabase — gevuld in checkVorigeKeuring()
+// zodat getAllKlantItems() (synchroon) ze kan gebruiken bij overnemen
+let _afgevoerdeItemIds = new Set();
+
 function renderKeuringen(el) {
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;" class="fade-in">
@@ -156,7 +160,6 @@ function openKeuringModal() {
       afgerond: false
     };
 
-    // Copy items from all previous keuringen if checked
     if (overnemen && klantId) {
       const result = getAllKlantItems(klantId);
       if (result.items.length > 0) {
@@ -169,7 +172,6 @@ function openKeuringModal() {
       }
     }
 
-    // Voeg aangemeld materiaal van klant toe als ook dat aangevinkt is
     const aangemeldBox = document.getElementById('aangemeldBox');
     const aangemeldOvernemen = document.getElementById('aangemeldOvernemen')?.checked;
     if (aangemeldOvernemen && aangemeldBox?._items?.length > 0) {
@@ -201,7 +203,6 @@ function openKeuringModal() {
 }
 
 function getAllKlantItems(klantId) {
-  // Collect all items from all keuringen of this klant, newest first
   const keuringen = store.keuringen
     .filter(k => k.klantId === klantId && k.items && k.items.length > 0)
     .sort((a, b) => (b.datum || '').localeCompare(a.datum || ''));
@@ -211,9 +212,11 @@ function getAllKlantItems(klantId) {
   const seen = new Map();
   for (const keuring of keuringen) {
     for (const item of keuring.items) {
-      // Afgevoerde artikelen niet overnemen — klant heeft dit materiaal
-      // als kapot/gestolen/weggegooid gemarkeerd in de klant-app
+      // Sla afgevoerde items over — twee checks:
+      // 1. afgevoerd vlag in de lokale store (als die er al in zit)
+      // 2. _afgevoerdeItemIds set gevuld vanuit Supabase in checkVorigeKeuring()
       if (item.afgevoerd === true) continue;
+      if (item.itemId && _afgevoerdeItemIds.has(String(item.itemId))) continue;
 
       const key = item.itemId
         ? `id:${item.itemId}`
@@ -265,6 +268,21 @@ async function checkVorigeKeuring() {
   const info = document.getElementById('vorigeKeuringInfo');
   if (!klantId || !box) { if(box) box.style.display='none'; return; }
 
+  // Haal afgevoerde item-IDs op uit Supabase zodat getAllKlantItems ze kan filteren
+  // De afgevoerd-vlag wordt gezet door de klant-app en staat niet in de lokale store
+  try {
+    const { data: afgevoerd } = await sb
+      .from('keuring_items')
+      .select('id')
+      .eq('klant_id', klantId)
+      .eq('afgevoerd', true);
+
+    _afgevoerdeItemIds = new Set((afgevoerd || []).map(r => String(r.id)));
+  } catch(e) {
+    console.warn('Kon afgevoerde items niet ophalen:', e);
+    _afgevoerdeItemIds = new Set();
+  }
+
   const result = getAllKlantItems(klantId);
   if (result.items.length > 0) {
     const goed = result.items.filter(i => i.vorigeStatus === 'goedgekeurd').length;
@@ -286,7 +304,6 @@ async function checkVorigeKeuring() {
       .eq('klant_id', klantId)
       .is('keuring_id', null);
 
-    // Afgevoerde artikelen niet tonen als aangemeld materiaal
     const actief = (losse || []).filter(item => !item.afgevoerd);
 
     if (actief.length > 0) {
@@ -427,7 +444,6 @@ function openKeuringDetail(id) {
             </div>
           </div>
 
-          <!-- Bijzonderheden info bar -->
           <div id="itemInfoBar" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:var(--radius);font-size:12px;border:1px solid;"></div>
 
           <div class="form-row" style="grid-template-columns: 1fr 1fr 1fr 1fr auto;">
@@ -843,21 +859,17 @@ function onItemOmschrChange(val, prod) {
 function showItemInfoBar(prod) {
   const bar = document.getElementById('itemInfoBar');
   if (!bar) return;
-
   if (!prod) { bar.style.display = 'none'; return; }
 
   const parts = [];
-
   if (prod.bijzonderheden) {
     parts.push(`<span style="color:var(--warning);"><strong>⚠ Bijzonderheden:</strong> ${prod.bijzonderheden}</span>`);
   }
-
   const ages = [];
   if (prod.max_leeftijd) ages.push(`Max leeftijd: <strong>${prod.max_leeftijd} jaar</strong>`);
   if (prod.max_leeftijd_use) ages.push(`Max vanaf gebruik: <strong>${prod.max_leeftijd_use} jaar</strong>`);
   if (prod.max_leeftijd_mfr) ages.push(`Max vanaf fabricage: <strong>${prod.max_leeftijd_mfr} jaar</strong>`);
   if (ages.length > 0) parts.push(ages.join(' · '));
-
   if (prod.norm) parts.push(`EN-norm: ${prod.norm}`);
 
   if (parts.length === 0) { bar.style.display = 'none'; return; }
@@ -871,7 +883,6 @@ function showItemInfoBar(prod) {
 }
 
 function checkItemAge() {
-  const omschr = document.getElementById('itemOmschr')?.value;
   const prod = _lastSelectedProduct;
   if (!prod) return;
 
@@ -880,9 +891,7 @@ function checkItemAge() {
   const inGebruik = document.getElementById('itemInGebruik')?.value;
   const now = new Date();
   const currentYear = now.getFullYear();
-
   const validFabrJaar = fabrJaarStr.length === 4 && fabrJaar >= 1900 && fabrJaar <= 2099;
-
   const warnings = [];
 
   const maxMfr = parseInt(prod.max_leeftijd_mfr) || parseInt(prod.max_leeftijd) || 0;
@@ -1042,7 +1051,6 @@ function convertDag() {
   const el = document.getElementById('convDagResult');
   if (!el) return;
   if (!dag || dag < 1 || dag > 366) { el.textContent = '—'; return; }
-
   const date = new Date(jaar, 0, dag);
   if (date.getFullYear() !== jaar) { el.textContent = 'Ongeldig'; return; }
   el.innerHTML = `<strong>${date.toLocaleDateString('nl-NL', {day:'numeric', month:'long'})}</strong> <span style="opacity:0.7;">(maand ${date.getMonth()+1})</span>`;
@@ -1054,14 +1062,12 @@ function convertWeek() {
   const el = document.getElementById('convWeekResult');
   if (!el) return;
   if (!week || week < 1 || week > 53) { el.textContent = '—'; return; }
-
   const jan4 = new Date(jaar, 0, 4);
   const dayOfWeek = jan4.getDay() || 7;
   const weekStart = new Date(jan4);
   weekStart.setDate(jan4.getDate() - dayOfWeek + 1 + (week - 1) * 7);
   const weekEnd = new Date(weekStart);
   weekEnd.setDate(weekStart.getDate() + 6);
-
   const fmt = (d) => d.toLocaleDateString('nl-NL', {day:'numeric', month:'short'});
   el.innerHTML = `<strong>${fmt(weekStart)} — ${fmt(weekEnd)}</strong> <span style="opacity:0.7;">(maand ${weekStart.getMonth()+1})</span>`;
 }
@@ -1172,7 +1178,6 @@ function editKeuringItem(keuringId, idx) {
         <datalist id="editGebruikerList">${[...new Set(store.keuringen.flatMap(ke => (ke.items||[]).map(it => it.gebruiker).filter(Boolean)).map(n => normalizeGebruiker(n)))].sort().map(n => `<option value="${n}">`).join('')}</datalist>
       </div>
     </div>
-
     ${item.vorigeStatus ? `
     <div style="margin-top:8px;padding:8px 14px;background:var(--bg-input);border-radius:var(--radius);font-size:12px;color:var(--text-secondary);">
       Vorige keuring: <span class="badge ${item.vorigeStatus==='goedgekeurd'?'badge-green':'badge-red'}" style="font-size:11px;">
