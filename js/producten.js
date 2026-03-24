@@ -288,18 +288,25 @@ function openProductModal(idx) {
     </div>
   `, () => {
     const i = parseInt(document.getElementById('prodIdx').value);
+
+    // ── BUGFIX: id altijd meegeven ──────────────────────────────
+    // Bij nieuw product: genereer een id.
+    // Bij bewerken: bewaar het bestaande id — anders gaat Supabase
+    // upsert mis en raakt het product ontkoppeld van zijn record.
     const data = {
-      omschrijving: document.getElementById('prodOmschr').value,
-      merk: document.getElementById('prodMerk').value,
-      materiaal: document.getElementById('prodMat').value,
-      maxLeeftijd: '',
+      id:             i >= 0 ? (store.products[i].id || generateId()) : generateId(),
+      omschrijving:   document.getElementById('prodOmschr').value,
+      merk:           document.getElementById('prodMerk').value,
+      materiaal:      document.getElementById('prodMat').value,
       maxLeeftijdUSE: document.getElementById('prodAgeUse').value,
       maxLeeftijdMFR: document.getElementById('prodAgeMfr').value,
-      enNorm: document.getElementById('prodEN').value,
-      breuksterkte: document.getElementById('prodBreuk').value,
+      enNorm:         document.getElementById('prodEN').value,
+      breuksterkte:   document.getElementById('prodBreuk').value,
       bijzonderheden: document.getElementById('prodBijz').value,
-      handleiding: document.getElementById('prodLink').value,
+      handleiding:    document.getElementById('prodLink').value,
     };
+    // ───────────────────────────────────────────────────────────
+
     if (!data.omschrijving) { toast('Vul een omschrijving in', 'error'); return; }
     if (i >= 0) store.products[i] = data;
     else store.products.push(data);
