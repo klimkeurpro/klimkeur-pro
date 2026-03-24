@@ -66,7 +66,7 @@ function renderProducten(el) {
           </tr></thead>
           <tbody id="prodTableBody">
             ${pageProds.length === 0 ? `<tr><td colspan="${cols.length+1}" style="text-align:center;color:var(--text-muted);padding:40px;">Geen producten gevonden.</td></tr>` :
-              pageProds.map((p, idx) => `
+              pageProds.map((p) => `
                 <tr>
                   ${cols.map(c => {
                     let v = p[c] || '';
@@ -77,7 +77,7 @@ function renderProducten(el) {
                     return `<td title="${v}">${v}</td>`;
                   }).join('')}
                   <td>
-                    <button class="btn-icon" title="Bewerken" onclick="openProductModal(${productPage * PAGE_SIZE + idx})">
+                    <button class="btn-icon" title="Bewerken" onclick="openProductModal(${store.products.indexOf(p)})">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     </button>
                   </td>
@@ -198,7 +198,7 @@ function updateProductTable() {
   if (tbody) {
     tbody.innerHTML = pageProds.length === 0 ?
       `<tr><td colspan="${cols.length+1}" style="text-align:center;color:var(--text-muted);padding:40px;">Geen producten gevonden.</td></tr>` :
-      pageProds.map((p, idx) => `
+      pageProds.map((p) => `
         <tr>
           ${cols.map(c => {
             let v = p[c] || '';
@@ -209,7 +209,7 @@ function updateProductTable() {
             return `<td title="${v}">${v}</td>`;
           }).join('')}
           <td>
-            <button class="btn-icon" title="Bewerken" onclick="openProductModal(${productPage * PAGE_SIZE + idx})">
+            <button class="btn-icon" title="Bewerken" onclick="openProductModal(${store.products.indexOf(p)})">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             </button>
           </td>
@@ -222,7 +222,6 @@ function updateProductTable() {
   const pagText = document.getElementById('prodPagText');
   if (pagText) pagText.textContent = `${productPage+1} / ${totalPages||1}`;
 
-  // Update filter chips
   const filterBar = document.getElementById('prodFilterBar');
   if (filterBar) {
     filterBar.innerHTML = (productFilter.merk || productFilter.materiaal) ? `
