@@ -162,9 +162,9 @@ function openKeuringModal() {
       if (result.items.length > 0) {
         keuring.items = result.items.map(item => ({
           ...item,
-          status: '',          // Reset — moet opnieuw beoordeeld
-          afkeurcode: '',      // Reset
-          opmerking: '',       // Schone lei
+          status: '',
+          afkeurcode: '',
+          opmerking: '',
         }));
       }
     }
@@ -208,13 +208,13 @@ function getAllKlantItems(klantId) {
 
   if (keuringen.length === 0) return { items: [], keuringenCount: 0, totalRaw: 0 };
 
-  // Dedupliceren op item ID (primaire sleutel) — nieuwste keuring wint
-  // Fallback op serienummer voor oude data zonder ID
   const seen = new Map();
   for (const keuring of keuringen) {
     for (const item of keuring.items) {
-      // Primaire sleutel: item ID — dit is de enige betrouwbare koppeling
-      // Serienummers zijn NIET uniek (bijv. Edelrid batchnummers)
+      // Afgevoerde artikelen niet overnemen — klant heeft dit materiaal
+      // als kapot/gestolen/weggegooid gemarkeerd in de klant-app
+      if (item.afgevoerd === true) continue;
+
       const key = item.itemId
         ? `id:${item.itemId}`
         : `sn:${(item.serienummer||'').toLowerCase()}|${(item.omschrijving||'').toLowerCase()}`;
@@ -251,7 +251,6 @@ function updateCertNr() {
   let certNr = datum;
   if (klantNaam) {
     certNr += '-' + klantNaam;
-    // Check for duplicates on same day for same klant
     const existing = store.keuringen.filter(k => k.certificaatNr && k.certificaatNr.startsWith(certNr));
     if (existing.length > 0) {
       certNr += '-' + (existing.length + 1);
@@ -261,8 +260,6 @@ function updateCertNr() {
 }
 
 async function checkVorigeKeuring() {
-
-  // Also update cert nr when klant changes
   const klantId = document.getElementById('keuringKlant').value;
   const box = document.getElementById('vorigeKeuringBox');
   const info = document.getElementById('vorigeKeuringInfo');
@@ -278,22 +275,24 @@ async function checkVorigeKeuring() {
     box.style.display = 'none';
   }
 
-  // Controleer aangemeld materiaal van de klant (items zonder keuring_id) via Supabase
+  // Controleer aangemeld materiaal van de klant via Supabase
   const aangemeldBox = document.getElementById('aangemeldBox');
   const aangemeldInfo = document.getElementById('aangemeldInfo');
   if (!aangemeldBox) return;
 
   try {
     const { data: losse } = await sb.from('keuring_items')
-      .select('id, omschrijving, merk, materiaal, serienummer')
+      .select('id, omschrijving, merk, materiaal, serienummer, afgevoerd')
       .eq('klant_id', klantId)
       .is('keuring_id', null);
 
-    if (losse && losse.length > 0) {
+    // Afgevoerde artikelen niet tonen als aangemeld materiaal
+    const actief = (losse || []).filter(item => !item.afgevoerd);
+
+    if (actief.length > 0) {
       aangemeldBox.style.display = 'block';
-      aangemeldInfo.textContent = `${losse.length} item${losse.length > 1 ? 's' : ''} aangemeld door klant`;
-      // Sla op voor gebruik bij aanmaken keuring
-      aangemeldBox._items = losse;
+      aangemeldInfo.textContent = `${actief.length} item${actief.length > 1 ? 's' : ''} aangemeld door klant`;
+      aangemeldBox._items = actief;
     } else {
       aangemeldBox.style.display = 'none';
       aangemeldBox._items = [];
@@ -533,7 +532,6 @@ function openKeuringDetail(id) {
                       ? '<span class="badge badge-red" style="opacity:0.6;font-size:10px;">Afk ' + (item.vorigeAfkeurcode||'') + '</span>'
                       : '<span style="color:var(--text-muted);font-size:11px;">—</span>') + historieKnoopje;
 
-                  // Age warning calculation
                   const prod = store.products.find(p => p.omschrijving === item.omschrijving);
                   const maxMfr = parseInt(prod?.maxLeeftijdMFR) || parseInt(prod?.maxLeeftijd) || 0;
                   const maxUse = parseInt(prod?.maxLeeftijdUSE) || 0;
@@ -600,7 +598,6 @@ function openKeuringDetail(id) {
     </div>
   `;
 
-  // Wire up status change to enable/disable code dropdown
   const statusSel = document.getElementById('itemStatus');
   const codeSel = document.getElementById('itemCode');
   if (statusSel && codeSel) {
@@ -610,34 +607,26 @@ function openKeuringDetail(id) {
     };
   }
 
-  // Laad merk/materiaal datalists via Supabase (eenmalig gecached)
   laadMerkMateriaalCache();
   buildGebruikerList(id);
 }
 
 function normalizeGebruiker(val) {
   if (!val) return '';
-  // Trim whitespace, collapse multiple spaces
   let name = val.trim().replace(/\s+/g, ' ');
-  // Capitalize first letter of each word
   name = name.replace(/\b\w/g, c => c.toUpperCase()).replace(/\b(\w)(\w*)/g, (m, first, rest) => first + rest.toLowerCase());
-  // Fix common pattern: "Van Den" -> keep as-is since it's a proper Dutch name
-  // Actually, better to just capitalize first of each word and let users correct edge cases
   return name;
 }
 
 function buildGebruikerList(keuringId) {
   const el = document.getElementById('gebruikerList');
   if (!el) return;
-
-  // Collect unique gebruikers from this keuring + all keuringen
   const namen = new Set();
   store.keuringen.forEach(k => {
     (k.items || []).forEach(item => {
       if (item.gebruiker) namen.add(normalizeGebruiker(item.gebruiker));
     });
   });
-
   el.innerHTML = [...namen].sort().map(n => `<option value="${n}">`).join('');
 }
 
@@ -645,12 +634,11 @@ function getAfkeurcodes() {
   return store.afkeurcodes || CERT_INFO.afkeurcodes;
 }
 
-// Cache voor merk/materiaal datalists — worden eenmalig geladen bij openen keuring
 _merkCache = null;
 _materiaalCache = null;
 
 async function laadMerkMateriaalCache() {
-  if (_merkCache && _materiaalCache) return; // al geladen
+  if (_merkCache && _materiaalCache) return;
   try {
     const [merkRes, matRes] = await Promise.all([
       sb.from('producten').select('merk').not('merk', 'is', null).order('merk'),
@@ -678,13 +666,11 @@ function vulMerkMateriaalDatalist() {
 }
 
 function filterItemLists() {
-  // Datalists worden gevuld via laadMerkMateriaalCache() — niets lokaal te filteren
   vulMerkMateriaalDatalist();
 }
 
 omschrDropIndex = -1;
 _omschrDebounceTimer = null;
-// Cache voor de laatst geselecteerde product (voor checkItemAge en merk/mat invullen)
 _lastSelectedProduct = null;
 
 function onItemOmschrInput(val) {
@@ -697,7 +683,6 @@ async function _doOmschrZoeken(val) {
   const dropdown = document.getElementById('omschrDropdown');
   if (!dropdown) return;
 
-  // Dropdown positioneren onder het inputveld
   const input = document.getElementById('itemOmschr');
   if (input) {
     const rect = input.getBoundingClientRect();
@@ -710,27 +695,22 @@ async function _doOmschrZoeken(val) {
 
   if (q.length === 0) { hideOmschrDropdown(); return; }
 
-  // Laad indicator tonen
   dropdown.style.display = 'block';
   dropdown.innerHTML = '<div style="padding:10px 12px;font-size:13px;color:var(--text-muted);">Zoeken...</div>';
 
   try {
-    // Haal merk en materiaal op als extra zoekfilters (ingevuld door gebruiker)
     const merkVal = document.getElementById('itemMerk')?.value?.trim() || '';
     const matVal  = document.getElementById('itemMateriaal')?.value?.trim() || '';
 
-    // Bouw query op met alle filters
     let query = sb.from('producten')
       .select('omschrijving, merk, materiaal, max_leeftijd, max_leeftijd_use, max_leeftijd_mfr, norm, bijzonderheden, handleiding, breuksterkte')
       .ilike('omschrijving', `%${q}%`)
-      .limit(50); // Meer ophalen zodat we goed kunnen sorteren
+      .limit(50);
 
-    // Admin zoekt over alle bedrijven; keurmeester ziet alleen eigen bedrijf
     if (!_isPlatformAdmin && _huidigBedrijfId) {
       query = query.eq('bedrijf_id', _huidigBedrijfId);
     }
 
-    // Punt 1: Als merk én materiaal allebei zijn ingevuld — exacte filter op beide
     if (merkVal && matVal) {
       query = query.ilike('merk', `%${merkVal}%`).ilike('materiaal', `%${matVal}%`);
     } else if (merkVal) {
@@ -742,7 +722,6 @@ async function _doOmschrZoeken(val) {
     const { data, error } = await query;
     if (error) throw error;
 
-    // Punt 2: Sorteer — items die beginnen met zoekterm komen bovenaan
     const ql = q.toLowerCase();
     const gesorteerd = (data || []).sort((a, b) => {
       const aBegin = a.omschrijving.toLowerCase().startsWith(ql) ? 0 : 1;
@@ -769,7 +748,6 @@ async function _doOmschrZoeken(val) {
           o.slice(idx + q.length);
       }
       const sub = [p.merk, p.materiaal].filter(Boolean).join(' · ');
-      // Punt 3: Duidelijke hover stijl op donkere achtergrond
       return `<div class="omschr-drop-item" data-val="${o}" data-idx="${i}"
         onmousedown="selectOmschrItem(this)"
         style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid rgba(255,255,255,0.07);color:var(--text-primary);transition:background 0.1s;"
@@ -780,7 +758,6 @@ async function _doOmschrZoeken(val) {
       </div>`;
     }).join('');
 
-    // Sla producten op in dataset voor gebruik bij selectie
     gesorteerd.forEach((p, i) => {
       const el = dropdown.querySelectorAll('.omschr-drop-item')[i];
       if (el) el._prodData = p;
@@ -808,11 +785,9 @@ function highlightOmschrItem(idx) {
 }
 
 function selectOmschrItem(el) {
-  // el kan een DOM element of een string zijn (keyboard selectie)
   let val, prod;
   if (typeof el === 'string') {
     val = el;
-    // Zoek prod op in dropdown via data-val
     const items = document.querySelectorAll('.omschr-drop-item');
     items.forEach(item => { if (item.dataset.val === val) prod = item._prodData; });
   } else {
@@ -844,7 +819,6 @@ function onOmschrKeydown(e) {
     if (items[omschrDropIndex]) {
       e.preventDefault();
       selectOmschrItem(items[omschrDropIndex]);
-      // Focus naar volgend veld
       document.getElementById('itemMerk')?.focus();
     }
   } else if (e.key === 'Escape') {
@@ -862,7 +836,6 @@ function onItemOmschrChange(val, prod) {
     if (matEl && !matEl.value) matEl.value = prod.materiaal || '';
   }
 
-  // Show bijzonderheden / product info bar
   showItemInfoBar(prod);
   checkItemAge();
 }
@@ -875,19 +848,16 @@ function showItemInfoBar(prod) {
 
   const parts = [];
 
-  // Bijzonderheden (recalls, reparaties, etc)
   if (prod.bijzonderheden) {
     parts.push(`<span style="color:var(--warning);"><strong>⚠ Bijzonderheden:</strong> ${prod.bijzonderheden}</span>`);
   }
 
-  // Max leeftijd info
   const ages = [];
   if (prod.max_leeftijd) ages.push(`Max leeftijd: <strong>${prod.max_leeftijd} jaar</strong>`);
   if (prod.max_leeftijd_use) ages.push(`Max vanaf gebruik: <strong>${prod.max_leeftijd_use} jaar</strong>`);
   if (prod.max_leeftijd_mfr) ages.push(`Max vanaf fabricage: <strong>${prod.max_leeftijd_mfr} jaar</strong>`);
   if (ages.length > 0) parts.push(ages.join(' · '));
 
-  // EN norm
   if (prod.norm) parts.push(`EN-norm: ${prod.norm}`);
 
   if (parts.length === 0) { bar.style.display = 'none'; return; }
@@ -911,12 +881,10 @@ function checkItemAge() {
   const now = new Date();
   const currentYear = now.getFullYear();
 
-  // Only check when fabrJaar is a complete 4-digit year (1900-2099)
   const validFabrJaar = fabrJaarStr.length === 4 && fabrJaar >= 1900 && fabrJaar <= 2099;
 
   const warnings = [];
 
-  // Check max leeftijd vanaf fabricage (maxLeeftijdMFR or maxLeeftijd)
   const maxMfr = parseInt(prod.max_leeftijd_mfr) || parseInt(prod.max_leeftijd) || 0;
   if (maxMfr && validFabrJaar) {
     const ageMfr = currentYear - fabrJaar;
@@ -927,7 +895,6 @@ function checkItemAge() {
     }
   }
 
-  // Check max leeftijd vanaf ingebruikname (maxLeeftijdUSE)
   const maxUse = parseInt(prod.max_leeftijd_use) || 0;
   if (maxUse && inGebruik) {
     const useDate = new Date(inGebruik);
@@ -939,12 +906,10 @@ function checkItemAge() {
     }
   }
 
-  // Update the info bar
   const bar = document.getElementById('itemInfoBar');
   if (!bar) return;
 
   if (warnings.length > 0) {
-    // Show warnings + product info
     showItemInfoBar(prod);
     const prodInfo = bar.innerHTML;
     bar.innerHTML = warnings.join('<br>') + (prodInfo ? '<br>' + prodInfo : '');
@@ -952,7 +917,6 @@ function checkItemAge() {
     bar.style.background = 'rgba(231,76,60,0.1)';
     bar.style.borderColor = 'var(--danger)';
   } else {
-    // No age warnings — just show product info if available
     showItemInfoBar(prod);
   }
 }
@@ -1000,7 +964,6 @@ function duplicateKeuringItem(keuringId, idx) {
   const original = k.items[idx];
   if (!original) return;
 
-  // Maak een kopie met nieuw item ID, leeg serienummer en geen status
   const kopie = {
     ...JSON.parse(JSON.stringify(original)),
     itemId: generateId(),
@@ -1012,7 +975,6 @@ function duplicateKeuringItem(keuringId, idx) {
     vorigeAfkeurcode: '',
   };
 
-  // Voeg toe direct na het originele item
   k.items.splice(idx + 1, 0, kopie);
   saveStore(store);
   sbUpsertKeuringItem(kopie, keuringId, k.klantId).catch(console.error);
@@ -1044,7 +1006,6 @@ function quickBeoordeel(keuringId, idx, newStatus) {
   if (!item) return;
 
   const oldStatus = item.status;
-  // Toggle: clicking same status resets to open
   if (item.status === newStatus) {
     item.status = '';
     item.afkeurcode = '';
@@ -1053,7 +1014,6 @@ function quickBeoordeel(keuringId, idx, newStatus) {
     if (newStatus !== 'afgekeurd') item.afkeurcode = '';
   }
 
-  // Audit trail
   if (oldStatus !== item.status) {
     if (!k.auditLog) k.auditLog = [];
     k.auditLog.push({
@@ -1095,9 +1055,8 @@ function convertWeek() {
   if (!el) return;
   if (!week || week < 1 || week > 53) { el.textContent = '—'; return; }
 
-  // ISO week date: week 1 is the week containing Jan 4th
   const jan4 = new Date(jaar, 0, 4);
-  const dayOfWeek = jan4.getDay() || 7; // ISO: Monday = 1
+  const dayOfWeek = jan4.getDay() || 7;
   const weekStart = new Date(jan4);
   weekStart.setDate(jan4.getDate() - dayOfWeek + 1 + (week - 1) * 7);
   const weekEnd = new Date(weekStart);
@@ -1111,13 +1070,10 @@ function finishKeuring(id) {
   const k = store.keuringen.find(ke => ke.id === id);
   if (!k) return;
 
-  // Items zonder beoordeling worden verwijderd bij afronden
-  // Zo blijft de vorige status intact in de historie
   const teVerwijderen = (k.items||[]).filter(i => !i.status);
   if (teVerwijderen.length > 0) {
     const open = teVerwijderen.length;
     if (!confirm(`Er zijn ${open} items zonder beoordeling. Deze worden niet opgeslagen — de vorige keuringsstatus blijft geldig. Doorgaan?`)) return;
-    // Verwijder lege items uit de keuring
     teVerwijderen.forEach(item => {
       if (item.itemId) sbDeleteKeuringItem(item.itemId).catch(console.error);
     });
@@ -1128,9 +1084,7 @@ function finishKeuring(id) {
   k.afgerondDatum = new Date().toISOString();
   saveStore(store);
   sbUpsertKeuring(k).catch(console.error);
-
-toast('✓ Keuring afgerond');
-
+  toast('✓ Keuring afgerond');
   openKeuringDetail(id);
 }
 
@@ -1139,7 +1093,6 @@ function reopenKeuring(id) {
   if (!k) return;
   if (!confirm('Weet je zeker dat je deze keuring wilt heropenen? Je kunt daarna items bewerken en toevoegen.')) return;
 
-  // Audit trail
   if (!k.auditLog) k.auditLog = [];
   k.auditLog.push({ actie: 'heropend', datum: new Date().toISOString(), door: store.settings.keurmeester });
 
@@ -1232,7 +1185,6 @@ function editKeuringItem(keuringId, idx) {
     const newStatus = document.getElementById('editStatus').value;
     const oldStatus = item.status;
 
-    // Audit trail for status changes
     if (oldStatus !== newStatus && (oldStatus || newStatus)) {
       if (!k.auditLog) k.auditLog = [];
       k.auditLog.push({
@@ -1268,7 +1220,6 @@ function editKeuringItem(keuringId, idx) {
 }
 
 function showHistoriePopup(itemId, sn, omschrijving) {
-  // itemId is primaire sleutel, sn als fallback + display
   const historie = getHistorieVoorItemId(itemId, sn);
   const bodyHtml = `
     <div style="margin-bottom:12px;">
@@ -1305,7 +1256,6 @@ function showHistoriePopup(itemId, sn, omschrijving) {
     }
   `;
   showModal(`Keuringshistorie — ${omschrijving || sn}`, bodyHtml, null);
-  // Verberg de Opslaan knop, alleen Sluiten
   const footer = document.querySelector('#modalOverlay .modal-footer');
   if (footer) footer.innerHTML = `<button class="btn btn-primary" onclick="closeModal()">Sluiten</button>`;
 }
@@ -1336,10 +1286,7 @@ function wijzigEigenaar(keuringId) {
     </div>
   `, () => {
     const nieuweKlantId = document.getElementById('nieuweEigenaarSelect').value;
-    if (!nieuweKlantId) {
-      toast('Selecteer een nieuwe eigenaar', 'error');
-      return;
-    }
+    if (!nieuweKlantId) { toast('Selecteer een nieuwe eigenaar', 'error'); return; }
     const nieuweKlant = store.klanten.find(kl => kl.id === nieuweKlantId);
     if (!nieuweKlant) return;
 
@@ -1347,7 +1294,6 @@ function wijzigEigenaar(keuringId) {
     k.klantId = nieuweKlantId;
     k.klantNaam = nieuweKlant.bedrijf;
 
-    // Audit log
     if (!k.auditLog) k.auditLog = [];
     k.auditLog.push({
       actie: 'eigenaar_gewijzigd',
@@ -1374,7 +1320,6 @@ function deleteKeuring(id) {
   renderKeuringen(document.getElementById('pageContent'));
 }
 
-// ============================================================
 // ============================================================
 // RECALL ZOEKEN - zoek producten voor terugroepacties / preventief onderhoud
 // ============================================================
