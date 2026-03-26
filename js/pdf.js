@@ -90,7 +90,7 @@ function generateCertPDF(k, items, subtitle) {
   y += 2;
 
   // ---- CERTIFICAAT TEKST BOVEN ----
-  const koptekst = _bedrijfInfo?.cert_koptekst || s.certificaatTekst || '';
+  const koptekst = s.certificaatTekst || _bedrijfInfo?.cert_koptekst || '';
   if (koptekst) {
     doc.setFontSize(7.5);
     doc.setTextColor(...textGray);
@@ -249,7 +249,7 @@ function generateCertPDF(k, items, subtitle) {
   y += 6;
 
   // ---- CERTIFICAAT TEKST ONDER ----
-  const voettekst = _bedrijfInfo?.cert_voettekst || s.certificaatTekstOnder || '';
+  const voettekst = s.certificaatTekstOnder || _bedrijfInfo?.cert_voettekst || '';
   if (voettekst) {
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'normal');
