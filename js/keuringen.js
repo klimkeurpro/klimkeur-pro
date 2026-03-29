@@ -47,8 +47,9 @@ function renderKeuringenRows(keuringen) {
   if (keuringen.length === 0) return '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:40px;">Nog geen keuringen. Start een nieuwe keuring of importeer een Excel.</td></tr>';
   return keuringen.map(k => {
     const goed = (k.items||[]).filter(i=>i.status==='goedgekeurd').length;
-    const afk = (k.items||[]).filter(i=>i.status==='afgekeurd').length;
-    const open = (k.items||[]).filter(i=>!i.status).length;
+    const afk  = (k.items||[]).filter(i=>i.status==='afgekeurd').length;
+    // Alleen echte lege items tellen als open (niet pensioen)
+    const open = (k.items||[]).filter(i=>!i.status && !i.afgevoerd).length;
     return `<tr class="clickable" onclick="openKeuringDetail('${k.id}')" style="cursor:pointer;">
       <td>${formatDate(k.datum)}</td>
       <td><strong>${k.klantNaam||''}</strong></td>
@@ -77,8 +78,6 @@ function filterKeuringenTable(q) {
 
 // ============================================================
 // ZOEKEN IN KEURINGSITEMS
-// Prioriteit: SN eindigt op zoekterm > SN bevat > rest
-// Slaat fabrjaar en datumvelden over
 // ============================================================
 function zoekKeuringItems(val) {
   _keuringItemZoek = val.trim().toLowerCase();
@@ -98,13 +97,11 @@ function filterKeuringItemsTable() {
 
   if (!q) {
     rijen.forEach(r => r.style.display = '');
-    // Verwijder eventuele resultaatteller
     const teller = document.getElementById('zoekResultaatTeller');
     if (teller) teller.style.display = 'none';
     return;
   }
 
-  // Score per rij
   const gescoord = rijen.map(rij => {
     const sn        = (rij.dataset.sort_serienummer || '').toLowerCase();
     const omschr    = (rij.dataset.sort_omschrijving || '').toLowerCase();
@@ -112,34 +109,29 @@ function filterKeuringItemsTable() {
     const materiaal = (rij.dataset.sort_materiaal || '').toLowerCase();
     const gebruiker = (rij.dataset.sort_gebruiker || '').toLowerCase();
 
-    // Prioriteitsscores — lager = hoger in de lijst
     let score = 999;
-    if (sn === q)                  score = 0; // exacte SN match
-    else if (sn.endsWith(q))       score = 1; // SN eindigt op zoekterm (laatste 3-4 cijfers)
-    else if (sn.includes(q))       score = 2; // SN bevat zoekterm
-    else if (omschr.includes(q))   score = 3; // omschrijving
-    else if (merk.includes(q))     score = 4; // merk
-    else if (materiaal.includes(q)) score = 5; // materiaal
-    else if (gebruiker.includes(q)) score = 6; // gebruiker
+    if (sn === q)                   score = 0;
+    else if (sn.endsWith(q))        score = 1;
+    else if (sn.includes(q))        score = 2;
+    else if (omschr.includes(q))    score = 3;
+    else if (merk.includes(q))      score = 4;
+    else if (materiaal.includes(q)) score = 5;
+    else if (gebruiker.includes(q)) score = 6;
 
     return { rij, score, zichtbaar: score < 999 };
   });
 
-  // Toon/verberg rijen
   let aantalZichtbaar = 0;
   gescoord.forEach(({ rij, zichtbaar }) => {
     rij.style.display = zichtbaar ? '' : 'none';
     if (zichtbaar) aantalZichtbaar++;
   });
 
-  // Herorden zichtbare rijen op score
   const zichtbareRijen = gescoord
     .filter(g => g.zichtbaar)
     .sort((a, b) => a.score - b.score);
-
   zichtbareRijen.forEach(({ rij }) => tbody.appendChild(rij));
 
-  // Resultaatteller bijwerken
   const teller = document.getElementById('zoekResultaatTeller');
   if (teller) {
     teller.textContent = aantalZichtbaar === 0
@@ -184,7 +176,6 @@ function openKeuringModal() {
       </div>
     </div>
 
-    <!-- Vorige keuring overnemen -->
     <div id="vorigeKeuringBox" style="display:none;margin-bottom:16px;padding:14px;background:rgba(91,154,47,0.1);border:1px solid var(--sg-green);border-radius:var(--radius-lg);">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
         <div>
@@ -204,7 +195,6 @@ function openKeuringModal() {
       </div>
     </div>
 
-    <!-- Aangemeld materiaal door klant -->
     <div id="aangemeldBox" style="display:none;margin-bottom:16px;padding:14px;background:rgba(243,156,18,0.08);border:1px solid var(--warning);border-radius:var(--radius-lg);">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
         <div>
@@ -230,7 +220,7 @@ function openKeuringModal() {
       return;
     }
     const klant = store.klanten.find(k => k.id === klantId);
-    const overnemen = document.getElementById('keuringOvernemen')?.checked;
+    const overnemen    = document.getElementById('keuringOvernemen')?.checked;
     const inclAfgevoerd = document.getElementById('inclAfgevoerd')?.checked;
 
     const keuring = {
@@ -253,6 +243,7 @@ function openKeuringModal() {
           status: '',
           afkeurcode: '',
           opmerking: '',
+          afgevoerd: false,
         }));
       }
     }
@@ -262,14 +253,15 @@ function openKeuringModal() {
     if (aangemeldOvernemen && aangemeldBox?._items?.length > 0) {
       aangemeldBox._items.forEach(item => {
         keuring.items.push({
-          itemId: item.id,
+          itemId:      item.id,
           omschrijving: item.omschrijving || '',
-          merk: item.merk || '',
-          materiaal: item.materiaal || '',
+          merk:        item.merk || '',
+          materiaal:   item.materiaal || '',
           serienummer: item.serienummer || '',
-          status: '',
-          afkeurcode: '',
-          opmerking: '',
+          status:      '',
+          afkeurcode:  '',
+          opmerking:   '',
+          afgevoerd:   false,
         });
       });
     }
@@ -297,6 +289,7 @@ function getAllKlantItems(klantId, inclAfgevoerd = false) {
   const seen = new Map();
   for (const keuring of keuringen) {
     for (const item of keuring.items) {
+      // Sla pensioen-items over (tenzij expliciet inclusief gevraagd)
       if (!inclAfgevoerd) {
         if (item.afgevoerd === true) continue;
         if (item.itemId && _afgevoerdeItemIds.has(String(item.itemId))) continue;
@@ -309,30 +302,30 @@ function getAllKlantItems(klantId, inclAfgevoerd = false) {
       if (!seen.has(key)) {
         seen.set(key, {
           ...item,
-          vorigeStatus: item.status,
+          vorigeStatus:     item.status,
           vorigeAfkeurcode: item.afkeurcode || '',
-          vorigeDatum: keuring.datum,
+          vorigeDatum:      keuring.datum,
         });
       }
     }
   }
 
   return {
-    items: Array.from(seen.values()),
+    items:         Array.from(seen.values()),
     keuringenCount: keuringen.length,
-    totalRaw: keuringen.reduce((sum, k) => sum + k.items.length, 0)
+    totalRaw:      keuringen.reduce((sum, k) => sum + k.items.length, 0)
   };
 }
 
 function updateCertNr() {
   const datumEl = document.getElementById('keuringDatum');
   const klantEl = document.getElementById('keuringKlant');
-  const certEl = document.getElementById('keuringCertNr');
+  const certEl  = document.getElementById('keuringCertNr');
   if (!datumEl || !certEl) return;
 
-  const datum = datumEl.value.replace(/-/g, '');
-  const klantId = klantEl?.value;
-  const klant = klantId ? store.klanten.find(k => k.id === klantId) : null;
+  const datum    = datumEl.value.replace(/-/g, '');
+  const klantId  = klantEl?.value;
+  const klant    = klantId ? store.klanten.find(k => k.id === klantId) : null;
   const klantNaam = klant ? klant.bedrijf.replace(/[^a-zA-Z0-9\-]/g, '') : '';
 
   let certNr = datum;
@@ -346,8 +339,8 @@ function updateCertNr() {
 
 async function checkVorigeKeuring() {
   const klantId = document.getElementById('keuringKlant').value;
-  const box = document.getElementById('vorigeKeuringBox');
-  const info = document.getElementById('vorigeKeuringInfo');
+  const box     = document.getElementById('vorigeKeuringBox');
+  const info    = document.getElementById('vorigeKeuringInfo');
   if (!klantId || !box) { if(box) box.style.display='none'; return; }
 
   try {
@@ -364,16 +357,16 @@ async function checkVorigeKeuring() {
 
   const result = getAllKlantItems(klantId, false);
   if (result.items.length > 0) {
-    const goed = result.items.filter(i => i.vorigeStatus === 'goedgekeurd').length;
-    const afk = result.items.filter(i => i.vorigeStatus === 'afgekeurd').length;
+    const goed           = result.items.filter(i => i.vorigeStatus === 'goedgekeurd').length;
+    const afk            = result.items.filter(i => i.vorigeStatus === 'afgekeurd').length;
     const aantalAfgevoerd = _afgevoerdeItemIds.size;
     box.style.display = 'block';
-    info.innerHTML = `${result.keuringenCount} eerdere keuring${result.keuringenCount>1?'en':''} — <strong>${result.items.length} unieke items</strong> (${goed} goed, ${afk} afgekeurd)${aantalAfgevoerd > 0 ? ` · <span style="color:var(--text-muted)">${aantalAfgevoerd} afgevoerd</span>` : ''}`;
+    info.innerHTML = `${result.keuringenCount} eerdere keuring${result.keuringenCount>1?'en':''} — <strong>${result.items.length} unieke items</strong> (${goed} goed, ${afk} afgekeurd)${aantalAfgevoerd > 0 ? ` · <span style="color:var(--text-muted)">${aantalAfgevoerd} op pensioen</span>` : ''}`;
   } else {
     box.style.display = 'none';
   }
 
-  const aangemeldBox = document.getElementById('aangemeldBox');
+  const aangemeldBox  = document.getElementById('aangemeldBox');
   const aangemeldInfo = document.getElementById('aangemeldInfo');
   if (!aangemeldBox) return;
 
@@ -387,11 +380,11 @@ async function checkVorigeKeuring() {
 
     if (actief.length > 0) {
       aangemeldBox.style.display = 'block';
-      aangemeldInfo.textContent = `${actief.length} item${actief.length > 1 ? 's' : ''} aangemeld door klant`;
-      aangemeldBox._items = actief;
+      aangemeldInfo.textContent  = `${actief.length} item${actief.length > 1 ? 's' : ''} aangemeld door klant`;
+      aangemeldBox._items        = actief;
     } else {
       aangemeldBox.style.display = 'none';
-      aangemeldBox._items = [];
+      aangemeldBox._items        = [];
     }
   } catch(e) {
     console.error('Aangemeld materiaal ophalen mislukt:', e);
@@ -405,9 +398,11 @@ function openKeuringDetail(id) {
 
   const el = document.getElementById('pageContent');
 
-  const goed = (k.items||[]).filter(i => i.status === 'goedgekeurd').length;
-  const afk = (k.items||[]).filter(i => i.status === 'afgekeurd').length;
-  const open = (k.items||[]).filter(i => !i.status).length;
+  const goed     = (k.items||[]).filter(i => i.status === 'goedgekeurd').length;
+  const afk      = (k.items||[]).filter(i => i.status === 'afgekeurd').length;
+  const pensioen = (k.items||[]).filter(i => i.afgevoerd).length;
+  // Alleen echte lege items (niet afgevoerd) tellen als open
+  const open     = (k.items||[]).filter(i => !i.status && !i.afgevoerd).length;
 
   el.innerHTML = `
     <div class="fade-in">
@@ -439,6 +434,10 @@ function openKeuringDetail(id) {
           <div style="font-size:12px;color:var(--text-secondary);text-transform:uppercase;">Afgekeurd</div>
           <div style="font-size:16px;font-weight:600;color:var(--danger);">${afk}</div>
         </div></div>
+        ${pensioen > 0 ? `<div class="card"><div class="card-body" style="padding:14px 20px;">
+          <div style="font-size:12px;color:var(--text-secondary);text-transform:uppercase;">Op pensioen</div>
+          <div style="font-size:16px;font-weight:600;color:var(--text-muted);">${pensioen}</div>
+        </div></div>` : ''}
         ${open > 0 ? `<div class="card"><div class="card-body" style="padding:14px 20px;">
           <div style="font-size:12px;color:var(--text-secondary);text-transform:uppercase;">Nog beoordelen</div>
           <div style="font-size:16px;font-weight:600;color:var(--warning);">${open}</div>
@@ -530,7 +529,6 @@ function openKeuringDetail(id) {
               <select class="form-select" id="itemStatus" tabindex="8">
                 <option value="goedgekeurd">Goed</option>
                 <option value="afgekeurd">Afgekeurd</option>
-                <option value="niet_aangeboden">Niet aangeboden</option>
               </select>
             </div>
             <div class="form-group">
@@ -560,7 +558,6 @@ function openKeuringDetail(id) {
         <div class="card-header">
           <div style="display:flex;align-items:center;gap:12px;flex:1;flex-wrap:wrap;">
             <h3 style="white-space:nowrap;">Keuringsitems (${(k.items||[]).length})</h3>
-            <!-- Zoekveld — zoekt op SN (prioriteit), omschrijving, merk, materiaal, gebruiker -->
             <div style="position:relative;flex:1;min-width:200px;max-width:360px;">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                 style="position:absolute;left:9px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--text-muted);pointer-events:none;">
@@ -609,7 +606,7 @@ function openKeuringDetail(id) {
                 const isActive = keuringItemSort.col === col;
                 return `<th class="${isActive?'sorted':''}" data-sort-col="${col}" style="cursor:pointer;user-select:none;" onclick="sortKeuringItems('${id}','${col}')">${labels[col]} <span class="sort-arrow">${isActive?(keuringItemSort.asc?'▲':'▼'):'▲'}</span></th>`;
               }).join('')}
-              <th style="min-width:180px;">Beoordeling</th><th>Opmerking</th><th class="${keuringItemSort.col==='gebruiker'?'sorted':''}" data-sort-col="gebruiker" style="cursor:pointer;user-select:none;" onclick="sortKeuringItems('${id}','gebruiker')">Gebruiker <span class="sort-arrow">${keuringItemSort.col==='gebruiker'?(keuringItemSort.asc?'▲':'▼'):'▲'}</span></th><th>Vorig</th><th></th>
+              <th style="min-width:200px;">Beoordeling</th><th>Opmerking</th><th class="${keuringItemSort.col==='gebruiker'?'sorted':''}" data-sort-col="gebruiker" style="cursor:pointer;user-select:none;" onclick="sortKeuringItems('${id}','gebruiker')">Gebruiker <span class="sort-arrow">${keuringItemSort.col==='gebruiker'?(keuringItemSort.asc?'▲':'▼'):'▲'}</span></th><th>Vorig</th><th></th>
             </tr></thead>
             <tbody class="keuring-items-tbody">
               ${(k.items||[]).length === 0 ? '<tr><td colspan="12" style="text-align:center;color:var(--text-muted);padding:30px;">Nog geen items. Voeg items toe via het formulier hierboven.</td></tr>' :
@@ -626,10 +623,16 @@ function openKeuringDetail(id) {
                   return keuringItemSort.asc ? result : -result;
                 })
                 .map(({item, i}, displayIdx) => {
-                  const isGoed = item.status === 'goedgekeurd';
-                  const isAfk = item.status === 'afgekeurd';
-                  const isOpen = !item.status;
+                  const isGoed     = item.status === 'goedgekeurd';
+                  const isAfk      = item.status === 'afgekeurd';
+                  const isPensioen = item.afgevoerd === true;
+                  const isOpen     = !item.status && !isPensioen;
                   const isAfgerond = k.afgerond;
+
+                  // Rijachtergrond: pensioen=grijs, open=oranje, rest normaal
+                  const rijStijl = isPensioen
+                    ? 'background:rgba(150,150,150,0.08);opacity:0.7;'
+                    : isOpen ? 'background:rgba(243,156,18,0.05);' : '';
 
                   const historieKnoopje = (item.itemId || item.serienummer)
                     ? `<button class="btn-icon" title="Keuringshistorie artikel ID ${item.itemId||''}" onclick="showHistoriePopup(${item.itemId||'null'},'${(item.serienummer||'').replace(/'/g,"\\'")}','${(item.omschrijving||'').replace(/'/g,"\\'")}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>`
@@ -660,26 +663,45 @@ function openKeuringDetail(id) {
 
                   const fabrStr = item.fabrJaar ? (item.fabrJaar + (item.fabrMaand ? '/' + String(item.fabrMaand).padStart(2,'0') : '')) : '';
 
-                  return `<tr${isOpen ? ' style="background:rgba(243,156,18,0.05);"' : ''} data-item-idx="${i}" data-sort_omschrijving="${(item.omschrijving||'').toLowerCase()}" data-sort_merk="${(item.merk||'').toLowerCase()}" data-sort_materiaal="${(item.materiaal||'').toLowerCase()}" data-sort_serienummer="${(item.serienummer||'').toLowerCase()}" data-sort_fabrjaar="${item.fabrJaar||''}" data-sort_ingebruik="${item.inGebruik||''}" data-sort_gebruiker="${(item.gebruiker||'').toLowerCase()}">
+                  // -------------------------------------------------------
+                  // BEOORDELINGSKNOPPENRIJ
+                  // Goed | Afkeur | [afkeurcode als afgekeurd] | 🏖 Pensioen
+                  // -------------------------------------------------------
+                  const pensioenKnopStijl = isPensioen
+                    ? 'border-color:var(--warning);color:var(--warning);opacity:1;'
+                    : 'opacity:0.5;';
+                  const pensioenLabel = isPensioen ? '🏖 Pensioen ✓' : '🏖 Pensioen';
+
+                  const beoordelingHtml = `
+                    <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
+                      <button class="btn btn-sm ${isGoed?'btn-goed-active':'btn-goed'}"
+                        onclick="quickBeoordeel('${id}',${i},'goedgekeurd')"
+                        ${isAfgerond?'disabled style="opacity:0.4;cursor:not-allowed;"':''}>✓ Goed</button>
+                      <button class="btn btn-sm ${isAfk?'btn-afk-active':'btn-afk'}"
+                        onclick="quickBeoordeel('${id}',${i},'afgekeurd')"
+                        ${isAfgerond?'disabled style="opacity:0.4;cursor:not-allowed;"':''}>✗ Afkeur</button>
+                      ${isAfk ? `<select class="form-select" style="width:auto;min-width:60px;height:28px;font-size:11px;padding:2px 4px;"
+                        onchange="setAfkeurCode('${id}',${i},this.value)" ${isAfgerond?'disabled':''}>
+                        <option value="">Code</option>
+                        ${getAfkeurcodes().map(c => `<option value="${c.code}" ${String(item.afkeurcode)==String(c.code)?'selected':''}>${c.code}</option>`).join('')}
+                      </select>` : ''}
+                      <button class="btn btn-sm btn-secondary"
+                        onclick="togglePensioen('${id}',${i})"
+                        ${isAfgerond?'disabled style="opacity:0.4;cursor:not-allowed;"':`style="${pensioenKnopStijl}"`}
+                        title="${isPensioen?'Pensioen ongedaan maken':'Artikel met pensioen sturen — komt niet meer terug in nieuwe keuringen'}"
+                        >${pensioenLabel}</button>
+                    </div>`;
+
+                  return `<tr style="${rijStijl}" data-item-idx="${i}" data-sort_omschrijving="${(item.omschrijving||'').toLowerCase()}" data-sort_merk="${(item.merk||'').toLowerCase()}" data-sort_materiaal="${(item.materiaal||'').toLowerCase()}" data-sort_serienummer="${(item.serienummer||'').toLowerCase()}" data-sort_fabrjaar="${item.fabrJaar||''}" data-sort_ingebruik="${item.inGebruik||''}" data-sort_gebruiker="${(item.gebruiker||'').toLowerCase()}">
                     <td class="row-num">${displayIdx+1}</td>
                     <td style="font-size:11px;color:var(--text-muted);font-family:monospace;">${item.itemId || '—'}</td>
-                    <td>${item.omschrijving||''}${ageIcon}</td>
+                    <td>${item.omschrijving||''}${ageIcon}${isPensioen?' <span style="font-size:10px;color:var(--text-muted);">(pensioen)</span>':''}</td>
                     <td>${item.merk||''}</td>
                     <td>${item.materiaal||''}</td>
                     <td style="font-family:monospace;font-size:12px;">${item.serienummer||''}</td>
                     <td style="font-size:12px;">${fabrStr}</td>
                     <td style="font-size:12px;">${item.inGebruik ? formatDate(item.inGebruik) : ''}</td>
-                    <td>
-                      <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
-                        <button class="btn btn-sm ${isGoed?'btn-goed-active':'btn-goed'}" onclick="quickBeoordeel('${id}',${i},'goedgekeurd')" ${isAfgerond?'disabled style="opacity:0.4;cursor:not-allowed;"':''}>✓ Goed</button>
-                        <button class="btn btn-sm ${isAfk?'btn-afk-active':'btn-afk'}" onclick="quickBeoordeel('${id}',${i},'afgekeurd')" ${isAfgerond?'disabled style="opacity:0.4;cursor:not-allowed;"':''}>✗ Afkeur</button>
-                        <button class="btn btn-sm ${item.status==='niet_aangeboden'?'btn-secondary':'btn-secondary'}" onclick="quickBeoordeel('${id}',${i},'niet_aangeboden')" ${isAfgerond?'disabled style="opacity:0.4;cursor:not-allowed;"':`style="${item.status==='niet_aangeboden'?'opacity:1;border-color:var(--warning);color:var(--warning);':'opacity:0.5;'}"`}>— N/A</button>
-                        ${isAfk ? `<select class="form-select" style="width:auto;min-width:60px;height:28px;font-size:11px;padding:2px 4px;" onchange="setAfkeurCode('${id}',${i},this.value)" ${isAfgerond?'disabled':''}>
-                          <option value="">Code</option>
-                          ${getAfkeurcodes().map(c => `<option value="${c.code}" ${String(item.afkeurcode)==String(c.code)?'selected':''}>${c.code}</option>`).join('')}
-                        </select>` : ''}
-                      </div>
-                    </td>
+                    <td>${beoordelingHtml}</td>
                     <td title="${item.opmerking||''}" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;font-size:12px;">${item.opmerking||''}</td>
                     <td style="font-size:12px;">${item.gebruiker||''}</td>
                     <td>${vorigBadge}</td>
@@ -708,7 +730,7 @@ function openKeuringDetail(id) {
   `;
 
   const statusSel = document.getElementById('itemStatus');
-  const codeSel = document.getElementById('itemCode');
+  const codeSel   = document.getElementById('itemCode');
   if (statusSel && codeSel) {
     statusSel.onchange = () => {
       codeSel.disabled = statusSel.value !== 'afgekeurd';
@@ -719,10 +741,7 @@ function openKeuringDetail(id) {
   laadMerkMateriaalCache();
   buildGebruikerList(id);
 
-  // Zoekterm toepassen na render (bewaard van vorige beoordeling)
-  if (_keuringItemZoek) {
-    filterKeuringItemsTable();
-  }
+  if (_keuringItemZoek) filterKeuringItemsTable();
 }
 
 function normalizeGebruiker(val) {
@@ -748,7 +767,7 @@ function getAfkeurcodes() {
   return store.afkeurcodes || CERT_INFO.afkeurcodes;
 }
 
-_merkCache = null;
+_merkCache    = null;
 _materiaalCache = null;
 
 async function laadMerkMateriaalCache() {
@@ -758,12 +777,12 @@ async function laadMerkMateriaalCache() {
       sb.from('producten').select('merk').not('merk', 'is', null).order('merk'),
       sb.from('producten').select('materiaal').not('materiaal', 'is', null).order('materiaal'),
     ]);
-    _merkCache = [...new Set((merkRes.data || []).map(r => r.merk).filter(Boolean))].sort();
+    _merkCache     = [...new Set((merkRes.data || []).map(r => r.merk).filter(Boolean))].sort();
     _materiaalCache = [...new Set((matRes.data || []).map(r => r.materiaal).filter(Boolean))].sort();
     vulMerkMateriaalDatalist();
   } catch(e) {
     console.warn('Kon merk/materiaal niet laden:', e);
-    _merkCache = [];
+    _merkCache     = [];
     _materiaalCache = [];
   }
 }
@@ -777,7 +796,7 @@ function vulMerkMateriaalDatalist() {
 
 function filterItemLists() { vulMerkMateriaalDatalist(); }
 
-omschrDropIndex = -1;
+omschrDropIndex      = -1;
 _omschrDebounceTimer = null;
 _lastSelectedProduct = null;
 
@@ -795,10 +814,10 @@ async function _doOmschrZoeken(val) {
   if (input) {
     const rect = input.getBoundingClientRect();
     dropdown.style.position = 'fixed';
-    dropdown.style.top = (rect.bottom + 2) + 'px';
-    dropdown.style.left = rect.left + 'px';
-    dropdown.style.width = rect.width + 'px';
-    dropdown.style.right = 'auto';
+    dropdown.style.top      = (rect.bottom + 2) + 'px';
+    dropdown.style.left     = rect.left + 'px';
+    dropdown.style.width    = rect.width + 'px';
+    dropdown.style.right    = 'auto';
   }
 
   if (q.length === 0) { hideOmschrDropdown(); return; }
@@ -818,7 +837,7 @@ async function _doOmschrZoeken(val) {
     if (!_isPlatformAdmin && _huidigBedrijfId) query = query.eq('bedrijf_id', _huidigBedrijfId);
     if (merkVal && matVal) query = query.ilike('merk', `%${merkVal}%`).ilike('materiaal', `%${matVal}%`);
     else if (merkVal) query = query.ilike('merk', `%${merkVal}%`);
-    else if (matVal) query = query.ilike('materiaal', `%${matVal}%`);
+    else if (matVal)  query = query.ilike('materiaal', `%${matVal}%`);
 
     const { data, error } = await query;
     if (error) throw error;
@@ -838,7 +857,7 @@ async function _doOmschrZoeken(val) {
 
     omschrDropIndex = -1;
     dropdown.innerHTML = gesorteerd.map((p, i) => {
-      const o = p.omschrijving;
+      const o  = p.omschrijving;
       const lo = o.toLowerCase();
       const idx = lo.indexOf(ql);
       let label = o;
@@ -884,7 +903,7 @@ function selectOmschrItem(el) {
     val = el;
     document.querySelectorAll('.omschr-drop-item').forEach(item => { if (item.dataset.val === val) prod = item._prodData; });
   } else {
-    val = el.dataset.val;
+    val  = el.dataset.val;
     prod = el._prodData;
   }
   const input = document.getElementById('itemOmschr');
@@ -896,20 +915,20 @@ function selectOmschrItem(el) {
 function onOmschrKeydown(e) {
   const items = document.querySelectorAll('.omschr-drop-item');
   if (!items.length) return;
-  if (e.key === 'ArrowDown') { e.preventDefault(); omschrDropIndex = Math.min(omschrDropIndex + 1, items.length - 1); highlightOmschrItem(omschrDropIndex); }
-  else if (e.key === 'ArrowUp') { e.preventDefault(); omschrDropIndex = Math.max(omschrDropIndex - 1, 0); highlightOmschrItem(omschrDropIndex); }
-  else if (e.key === 'Enter' && omschrDropIndex >= 0) { e.preventDefault(); selectOmschrItem(items[omschrDropIndex]); }
-  else if (e.key === 'Tab' && omschrDropIndex >= 0) { e.preventDefault(); selectOmschrItem(items[omschrDropIndex]); document.getElementById('itemMerk')?.focus(); }
+  if (e.key === 'ArrowDown')  { e.preventDefault(); omschrDropIndex = Math.min(omschrDropIndex + 1, items.length - 1); highlightOmschrItem(omschrDropIndex); }
+  else if (e.key === 'ArrowUp')   { e.preventDefault(); omschrDropIndex = Math.max(omschrDropIndex - 1, 0); highlightOmschrItem(omschrDropIndex); }
+  else if (e.key === 'Enter' && omschrDropIndex >= 0)  { e.preventDefault(); selectOmschrItem(items[omschrDropIndex]); }
+  else if (e.key === 'Tab'   && omschrDropIndex >= 0)  { e.preventDefault(); selectOmschrItem(items[omschrDropIndex]); document.getElementById('itemMerk')?.focus(); }
   else if (e.key === 'Escape') hideOmschrDropdown();
 }
 
 function onItemOmschrChange(val, prod) {
   _lastSelectedProduct = prod || null;
   const merkEl = document.getElementById('itemMerk');
-  const matEl = document.getElementById('itemMateriaal');
+  const matEl  = document.getElementById('itemMateriaal');
   if (prod) {
     if (merkEl && !merkEl.value) merkEl.value = prod.merk || '';
-    if (matEl && !matEl.value) matEl.value = prod.materiaal || '';
+    if (matEl  && !matEl.value)  matEl.value  = prod.materiaal || '';
   }
   showItemInfoBar(prod);
   checkItemAge();
@@ -923,7 +942,7 @@ function showItemInfoBar(prod) {
   const parts = [];
   if (prod.bijzonderheden) parts.push(`<span style="color:var(--warning);"><strong>⚠ Bijzonderheden:</strong> ${prod.bijzonderheden}</span>`);
   const ages = [];
-  if (prod.max_leeftijd) ages.push(`Max leeftijd: <strong>${prod.max_leeftijd} jaar</strong>`);
+  if (prod.max_leeftijd)     ages.push(`Max leeftijd: <strong>${prod.max_leeftijd} jaar</strong>`);
   if (prod.max_leeftijd_use) ages.push(`Max vanaf gebruik: <strong>${prod.max_leeftijd_use} jaar</strong>`);
   if (prod.max_leeftijd_mfr) ages.push(`Max vanaf fabricage: <strong>${prod.max_leeftijd_mfr} jaar</strong>`);
   if (ages.length > 0) parts.push(ages.join(' · '));
@@ -931,10 +950,10 @@ function showItemInfoBar(prod) {
   if (parts.length === 0) { bar.style.display = 'none'; return; }
 
   const hasWarning = !!prod.bijzonderheden;
-  bar.style.display = 'block';
-  bar.style.background = hasWarning ? 'rgba(243,156,18,0.1)' : 'rgba(91,154,47,0.08)';
+  bar.style.display     = 'block';
+  bar.style.background  = hasWarning ? 'rgba(243,156,18,0.1)' : 'rgba(91,154,47,0.08)';
   bar.style.borderColor = hasWarning ? 'var(--warning)' : 'var(--sg-green)';
-  bar.style.color = 'var(--text-secondary)';
+  bar.style.color       = 'var(--text-secondary)';
   bar.innerHTML = parts.join('<span style="margin:0 8px;opacity:0.3;">|</span>');
 }
 
@@ -942,13 +961,13 @@ function checkItemAge() {
   const prod = _lastSelectedProduct;
   if (!prod) return;
 
-  const fabrJaarStr = document.getElementById('itemJaar')?.value || '';
-  const fabrJaar = parseInt(fabrJaarStr);
-  const inGebruik = document.getElementById('itemInGebruik')?.value;
-  const now = new Date();
-  const currentYear = now.getFullYear();
+  const fabrJaarStr  = document.getElementById('itemJaar')?.value || '';
+  const fabrJaar     = parseInt(fabrJaarStr);
+  const inGebruik    = document.getElementById('itemInGebruik')?.value;
+  const now          = new Date();
+  const currentYear  = now.getFullYear();
   const validFabrJaar = fabrJaarStr.length === 4 && fabrJaar >= 1900 && fabrJaar <= 2099;
-  const warnings = [];
+  const warnings     = [];
 
   const maxMfr = parseInt(prod.max_leeftijd_mfr) || parseInt(prod.max_leeftijd) || 0;
   if (maxMfr && validFabrJaar) {
@@ -969,9 +988,9 @@ function checkItemAge() {
   if (warnings.length > 0) {
     showItemInfoBar(prod);
     const prodInfo = bar.innerHTML;
-    bar.innerHTML = warnings.join('<br>') + (prodInfo ? '<br>' + prodInfo : '');
-    bar.style.display = 'block';
-    bar.style.background = 'rgba(231,76,60,0.1)';
+    bar.innerHTML         = warnings.join('<br>') + (prodInfo ? '<br>' + prodInfo : '');
+    bar.style.display     = 'block';
+    bar.style.background  = 'rgba(231,76,60,0.1)';
     bar.style.borderColor = 'var(--danger)';
   } else {
     showItemInfoBar(prod);
@@ -985,24 +1004,25 @@ function addKeuringItem(keuringId) {
   const omschr = document.getElementById('itemOmschr').value;
   if (!omschr) { toast('Vul een omschrijving in', 'error'); return; }
 
-  const prod = store.products.find(p => p.omschrijving === omschr);
+  const prod   = store.products.find(p => p.omschrijving === omschr);
   const status = document.getElementById('itemStatus').value;
 
   const item = {
-    itemId: generateId(),
+    itemId:      generateId(),
     omschrijving: omschr,
-    merk: document.getElementById('itemMerk')?.value || prod?.merk || '',
-    materiaal: document.getElementById('itemMateriaal')?.value || prod?.materiaal || '',
+    merk:        document.getElementById('itemMerk')?.value || prod?.merk || '',
+    materiaal:   document.getElementById('itemMateriaal')?.value || prod?.materiaal || '',
     serienummer: document.getElementById('itemSerial').value,
-    fabrJaar: document.getElementById('itemJaar').value || '',
-    fabrMaand: parseInt(document.getElementById('itemMaand').value) || 0,
-    inGebruik: document.getElementById('itemInGebruik')?.value || '',
-    status: status,
-    afkeurcode: status === 'afgekeurd' ? document.getElementById('itemCode').value : '',
-    opmerking: document.getElementById('itemOpm').value,
-    gebruiker: normalizeGebruiker(document.getElementById('itemGebruiker').value),
+    fabrJaar:    document.getElementById('itemJaar').value || '',
+    fabrMaand:   parseInt(document.getElementById('itemMaand').value) || 0,
+    inGebruik:   document.getElementById('itemInGebruik')?.value || '',
+    status:      status,
+    afkeurcode:  status === 'afgekeurd' ? document.getElementById('itemCode').value : '',
+    opmerking:   document.getElementById('itemOpm').value,
+    gebruiker:   normalizeGebruiker(document.getElementById('itemGebruiker').value),
     maxLeeftijd: prod?.maxLeeftijd || '',
-    enNorm: prod?.enNorm || '',
+    enNorm:      prod?.enNorm || '',
+    afgevoerd:   false,
   };
 
   if (!k.items) k.items = [];
@@ -1021,12 +1041,13 @@ function duplicateKeuringItem(keuringId, idx) {
 
   const kopie = {
     ...JSON.parse(JSON.stringify(original)),
-    itemId: generateId(),
-    serienummer: '',
-    status: '',
-    afkeurcode: '',
-    opmerking: '',
-    vorigeStatus: '',
+    itemId:           generateId(),
+    serienummer:      '',
+    status:           '',
+    afkeurcode:       '',
+    opmerking:        '',
+    afgevoerd:        false,
+    vorigeStatus:     '',
     vorigeAfkeurcode: '',
   };
 
@@ -1041,8 +1062,6 @@ function removeKeuringItem(keuringId, idx) {
   const k = store.keuringen.find(ke => ke.id === keuringId);
   if (!k || k.afgerond) return;
   if (!confirm('Item verwijderen?')) return;
-  k.items[idx].status = 'verwijderd';
-  k.items[idx].inactive = true;
   if (!k.auditLog) k.auditLog = [];
   k.auditLog.push({...k.items[idx], removedAt: new Date().toISOString()});
   const removedItemId = k.items[idx].itemId;
@@ -1061,13 +1080,56 @@ function quickBeoordeel(keuringId, idx, newStatus) {
   if (!item) return;
 
   const oldStatus = item.status;
-  if (item.status === newStatus) { item.status = ''; item.afkeurcode = ''; }
-  else { item.status = newStatus; if (newStatus !== 'afgekeurd') item.afkeurcode = ''; }
+  // Toggle: klik je op de actieve knop dan gaat de status leeg
+  if (item.status === newStatus) {
+    item.status    = '';
+    item.afkeurcode = '';
+  } else {
+    item.status = newStatus;
+    if (newStatus !== 'afgekeurd') item.afkeurcode = '';
+  }
 
   if (oldStatus !== item.status) {
     if (!k.auditLog) k.auditLog = [];
     k.auditLog.push({ actie: 'status_gewijzigd', item: item.omschrijving, van: oldStatus || 'onbeoordeeld', naar: item.status || 'onbeoordeeld', datum: new Date().toISOString(), door: store.settings.keurmeester });
   }
+
+  saveStore(store);
+  sbUpsertKeuringItem(item, keuringId, k.klantId).catch(console.error);
+  openKeuringDetail(keuringId);
+}
+
+// ============================================================
+// PENSIOEN TOGGLE
+// Afgevoerd=true  → artikel komt nooit meer terug in nieuwe keuringen
+// Status 'afgekeurd' + afgevoerd → staat WEL op het certificaat, komt niet meer terug
+// Status leeg + afgevoerd       → staat NIET op certificaat, komt niet meer terug
+// ============================================================
+function togglePensioen(keuringId, idx) {
+  const k = store.keuringen.find(ke => ke.id === keuringId);
+  if (!k) return;
+  if (k.afgerond) { toast('Keuring is afgerond — heropen eerst om wijzigingen te maken', 'error'); return; }
+  const item = k.items[idx];
+  if (!item) return;
+
+  if (item.afgevoerd) {
+    // Pensioen ongedaan maken
+    item.afgevoerd = false;
+    toast('Pensioen ongedaan gemaakt — artikel komt de volgende keer weer terug');
+  } else {
+    // Op pensioen sturen
+    item.afgevoerd = true;
+    if (item.status === 'afgekeurd') {
+      // Afgekeurd + pensioen: staat nog op certificaat
+      toast('Artikel op pensioen — staat nog op dit certificaat maar komt niet meer terug');
+    } else {
+      // Alleen pensioen, geen beoordeling: niet op certificaat, niet meer terug
+      toast('Artikel op pensioen — komt niet meer terug in nieuwe keuringen');
+    }
+  }
+
+  if (!k.auditLog) k.auditLog = [];
+  k.auditLog.push({ actie: item.afgevoerd ? 'op_pensioen' : 'pensioen_ongedaan', item: item.omschrijving, datum: new Date().toISOString(), door: store.settings.keurmeester });
 
   saveStore(store);
   sbUpsertKeuringItem(item, keuringId, k.klantId).catch(console.error);
@@ -1083,9 +1145,9 @@ function setAfkeurCode(keuringId, idx, code) {
 }
 
 function convertDag() {
-  const dag = parseInt(document.getElementById('convDag')?.value);
+  const dag  = parseInt(document.getElementById('convDag')?.value);
   const jaar = parseInt(document.getElementById('convDagJaar')?.value) || new Date().getFullYear();
-  const el = document.getElementById('convDagResult');
+  const el   = document.getElementById('convDagResult');
   if (!el) return;
   if (!dag || dag < 1 || dag > 366) { el.textContent = '—'; return; }
   const date = new Date(jaar, 0, dag);
@@ -1096,10 +1158,10 @@ function convertDag() {
 function convertWeek() {
   const week = parseInt(document.getElementById('convWeek')?.value);
   const jaar = parseInt(document.getElementById('convWeekJaar')?.value) || new Date().getFullYear();
-  const el = document.getElementById('convWeekResult');
+  const el   = document.getElementById('convWeekResult');
   if (!el) return;
   if (!week || week < 1 || week > 53) { el.textContent = '—'; return; }
-  const jan4 = new Date(jaar, 0, 4);
+  const jan4      = new Date(jaar, 0, 4);
   const dayOfWeek = jan4.getDay() || 7;
   const weekStart = new Date(jan4);
   weekStart.setDate(jan4.getDate() - dayOfWeek + 1 + (week - 1) * 7);
@@ -1113,17 +1175,15 @@ function finishKeuring(id) {
   const k = store.keuringen.find(ke => ke.id === id);
   if (!k) return;
 
-  const teVerwijderen = (k.items||[]).filter(i => !i.status);
-  if (teVerwijderen.length > 0) {
-    if (!confirm(`Er zijn ${teVerwijderen.length} items zonder beoordeling. Deze worden niet opgeslagen — de vorige keuringsstatus blijft geldig. Doorgaan?`)) return;
-    teVerwijderen.forEach(item => { if (item.itemId) sbDeleteKeuringItem(item.itemId).catch(console.error); });
-    k.items = k.items.filter(i => i.status);
-  }
-
-  k.afgerond = true;
+  // Lege items (niet beoordeeld, niet op pensioen) blijven in de database
+  // en komen de volgende keer weer terug — dat is de bedoeling.
+  // Geen items verwijderen bij afronden.
+  k.afgerond      = true;
   k.afgerondDatum = new Date().toISOString();
   saveStore(store);
   sbUpsertKeuring(k).catch(console.error);
+  // Sync alle items zodat afgevoerd-veld ook opgeslagen is
+  sbSyncAllKeuringItems(k).catch(console.error);
   toast('✓ Keuring afgerond');
   openKeuringDetail(id);
 }
@@ -1189,8 +1249,7 @@ function editKeuringItem(keuringId, idx) {
         <select class="form-select" id="editStatus" ${k.afgerond?'disabled':''} onchange="document.getElementById('editCode').disabled=this.value!=='afgekeurd';if(this.value!=='afgekeurd')document.getElementById('editCode').value='';">
           <option value="" ${!item.status?'selected':''}>— Nog beoordelen —</option>
           <option value="goedgekeurd" ${item.status==='goedgekeurd'?'selected':''}>Goedgekeurd</option>
-          <option value="afgekeurd" ${item.status==='afgekeurd'?'selected':''}>Afgekeurd</option>
-          <option value="niet_aangeboden" ${item.status==='niet_aangeboden'?'selected':''}>Niet aangeboden</option>
+          <option value="afgekeurd"   ${item.status==='afgekeurd'  ?'selected':''}>Afgekeurd</option>
         </select>
       </div>
       <div class="form-group">
@@ -1210,6 +1269,10 @@ function editKeuringItem(keuringId, idx) {
         <datalist id="editGebruikerList">${[...new Set(store.keuringen.flatMap(ke => (ke.items||[]).map(it => it.gebruiker).filter(Boolean)).map(n => normalizeGebruiker(n)))].sort().map(n => `<option value="${n}">`).join('')}</datalist>
       </div>
     </div>
+    ${item.afgevoerd ? `
+    <div style="margin-top:8px;padding:8px 14px;background:rgba(150,150,150,0.1);border-radius:var(--radius);font-size:12px;color:var(--text-muted);">
+      🏖 Dit artikel staat op pensioen — het komt niet meer terug in nieuwe keuringen.
+    </div>` : ''}
     ${item.vorigeStatus ? `
     <div style="margin-top:8px;padding:8px 14px;background:var(--bg-input);border-radius:var(--radius);font-size:12px;color:var(--text-secondary);">
       Vorige keuring: <span class="badge ${item.vorigeStatus==='goedgekeurd'?'badge-green':'badge-red'}" style="font-size:11px;">
@@ -1217,10 +1280,10 @@ function editKeuringItem(keuringId, idx) {
       </span>
     </div>` : ''}
   `, () => {
-    const newOmschr = document.getElementById('editOmschr').value;
-    const prod = store.products.find(p => p.omschrijving === newOmschr);
-    const newStatus = document.getElementById('editStatus').value;
-    const oldStatus = item.status;
+    const newOmschr  = document.getElementById('editOmschr').value;
+    const prod       = store.products.find(p => p.omschrijving === newOmschr);
+    const newStatus  = document.getElementById('editStatus').value;
+    const oldStatus  = item.status;
 
     if (oldStatus !== newStatus && (oldStatus || newStatus)) {
       if (!k.auditLog) k.auditLog = [];
@@ -1228,16 +1291,16 @@ function editKeuringItem(keuringId, idx) {
     }
 
     item.omschrijving = newOmschr;
-    item.merk = document.getElementById('editMerk').value || prod?.merk || item.merk;
-    item.materiaal = document.getElementById('editMateriaal').value || prod?.materiaal || item.materiaal;
-    item.serienummer = document.getElementById('editSerial').value;
-    item.fabrJaar = document.getElementById('editJaar').value || '';
-    item.fabrMaand = parseInt(document.getElementById('editMaand').value) || 0;
-    item.inGebruik = document.getElementById('editInGebruik')?.value || '';
-    item.status = newStatus;
-    item.afkeurcode = newStatus === 'afgekeurd' ? document.getElementById('editCode').value : '';
-    item.opmerking = document.getElementById('editOpm').value;
-    item.gebruiker = normalizeGebruiker(document.getElementById('editGebruiker').value);
+    item.merk         = document.getElementById('editMerk').value || prod?.merk || item.merk;
+    item.materiaal    = document.getElementById('editMateriaal').value || prod?.materiaal || item.materiaal;
+    item.serienummer  = document.getElementById('editSerial').value;
+    item.fabrJaar     = document.getElementById('editJaar').value || '';
+    item.fabrMaand    = parseInt(document.getElementById('editMaand').value) || 0;
+    item.inGebruik    = document.getElementById('editInGebruik')?.value || '';
+    item.status       = newStatus;
+    item.afkeurcode   = newStatus === 'afgekeurd' ? document.getElementById('editCode').value : '';
+    item.opmerking    = document.getElementById('editOpm').value;
+    item.gebruiker    = normalizeGebruiker(document.getElementById('editGebruiker').value);
     if (prod) { item.max_leeftijd = prod.max_leeftijd || item.max_leeftijd; item.norm = prod.norm || item.norm; }
 
     saveStore(store);
@@ -1268,8 +1331,10 @@ function showHistoriePopup(itemId, sn, omschrijving) {
                   <span style="font-size:12px;color:var(--text-muted);">${r.certificaatNr}</span>
                 </div>
                 <div>
+                  ${r.afgevoerd ? '<span class="badge" style="background:var(--text-muted);color:white;font-size:10px;">🏖 Pensioen</span>' : ''}
                   ${r.status === 'goedgekeurd' ? '<span class="badge badge-green">Goedgekeurd</span>'
                     : r.status === 'afgekeurd' ? `<span class="badge badge-red">Afgekeurd ${r.afkeurcode ? '— ' + r.afkeurcode : ''}</span>`
+                    : r.status === 'pensioen'  ? '<span class="badge" style="background:var(--text-muted);color:white;">Pensioen</span>'
                     : '<span class="badge badge-orange">Onbeoordeeld</span>'}
                 </div>
               </div>
@@ -1307,7 +1372,7 @@ function wijzigEigenaar(keuringId) {
     const nieuweKlant = store.klanten.find(kl => kl.id === nieuweKlantId);
     if (!nieuweKlant) return;
     const oudeNaam = k.klantNaam;
-    k.klantId = nieuweKlantId;
+    k.klantId  = nieuweKlantId;
     k.klantNaam = nieuweKlant.bedrijf;
     if (!k.auditLog) k.auditLog = [];
     k.auditLog.push({ actie: 'eigenaar_gewijzigd', van: oudeNaam, naar: nieuweKlant.bedrijf, datum: new Date().toISOString(), door: store.settings.keurmeester });
