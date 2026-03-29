@@ -307,7 +307,7 @@ async function sbSyncAllKeuringItems(keuring) {
     if (!item.itemId) item.itemId = generateId();
     return _itemToRow(item, keuring.id, keuring.klantId);
   });
-  const { error } = await sb.from('keuring_items').insert(rows);
+  const { error } = await sb.from('keuring_items').upsert(rows, { onConflict: 'id' });
   if (error) console.error('sbSyncAllKeuringItems fout:', error);
 }
 
