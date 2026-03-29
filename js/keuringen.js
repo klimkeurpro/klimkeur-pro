@@ -5,7 +5,11 @@
 // Afgevoerde item-IDs opgehaald uit Supabase — gevuld in checkVorigeKeuring()
 let _afgevoerdeItemIds = new Set();
 
+// Zoekterm in keuringsdetail — bewaard zodat herrender na beoordeling de zoekterm niet kwijtraakt
+let _keuringItemZoek = '';
+
 function renderKeuringen(el) {
+  _keuringItemZoek = ''; // reset zoekterm bij teruggaan naar overzicht
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;" class="fade-in">
       <div class="search-box">
@@ -69,6 +73,81 @@ function filterKeuringenTable(q) {
   ) : store.keuringen;
   const tbody = document.getElementById('keuringenTableBody');
   if (tbody) tbody.innerHTML = renderKeuringenRows(filtered);
+}
+
+// ============================================================
+// ZOEKEN IN KEURINGSITEMS
+// Prioriteit: SN eindigt op zoekterm > SN bevat > rest
+// Slaat fabrjaar en datumvelden over
+// ============================================================
+function zoekKeuringItems(val) {
+  _keuringItemZoek = val.trim().toLowerCase();
+  filterKeuringItemsTable();
+}
+
+function filterKeuringItemsTable() {
+  const q = _keuringItemZoek;
+  const zoekInput = document.getElementById('keuringItemZoek');
+  if (zoekInput && zoekInput.value !== _keuringItemZoek) zoekInput.value = _keuringItemZoek;
+
+  const tbody = document.querySelector('.keuring-items-tbody');
+  if (!tbody) return;
+
+  const rijen = Array.from(tbody.querySelectorAll('tr[data-item-idx]'));
+  if (rijen.length === 0) return;
+
+  if (!q) {
+    rijen.forEach(r => r.style.display = '');
+    // Verwijder eventuele resultaatteller
+    const teller = document.getElementById('zoekResultaatTeller');
+    if (teller) teller.style.display = 'none';
+    return;
+  }
+
+  // Score per rij
+  const gescoord = rijen.map(rij => {
+    const sn        = (rij.dataset.sort_serienummer || '').toLowerCase();
+    const omschr    = (rij.dataset.sort_omschrijving || '').toLowerCase();
+    const merk      = (rij.dataset.sort_merk || '').toLowerCase();
+    const materiaal = (rij.dataset.sort_materiaal || '').toLowerCase();
+    const gebruiker = (rij.dataset.sort_gebruiker || '').toLowerCase();
+
+    // Prioriteitsscores — lager = hoger in de lijst
+    let score = 999;
+    if (sn === q)                  score = 0; // exacte SN match
+    else if (sn.endsWith(q))       score = 1; // SN eindigt op zoekterm (laatste 3-4 cijfers)
+    else if (sn.includes(q))       score = 2; // SN bevat zoekterm
+    else if (omschr.includes(q))   score = 3; // omschrijving
+    else if (merk.includes(q))     score = 4; // merk
+    else if (materiaal.includes(q)) score = 5; // materiaal
+    else if (gebruiker.includes(q)) score = 6; // gebruiker
+
+    return { rij, score, zichtbaar: score < 999 };
+  });
+
+  // Toon/verberg rijen
+  let aantalZichtbaar = 0;
+  gescoord.forEach(({ rij, zichtbaar }) => {
+    rij.style.display = zichtbaar ? '' : 'none';
+    if (zichtbaar) aantalZichtbaar++;
+  });
+
+  // Herorden zichtbare rijen op score
+  const zichtbareRijen = gescoord
+    .filter(g => g.zichtbaar)
+    .sort((a, b) => a.score - b.score);
+
+  zichtbareRijen.forEach(({ rij }) => tbody.appendChild(rij));
+
+  // Resultaatteller bijwerken
+  const teller = document.getElementById('zoekResultaatTeller');
+  if (teller) {
+    teller.textContent = aantalZichtbaar === 0
+      ? 'Geen resultaten'
+      : `${aantalZichtbaar} artikel${aantalZichtbaar !== 1 ? 'en' : ''}`;
+    teller.style.display = 'inline';
+    teller.style.color = aantalZichtbaar === 0 ? 'var(--danger)' : 'var(--text-muted)';
+  }
 }
 
 function openKeuringModal() {
@@ -218,7 +297,6 @@ function getAllKlantItems(klantId, inclAfgevoerd = false) {
   const seen = new Map();
   for (const keuring of keuringen) {
     for (const item of keuring.items) {
-      // Afgevoerde artikelen overslaan tenzij keurmeester dit expliciet wil
       if (!inclAfgevoerd) {
         if (item.afgevoerd === true) continue;
         if (item.itemId && _afgevoerdeItemIds.has(String(item.itemId))) continue;
@@ -272,7 +350,6 @@ async function checkVorigeKeuring() {
   const info = document.getElementById('vorigeKeuringInfo');
   if (!klantId || !box) { if(box) box.style.display='none'; return; }
 
-  // Haal afgevoerde item-IDs op uit Supabase
   try {
     const { data: afgevoerd } = await sb
       .from('keuring_items')
@@ -296,7 +373,6 @@ async function checkVorigeKeuring() {
     box.style.display = 'none';
   }
 
-  // Controleer aangemeld materiaal van de klant via Supabase
   const aangemeldBox = document.getElementById('aangemeldBox');
   const aangemeldInfo = document.getElementById('aangemeldInfo');
   if (!aangemeldBox) return;
@@ -336,7 +412,7 @@ function openKeuringDetail(id) {
   el.innerHTML = `
     <div class="fade-in">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
-        <button class="btn btn-sm" onclick="renderKeuringen(document.getElementById('pageContent'))">← Terug</button>
+        <button class="btn btn-sm" onclick="_keuringItemZoek='';renderKeuringen(document.getElementById('pageContent'))">← Terug</button>
         <h2 style="font-size:20px;">Keuring ${k.certificaatNr} — ${k.klantNaam}</h2>
         <button class="btn btn-sm" onclick="wijzigEigenaar('${id}')" title="Eigenaar aanpassen">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -482,8 +558,24 @@ function openKeuringDetail(id) {
 
       <div class="card">
         <div class="card-header">
-          <h3>Keuringsitems (${(k.items||[]).length})</h3>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:12px;flex:1;flex-wrap:wrap;">
+            <h3 style="white-space:nowrap;">Keuringsitems (${(k.items||[]).length})</h3>
+            <!-- Zoekveld — zoekt op SN (prioriteit), omschrijving, merk, materiaal, gebruiker -->
+            <div style="position:relative;flex:1;min-width:200px;max-width:360px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                style="position:absolute;left:9px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--text-muted);pointer-events:none;">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input type="text" id="keuringItemZoek"
+                value="${_keuringItemZoek}"
+                placeholder="Zoek op SN, naam, merk..."
+                oninput="zoekKeuringItems(this.value)"
+                onkeydown="if(event.key==='Escape'){zoekKeuringItems('');this.value='';}"
+                style="width:100%;padding:6px 10px 6px 30px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--bg-input);color:var(--text-primary);">
+            </div>
+            <span id="zoekResultaatTeller" style="font-size:12px;display:none;"></span>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
             ${!k.afgerond ? `<button class="btn btn-sm btn-primary" onclick="finishKeuring('${id}')">Afronden</button>` : ''}
             <button class="btn btn-sm" onclick="exportKeuringPDF('${id}')">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -626,6 +718,11 @@ function openKeuringDetail(id) {
 
   laadMerkMateriaalCache();
   buildGebruikerList(id);
+
+  // Zoekterm toepassen na render (bewaard van vorige beoordeling)
+  if (_keuringItemZoek) {
+    filterKeuringItemsTable();
+  }
 }
 
 function normalizeGebruiker(val) {
