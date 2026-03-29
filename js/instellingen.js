@@ -140,6 +140,25 @@ function renderInstellingen(el) {
         <div class="card-header"><h3>Database &amp; Backup</h3></div>
         <div class="card-body">
 
+<!-- PRODUCTEN -->
+          <div style="margin-bottom:24px;">
+            <h4 style="font-size:13px;font-weight:700;color:var(--sg-green);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;">Productendatabase</h4>
+            <p style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">
+              Exporteer de productendatabase als Excel om te bewerken in Excel.
+              Importeer het bestand daarna terug om de database bij te werken.
+            </p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+              <button class="btn btn-sm" onclick="exportProductenExcel()">↓ Excel downloaden (.xlsx)</button>
+            </div>
+            <label class="btn btn-sm" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              ↑ Excel importeren
+              <input type="file" accept=".xlsx,.xls,.csv" style="display:none;" onchange="importProductenExcel(this)">
+            </label>
+            <div style="margin-top:8px;font-size:11px;color:var(--text-muted);">Let op: importeren vervangt de volledige productendatabase (${store.products.length} producten).</div>
+          </div>
+
+          <div style="border-top:1px solid var(--border);margin-bottom:24px;"></div>
           <!-- HISTORISCHE CERTIFICATEN -->
           <div style="margin-bottom:24px;">
             <h4 style="font-size:13px;font-weight:700;color:var(--sg-green);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;">Historische certificaten importeren</h4>
