@@ -1,5 +1,8 @@
 'use strict';
-
+// HTML escape hulpfunctie
+function escB(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 // ============================================================
 // bedrijven.js — Platform-admin pagina voor bedrijvenbeheer
 // Alleen zichtbaar voor platform-admins (_isPlatformAdmin)
