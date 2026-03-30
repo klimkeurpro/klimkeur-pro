@@ -302,6 +302,7 @@ async function handleAuthState(session) {
 
     // Keurmeester gevonden — sla bedrijf_id alvast op
     _huidigBedrijfId = kmCheck.bedrijf_id;
+    await laadBranding(_huidigBedrijfId);
   } catch(err) {
     console.error('Beveiligingscheck fout:', err);
     // Bij een fout toch doorlaten (bijv. netwerkprobleem) —
