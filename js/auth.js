@@ -385,6 +385,13 @@ async function handleAuthState(session) {
   }
 
   // App starten
+    // Platform-admin nav-items tonen
+  if (_isPlatformAdmin) {
+    const navBedrijven = document.getElementById('navBedrijven');
+    const navSectie = document.getElementById('navSectieAdmin');
+    if (navBedrijven) navBedrijven.style.display = '';
+    if (navSectie) navSectie.style.display = '';
+  }
   verbergAuthOverlay(keurmeesterNaam);
   initTheme();
   navigateTo('dashboard');
