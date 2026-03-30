@@ -1,6 +1,27 @@
 // ============================================================
 // auth.js — inloggen, uitloggen, keurmeester koppelen, handleAuthState
 // ============================================================
+// Detecteer invite-link bij laden
+(function detecteerInvite() {
+  const hash = window.location.hash.substring(1);
+  const params = new URLSearchParams(hash);
+  if (params.get('token_hash') && params.get('type') === 'invite') {
+    // Verwerk de invite-token via Supabase
+    sb.auth.verifyOtp({
+      token_hash: params.get('token_hash'),
+      type: 'invite',
+    }).then(({ data, error }) => {
+      if (error) {
+        console.error('Invite verificatie fout:', error);
+        return;
+      }
+      // Toon wachtwoord-instellen scherm
+      toonResetScherm();
+      // Hash wissen
+      history.replaceState(null, '', window.location.pathname);
+    });
+  }
+})();
 
 async function authLogin() {
   const email    = document.getElementById('authEmail').value.trim();
@@ -400,9 +421,10 @@ async function handleAuthState(session) {
 
 // Start auth listener — dit is het enige startpunt
 sb.auth.onAuthStateChange((event, session) => {
-  if (event === 'PASSWORD_RECOVERY') {
+  if (event === 'PASSWORD_RECOVERY' || event === 'USER_UPDATED') {
     toonResetScherm();
     return;
   }
   handleAuthState(session);
 });
+
