@@ -326,13 +326,17 @@ async function nodigKeurmeesterUitVoorBedrijf(naam, email, bedrijfId, bedrijfNaa
 
     if (result.success || result.user_id) {
       // Keurmeester record aanmaken in de tabel
-      await sb.from('keurmeesters').upsert({
-        id: result.user_id || generateId(),
+     const { error: kmError } = await sb.from('keurmeesters').upsert({
+        id: generateId(),
         naam: naam || email,
         bedrijf: bedrijfNaam,
         bedrijf_id: bedrijfId,
-        auth_user_id: result.user_id || null,
+        auth_user_id: result.user_id,
       }, { onConflict: 'auth_user_id' });
+
+      if (kmError) {
+        toast('Account aangemaakt maar koppeling mislukt: ' + kmError.message, 'warning');
+      }
 
       if (statusEl) { statusEl.textContent = `✓ Uitnodiging verstuurd naar ${email}`; statusEl.style.color = 'var(--success)'; }
       toast(`Uitnodiging verstuurd naar ${email}`, 'success');
