@@ -330,7 +330,7 @@ async function nodigKeurmeesterUitVoorBedrijf(naam, email, bedrijfId, bedrijfNaa
     if (result.success || result.user_id) {
       // Keurmeester record aanmaken in de tabel
      const { error: kmError } = await sb.from('keurmeesters').upsert({
-        id: generateId(),
+        id: crypto.randomUUID(),
         naam: naam || email,
         bedrijf: bedrijfNaam,
         bedrijf_id: bedrijfId,
