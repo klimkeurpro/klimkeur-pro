@@ -69,8 +69,8 @@ async function laadBedrijvenLijst() {
 
           <!-- Info -->
           <div style="flex:1;min-width:0;">
-            <div style="font-weight:700;font-size:15px;">${esc(b.naam || '—')}</div>
-            <div style="font-size:12px;color:var(--text-secondary);margin-top:2px;">${esc(b.kvk || '')}${b.kvk && b.email ? ' · ' : ''}${esc(b.email || '')}</div>
+            <div style="font-weight:700;font-size:15px;">${escHtml(b.naam || '—')}</div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:2px;">${escHtml(b.kvk || '')}${b.kvk && b.email ? ' · ' : ''}${escHtml(b.email || '')}</div>
             <div style="display:flex;gap:6px;margin-top:6px;align-items:center;">
               <div style="width:14px;height:14px;border-radius:50%;background:${b.kleur_primair || '#5B9A2F'};border:1px solid var(--border);" title="Primaire kleur"></div>
               <div style="width:14px;height:14px;border-radius:50%;background:${b.kleur_primair_donker || '#3D7A1A'};border:1px solid var(--border);" title="Donkere kleur"></div>
@@ -135,28 +135,28 @@ function toonBedrijfModal(bedrijf) {
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Bedrijfsnaam <span style="color:var(--danger)">*</span></label>
-          <input class="form-input" id="bNaam" value="${esc(b.naam || '')}" placeholder="Naam van het keuringsbedrijf">
+          <input class="form-input" id="bNaam" value="${escHtml(b.naam || '')}" placeholder="Naam van het keuringsbedrijf">
         </div>
         <div class="form-group">
           <label class="form-label">KvK nummer</label>
-          <input class="form-input" id="bKvk" value="${esc(b.kvk || '')}" placeholder="12345678">
+          <input class="form-input" id="bKvk" value="${escHtml(b.kvk || '')}" placeholder="12345678">
         </div>
       </div>
 
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">E-mailadres</label>
-          <input class="form-input" id="bEmail" type="email" value="${esc(b.email || '')}" placeholder="info@bedrijf.nl">
+          <input class="form-input" id="bEmail" type="email" value="${escHtml(b.email || '')}" placeholder="info@bedrijf.nl">
         </div>
         <div class="form-group">
           <label class="form-label">Telefoon</label>
-          <input class="form-input" id="bTelefoon" value="${esc(b.telefoon || '')}" placeholder="+31 6 12345678">
+          <input class="form-input" id="bTelefoon" value="${escHtml(b.telefoon || '')}" placeholder="+31 6 12345678">
         </div>
       </div>
 
       <div class="form-group">
         <label class="form-label">Adres</label>
-        <input class="form-input" id="bAdres" value="${esc(b.adres || '')}" placeholder="Straat 1, 1234 AB Stad">
+        <input class="form-input" id="bAdres" value="${escHtml(b.adres || '')}" placeholder="Straat 1, 1234 AB Stad">
       </div>
 
       <div style="border-top:1px solid var(--border);padding-top:16px;">
@@ -188,7 +188,7 @@ function toonBedrijfModal(bedrijf) {
 
         <div class="form-group" style="margin-top:8px;">
           <label class="form-label">Logo URL</label>
-          <input class="form-input" id="bLogoUrl" value="${esc(b.logo_url || '')}" placeholder="https://... (directe link naar afbeelding)">
+          <input class="form-input" id="bLogoUrl" value="${escHtml(b.logo_url || '')}" placeholder="https://... (directe link naar afbeelding)">
           <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Gebruik een directe link naar een afbeelding (PNG of SVG aanbevolen)</div>
         </div>
       </div>
