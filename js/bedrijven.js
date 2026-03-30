@@ -240,6 +240,9 @@ async function laadKmLijstInModal(bedrijfId) {
           <div style="font-size:13px;font-weight:600;">${escB(km.naam || '—')}</div>
           <div style="font-size:11px;color:var(--text-muted);">${km.auth_user_id ? '✓ Account actief' : '⚠ Geen account'}</div>
         </div>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-sm" onclick="verwijderKmUitBedrijf('${escB(km.id)}')">Verwijder</button>
+        </div>
       </div>
     `).join('');
 
@@ -354,5 +357,29 @@ async function nodigKeurmeesterUitVoorBedrijf(naam, email, bedrijfId, bedrijfNaa
   } catch (err) {
     if (statusEl) { statusEl.textContent = 'Fout: ' + err.message; statusEl.style.color = 'var(--danger)'; }
     toast('Fout bij uitnodigen: ' + err.message, 'error');
+  }
+}
+// ============================================================
+// KEURMEESTER VERWIJDEREN UIT BEDRIJF
+// ============================================================
+async function verwijderKmUitBedrijf(kmId) {
+  if (!confirm('Keurmeester verwijderen? Het auth-account blijft bestaan.')) return;
+
+  try {
+    const { error } = await sb
+      .from('keurmeesters')
+      .delete()
+      .eq('id', kmId);
+
+    if (error) { toast('Fout bij verwijderen: ' + error.message, 'error'); return; }
+
+    toast('Keurmeester verwijderd', 'success');
+
+    // Lijst herladen — haal bedrijf_id op uit huidig modal
+    const bedrijfId = document.getElementById('bId')?.value;
+    if (bedrijfId) laadKmLijstInModal(bedrijfId);
+
+  } catch (err) {
+    toast('Fout: ' + err.message, 'error');
   }
 }
