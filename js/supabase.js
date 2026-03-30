@@ -50,7 +50,7 @@ function navigateTo(page) {
   });
   const titles = {
     dashboard: 'Dashboard', klanten: 'Klanten', keurmeesters: 'Keurmeesters', producten: 'Productdatabase',
-    keuringen: 'Keuringen', snzoeken: 'SN Zoeken', recall: 'Recall Zoeken', snref: 'SN Referentie', instellingen: 'Instellingen'
+    keuringen: 'Keuringen', snzoeken: 'SN Zoeken', recall: 'Recall Zoeken', snref: 'SN Referentie', instellingen: 'Instellingen', bedrijven: 'Bedrijven'
   };
   document.getElementById('pageTitle').textContent = titles[page] || page;
   renderPage();
@@ -68,6 +68,7 @@ function renderPage() {
     case 'recall': renderRecallZoeken(el); break;
     case 'snref': renderSNRef(el); break;
     case 'instellingen': renderInstellingen(el); break;
+    case 'bedrijven': renderBedrijven(el); break;
   }
 }
 
