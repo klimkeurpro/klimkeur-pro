@@ -75,27 +75,6 @@ async function laadBedrijvenLijst() {
           <div style="display:flex;gap:8px;flex-shrink:0;">
             <button class="btn btn-sm" onclick="openBedrijfBewerken('${escB(b.id)}')">Bewerken</button>
             <button class="btn btn-sm" style="color:var(--danger);border-color:var(--danger);" onclick="verwijderBedrijf('${escB(b.id)}','${escB(b.naam)}')">Verwijderen</button>
-// ============================================================
-// BEDRIJF VERWIJDEREN
-// ============================================================
-async function verwijderBedrijf(bedrijfId, bedrijfNaam) {
-  if (!confirm(`Bedrijf "${bedrijfNaam}" verwijderen?\n\nLet op: keurmeesters, klanten en keuringen van dit bedrijf blijven bestaan maar zijn niet meer gekoppeld.`)) return;
-
-  try {
-    const { error } = await sb
-      .from('bedrijven')
-      .delete()
-      .eq('id', bedrijfId);
-
-    if (error) { toast('Fout bij verwijderen: ' + error.message, 'error'); return; }
-
-    toast(`Bedrijf "${bedrijfNaam}" verwijderd`, 'success');
-    await laadBedrijvenLijst();
-
-  } catch (err) {
-    toast('Fout: ' + err.message, 'error');
-  }
-}
           </div>
         </div>
       </div>
@@ -302,7 +281,6 @@ async function slaaBedrijfOp(isNieuw) {
 
     if (error) { toast('Fout bij opslaan: ' + error.message, 'error'); return; }
 
-    // Keurmeester uitnodigen als email ingevuld
     const kmNaam  = document.getElementById('bKmNaam')?.value.trim();
     const kmEmail = document.getElementById('bKmEmail')?.value.trim();
 
@@ -350,8 +328,7 @@ async function nodigKeurmeesterUitVoorBedrijf(naam, email, bedrijfId, bedrijfNaa
     const result = await res.json();
 
     if (result.success || result.user_id) {
-      // Keurmeester record aanmaken in de tabel
-     const { error: kmError } = await sb.from('keurmeesters').upsert({
+      const { error: kmError } = await sb.from('keurmeesters').upsert({
         id: crypto.randomUUID(),
         naam: naam || email,
         bedrijf: bedrijfNaam,
@@ -365,7 +342,6 @@ async function nodigKeurmeesterUitVoorBedrijf(naam, email, bedrijfId, bedrijfNaa
 
       if (statusEl) { statusEl.textContent = `✓ Uitnodiging verstuurd naar ${email}`; statusEl.style.color = 'var(--success)'; }
       toast(`Uitnodiging verstuurd naar ${email}`, 'success');
-
       setTimeout(() => { closeModal(); laadBedrijvenLijst(); }, 1500);
 
     } else if (result.error?.includes('already')) {
@@ -381,6 +357,7 @@ async function nodigKeurmeesterUitVoorBedrijf(naam, email, bedrijfId, bedrijfNaa
     toast('Fout bij uitnodigen: ' + err.message, 'error');
   }
 }
+
 // ============================================================
 // KEURMEESTER VERWIJDEREN UIT BEDRIJF
 // ============================================================
@@ -396,10 +373,30 @@ async function verwijderKmUitBedrijf(kmId) {
     if (error) { toast('Fout bij verwijderen: ' + error.message, 'error'); return; }
 
     toast('Keurmeester verwijderd', 'success');
-
-    // Lijst herladen — haal bedrijf_id op uit huidig modal
     const bedrijfId = document.getElementById('bId')?.value;
     if (bedrijfId) laadKmLijstInModal(bedrijfId);
+
+  } catch (err) {
+    toast('Fout: ' + err.message, 'error');
+  }
+}
+
+// ============================================================
+// BEDRIJF VERWIJDEREN
+// ============================================================
+async function verwijderBedrijf(bedrijfId, bedrijfNaam) {
+  if (!confirm(`Bedrijf "${bedrijfNaam}" verwijderen?\n\nLet op: keurmeesters, klanten en keuringen van dit bedrijf blijven bestaan maar zijn niet meer gekoppeld.`)) return;
+
+  try {
+    const { error } = await sb
+      .from('bedrijven')
+      .delete()
+      .eq('id', bedrijfId);
+
+    if (error) { toast('Fout bij verwijderen: ' + error.message, 'error'); return; }
+
+    toast(`Bedrijf "${bedrijfNaam}" verwijderd`, 'success');
+    await laadBedrijvenLijst();
 
   } catch (err) {
     toast('Fout: ' + err.message, 'error');
