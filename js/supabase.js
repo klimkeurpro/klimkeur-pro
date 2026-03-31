@@ -21,25 +21,54 @@ function formatDate(d) {
   return dt.toLocaleDateString('nl-NL');
 }
 
+// ============================================================
+// BEDRIJFSINSTELLINGEN OPSLAAN
+// Schrijft store.settings terug naar de bedrijven tabel.
+// Roep aan vanuit instellingen.js bij elke opslaan-actie.
+// ============================================================
+async function sbSlaInstellingenOp(settings) {
+  if (!_huidigBedrijfId) {
+    console.warn('sbSlaInstellingenOp: geen bedrijf_id bekend, opslaan overgeslagen');
+    return;
+  }
 
+  const rij = {
+    id:               _huidigBedrijfId,
+    naam:             settings.bedrijfsnaam  || '',
+    kvk:              settings.kvk           || '',
+    adres:            settings.adres         || '',
+    telefoon:         settings.telefoon      || '',
+    email:            settings.email         || '',
+    logo_url:         settings.logo          || null,
+    handtekening:     settings.handtekening  || null,
+    cert_koptekst:    settings.certificaatTekst      || '',
+    cert_voettekst:   settings.certificaatTekstOnder || '',
+    cert_kolommen:    settings.certColumns
+                        ? JSON.stringify(settings.certColumns)
+                        : null,
+  };
 
+  try {
+    const { error } = await sb
+      .from('bedrijven')
+      .upsert(rij, { onConflict: 'id' });
 
+    if (error) {
+      console.error('sbSlaInstellingenOp fout:', error);
+      toast('Fout bij opslaan bedrijfsgegevens', 'error');
+      return;
+    }
 
+    // Houd _bedrijfInfo in sync zodat de rest van de app actueel blijft
+    if (_bedrijfInfo) Object.assign(_bedrijfInfo, rij);
 
+  } catch (err) {
+    console.error('sbSlaInstellingenOp onverwachte fout:', err);
+    toast('Fout bij opslaan bedrijfsgegevens', 'error');
+  }
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+// ============================================================
 
 function navigateTo(page) {
   // Sluit sidebar op mobiel bij navigeren
