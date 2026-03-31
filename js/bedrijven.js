@@ -74,6 +74,28 @@ async function laadBedrijvenLijst() {
           </div>
           <div style="display:flex;gap:8px;flex-shrink:0;">
             <button class="btn btn-sm" onclick="openBedrijfBewerken('${escB(b.id)}')">Bewerken</button>
+            <button class="btn btn-sm" style="color:var(--danger);border-color:var(--danger);" onclick="verwijderBedrijf('${escB(b.id)}','${escB(b.naam)}')">Verwijderen</button>
+// ============================================================
+// BEDRIJF VERWIJDEREN
+// ============================================================
+async function verwijderBedrijf(bedrijfId, bedrijfNaam) {
+  if (!confirm(`Bedrijf "${bedrijfNaam}" verwijderen?\n\nLet op: keurmeesters, klanten en keuringen van dit bedrijf blijven bestaan maar zijn niet meer gekoppeld.`)) return;
+
+  try {
+    const { error } = await sb
+      .from('bedrijven')
+      .delete()
+      .eq('id', bedrijfId);
+
+    if (error) { toast('Fout bij verwijderen: ' + error.message, 'error'); return; }
+
+    toast(`Bedrijf "${bedrijfNaam}" verwijderd`, 'success');
+    await laadBedrijvenLijst();
+
+  } catch (err) {
+    toast('Fout: ' + err.message, 'error');
+  }
+}
           </div>
         </div>
       </div>
