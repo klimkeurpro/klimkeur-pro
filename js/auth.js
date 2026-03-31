@@ -234,7 +234,8 @@ function pasInstellingenToe(bedrijf) {
       console.warn('cert_kolommen kon niet worden geparsed:', e);
     }
   }
-
+  const bnEl = document.getElementById('sidebarBedrijfNaam');
+  if (bnEl && bedrijf.naam) bnEl.textContent = bedrijf.naam;
   // Lokale store bijwerken zodat andere modules altijd actuele data lezen
   saveStore(store);
 }
