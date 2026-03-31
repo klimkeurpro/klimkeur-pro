@@ -89,17 +89,17 @@ function renderInstellingen(el) {
             <div style="display:flex;gap:16px;flex-wrap:wrap;">
               <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
                 <input type="checkbox" id="certColMateriaal" ${s.certColumns?.materiaal ? 'checked' : ''}
-                  onchange="store.settings.certColumns.materiaal=this.checked;saveStore(store);sbSaveSettings(store.settings).catch(console.error);toast('Opgeslagen');">
+                  onchange="store.settings.certColumns.materiaal=this.checked;saveStore(store);sbSlaInstellingenOp(store.settings).catch(console.error);toast('Opgeslagen');">
                 Materiaal
               </label>
               <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
                 <input type="checkbox" id="certColEnNorm" ${s.certColumns?.enNorm ? 'checked' : ''}
-                  onchange="store.settings.certColumns.enNorm=this.checked;saveStore(store);sbSaveSettings(store.settings).catch(console.error);toast('Opgeslagen');">
+                  onchange="store.settings.certColumns.enNorm=this.checked;saveStore(store);sbSlaInstellingenOp(store.settings).catch(console.error);toast('Opgeslagen');">
                 EN-norm
               </label>
               <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
                 <input type="checkbox" id="certColBreuksterkte" ${s.certColumns?.breuksterkte ? 'checked' : ''}
-                  onchange="store.settings.certColumns.breuksterkte=this.checked;saveStore(store);sbSaveSettings(store.settings).catch(console.error);toast('Opgeslagen');">
+                  onchange="store.settings.certColumns.breuksterkte=this.checked;saveStore(store);sbSlaInstellingenOp(store.settings).catch(console.error);toast('Opgeslagen');">
                 Breuksterkte
               </label>
             </div>
@@ -140,7 +140,7 @@ function renderInstellingen(el) {
         <div class="card-header"><h3>Database &amp; Backup</h3></div>
         <div class="card-body">
 
-<!-- PRODUCTEN -->
+          <!-- PRODUCTEN -->
           <div style="margin-bottom:24px;">
             <h4 style="font-size:13px;font-weight:700;color:var(--sg-green);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;">Productendatabase</h4>
             <p style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">
@@ -159,6 +159,7 @@ function renderInstellingen(el) {
           </div>
 
           <div style="border-top:1px solid var(--border);margin-bottom:24px;"></div>
+
           <!-- HISTORISCHE CERTIFICATEN -->
           <div style="margin-bottom:24px;">
             <h4 style="font-size:13px;font-weight:700;color:var(--sg-green);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;">Historische certificaten importeren</h4>
@@ -179,7 +180,7 @@ function renderInstellingen(el) {
 
           <div style="border-top:1px solid var(--border);margin-bottom:24px;"></div>
 
-          <!-- BACKUP — alleen download, geen import meer -->
+          <!-- BACKUP -->
           <div style="margin-bottom:24px;">
             <h4 style="font-size:13px;font-weight:700;color:var(--sg-green);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;">Noodkopie downloaden</h4>
             <p style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">
@@ -223,24 +224,23 @@ function switchSettingsTab(tab, section) {
   document.getElementById('settingsDatabase').style.display    = section==='database'   ? '' : 'none';
 }
 
-
 function saveSettings() {
   store.settings.bedrijfsnaam = document.getElementById('setBedrijf').value;
-  store.settings.kvk = document.getElementById('setKvk').value;
-  store.settings.adres = document.getElementById('setAdres').value;
-  store.settings.telefoon = document.getElementById('setTel').value;
-  store.settings.email = document.getElementById('setEmail').value;
-  store.settings.keurmeester = document.getElementById('setKeurmeester').value;
+  store.settings.kvk          = document.getElementById('setKvk').value;
+  store.settings.adres        = document.getElementById('setAdres').value;
+  store.settings.telefoon     = document.getElementById('setTel').value;
+  store.settings.email        = document.getElementById('setEmail').value;
+  store.settings.keurmeester  = document.getElementById('setKeurmeester').value;
   saveStore(store);
-  sbSaveSettings(store.settings).catch(console.error);
+  sbSlaInstellingenOp(store.settings).catch(console.error);
   toast('Instellingen opgeslagen');
 }
 
 function saveCertSettings() {
-  store.settings.certificaatTekst = document.getElementById('setCertTekst').value;
+  store.settings.certificaatTekst      = document.getElementById('setCertTekst').value;
   store.settings.certificaatTekstOnder = document.getElementById('setCertTekstOnder')?.value || '';
   saveStore(store);
-  sbSaveSettings(store.settings).catch(console.error);
+  sbSlaInstellingenOp(store.settings).catch(console.error);
   toast('Certificaat teksten opgeslagen');
 }
 
@@ -286,7 +286,6 @@ function openKeurmeesterModal(idx) {
       store.keurmeesters[i] = { naam, handtekening };
       if (oudeNaam === store.settings.keurmeester) {
         store.settings.keurmeester = naam;
-        sbSaveSettings(store.settings).catch(console.error);
         if (_currentUser) {
           sb.auth.updateUser({ data: { keurmeester_naam: naam } }).catch(console.error);
         }
@@ -341,7 +340,7 @@ async function verstuurKeurmeesterUitnodiging(naam, email, handtekening) {
 
     if (!res.ok) {
       if (statusEl) {
-        statusEl.textContent = result.error?.includes('already') 
+        statusEl.textContent = result.error?.includes('already')
           ? '⚠ Dit e-mailadres heeft al een account. De keurmeester kan direct inloggen.'
           : `Fout: ${result.error || 'Onbekende fout'}`;
         statusEl.style.color = result.error?.includes('already') ? 'var(--warning)' : 'var(--danger)';
@@ -395,7 +394,6 @@ async function verstuurKeurmeesterUitnodiging(naam, email, handtekening) {
     }
   }
 }
-
 
 function previewKmHandtekening(input) {
   const file = input.files[0];
@@ -482,7 +480,7 @@ function uploadImage(type, input) {
   reader.onload = (e) => {
     store.settings[type] = e.target.result;
     saveStore(store);
-    sbSaveSettings(store.settings).catch(console.error);
+    sbSlaInstellingenOp(store.settings).catch(console.error);
     toast(type === 'logo' ? 'Logo bijgewerkt' : 'Handtekening bijgewerkt');
     renderInstellingen(document.getElementById('pageContent'));
   };
