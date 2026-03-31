@@ -385,6 +385,10 @@ async function verwijderKmUitBedrijf(kmId) {
 // BEDRIJF VERWIJDEREN
 // ============================================================
 async function verwijderBedrijf(bedrijfId, bedrijfNaam) {
+  if (bedrijfId === _huidigBedrijfId) {
+    toast('Je kunt je eigen bedrijf niet verwijderen', 'error');
+    return;
+  }
   if (!confirm(`Bedrijf "${bedrijfNaam}" verwijderen?\n\nLet op: keurmeesters, klanten en keuringen van dit bedrijf blijven bestaan maar zijn niet meer gekoppeld.`)) return;
 
   try {
