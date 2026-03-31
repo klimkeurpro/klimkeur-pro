@@ -25,7 +25,7 @@ async function loadStoreFromSupabase() {
       sb.from('keuringen').select('*, keuring_items(*)').order('datum', { ascending: false }),
       sb.from('producten').select('*').order('omschrijving'),
       sb.from('afkeurcodes').select('*').order('code'),
-      sb.from('instellingen').select('*'),
+    sb.from('instellingen').select('*').eq('bedrijf_id', _huidigBedrijfId),
     ]);
 
     if (e1 || e2 || e3 || e4 || e5) {
@@ -142,33 +142,33 @@ function saveStore(store) {
 // ============================================================
 
 async function sbSaveSettings(settings) {
-  const { error } = await sb.from('instellingen').upsert(
-    { sleutel: 'settings', waarde: JSON.stringify(settings), bijgewerkt_op: new Date().toISOString() },
-    { onConflict: 'sleutel' }
+   const { error } = await sb.from('instellingen').upsert(
+    { sleutel: 'settings', waarde: JSON.stringify(settings), bijgewerkt_op: new Date().toISOString(), bedrijf_id: _huidigBedrijfId },
+    { onConflict: 'sleutel,bedrijf_id' }
   );
   if (error) console.error('sbSaveSettings fout:', error);
 }
 
 async function sbSaveSnData(snData) {
   const { error } = await sb.from('instellingen').upsert(
-    { sleutel: 'snData', waarde: JSON.stringify(snData), bijgewerkt_op: new Date().toISOString() },
-    { onConflict: 'sleutel' }
+ { sleutel: 'snData', waarde: JSON.stringify(snData), bijgewerkt_op: new Date().toISOString(), bedrijf_id: _huidigBedrijfId },
+{ onConflict: 'sleutel,bedrijf_id' }
   );
   if (error) console.error('sbSaveSnData fout:', error);
 }
 
 async function sbSaveKeurmeesters(keurmeesters) {
   const { error } = await sb.from('instellingen').upsert(
-    { sleutel: 'keurmeesters', waarde: JSON.stringify(keurmeesters), bijgewerkt_op: new Date().toISOString() },
-    { onConflict: 'sleutel' }
+  { sleutel: 'keurmeesters', waarde: JSON.stringify(keurmeesters), bijgewerkt_op: new Date().toISOString(), bedrijf_id: _huidigBedrijfId },
+{ onConflict: 'sleutel,bedrijf_id' }
   );
   if (error) console.error('sbSaveKeurmeesters fout:', error);
 }
 
 async function sbSaveAfkeurcodes(afkeurcodes) {
   const { error } = await sb.from('instellingen').upsert(
-    { sleutel: 'afkeurcodes', waarde: JSON.stringify(afkeurcodes), bijgewerkt_op: new Date().toISOString() },
-    { onConflict: 'sleutel' }
+  { sleutel: 'afkeurcodes', waarde: JSON.stringify(afkeurcodes), bijgewerkt_op: new Date().toISOString(), bedrijf_id: _huidigBedrijfId },
+{ onConflict: 'sleutel,bedrijf_id' }
   );
   if (error) console.error('sbSaveAfkeurcodes fout:', error);
 }
