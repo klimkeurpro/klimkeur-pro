@@ -211,6 +211,35 @@ function verbergAuthOverlay(keurmeesterNaam) {
 }
 
 /**
+ * pasInstellingenToe — vertaal bedrijven-record naar store.settings
+ * Wordt aangeroepen na het laden van _bedrijfInfo, zodat store.settings
+ * altijd de echte bedrijfsdata bevat en niet de hardcoded standaardwaarden.
+ */
+function pasInstellingenToe(bedrijf) {
+  if (!bedrijf || !store) return;
+
+  if (bedrijf.naam)           store.settings.bedrijfsnaam          = bedrijf.naam;
+  if (bedrijf.kvk)            store.settings.kvk                   = bedrijf.kvk;
+  if (bedrijf.adres)          store.settings.adres                 = bedrijf.adres;
+  if (bedrijf.telefoon)       store.settings.telefoon              = bedrijf.telefoon;
+  if (bedrijf.email)          store.settings.email                 = bedrijf.email;
+  if (bedrijf.logo_url)       store.settings.logo                  = bedrijf.logo_url;
+  if (bedrijf.handtekening)   store.settings.handtekening          = bedrijf.handtekening;
+  if (bedrijf.cert_koptekst)  store.settings.certificaatTekst      = bedrijf.cert_koptekst;
+  if (bedrijf.cert_voettekst) store.settings.certificaatTekstOnder = bedrijf.cert_voettekst;
+  if (bedrijf.cert_kolommen) {
+    try {
+      store.settings.certColumns = JSON.parse(bedrijf.cert_kolommen);
+    } catch(e) {
+      console.warn('cert_kolommen kon niet worden geparsed:', e);
+    }
+  }
+
+  // Lokale store bijwerken zodat andere modules altijd actuele data lezen
+  saveStore(store);
+}
+
+/**
  * Hoofd auth flow — wordt aangeroepen door onAuthStateChange
  */
 async function handleAuthState(session) {
@@ -306,18 +335,13 @@ async function handleAuthState(session) {
       console.warn('Geen keurmeester-record gevonden voor:', session.user.email);
       _appStarted = false;
       await sb.auth.signOut();
-      // Toon loginscherm met foutmelding
-      if (overlay) {
-        // Herstel loginscherm (handleAuthState wordt opnieuw aangeroepen door signOut)
-        // maar we tonen alvast de foutmelding
-        setTimeout(() => {
-          const errEl = document.getElementById('authError');
-          if (errEl) {
-            errEl.textContent = 'Geen toegang. Dit account is niet gekoppeld als keurmeester. Neem contact op met je beheerder.';
-            errEl.classList.add('visible');
-          }
-        }, 500);
-      }
+      setTimeout(() => {
+        const errEl = document.getElementById('authError');
+        if (errEl) {
+          errEl.textContent = 'Geen toegang. Dit account is niet gekoppeld als keurmeester. Neem contact op met je beheerder.';
+          errEl.classList.add('visible');
+        }
+      }, 500);
       return;
     }
 
@@ -376,7 +400,6 @@ async function handleAuthState(session) {
 
     // Stel in als actieve keurmeester
     store.settings.keurmeester = keurmeesterNaam;
-    await sbSaveSettings(store.settings).catch(console.error);
     saveStore(store);
 
     toast(`Welkom, ${keurmeesterNaam}!`);
@@ -393,21 +416,23 @@ async function handleAuthState(session) {
     console.error('Fout bij admin-check:', err);
   }
 
-  // Bedrijfsinfo laden
+  // Bedrijfsinfo laden en toepassen op store.settings
   if (_huidigBedrijfId) {
     try {
       const { data: bedrijf } = await sb.from('bedrijven')
         .select('*')
         .eq('id', _huidigBedrijfId)
         .maybeSingle();
-      if (bedrijf) _bedrijfInfo = bedrijf;
+      if (bedrijf) {
+        _bedrijfInfo = bedrijf;
+        pasInstellingenToe(bedrijf);  // ← store.settings vullen vanuit bedrijven tabel
+      }
     } catch(err) {
       console.error('Fout bij laden bedrijfsinfo:', err);
     }
   }
 
   // App starten
-    // Platform-admin nav-items tonen
   if (_isPlatformAdmin) {
     const navBedrijven = document.getElementById('navBedrijven');
     const navSectie = document.getElementById('navSectieAdmin');
@@ -427,4 +452,3 @@ sb.auth.onAuthStateChange((event, session) => {
   }
   handleAuthState(session);
 });
-
