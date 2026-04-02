@@ -104,35 +104,24 @@ function doRecallZoeken() {
   const results = [];
   for (const keuring of store.keuringen) {
     for (const item of (keuring.items || [])) {
-      // Filter: merk
       if (merk && (item.merk || '').toLowerCase() !== merk.toLowerCase()) continue;
-
-      // Filter: productnaam (deel van omschrijving)
       if (productQ && !(item.omschrijving || '').toLowerCase().includes(productQ)) continue;
-
-      // Filter: fabricage vóór datum
       if (voorJaar) {
         const ij = parseInt(item.fabrJaar);
-        if (!ij) continue; // skip items without fabricage jaar
+        if (!ij) continue;
         const im = parseInt(item.fabrMaand) || 0;
-
         if (voorMaand) {
-          // Vergelijk jaar+maand: item moet VOOR voorJaar/voorMaand zijn
-          const itemVal = ij * 100 + (im || 12); // als geen maand bekend, neem einde jaar
+          const itemVal = ij * 100 + (im || 12);
           const filterVal = voorJaar * 100 + voorMaand;
           if (itemVal >= filterVal) continue;
         } else {
-          // Alleen jaar: item fabricagejaar moet <= voorJaar zijn
           if (ij > voorJaar) continue;
         }
       }
-
-      // Filter: fabricage vanaf jaar (optioneel)
       if (vanafJaar) {
         const ij = parseInt(item.fabrJaar);
         if (!ij || ij < vanafJaar) continue;
       }
-
       results.push({
         omschrijving: item.omschrijving || '?',
         merk: item.merk || '',
@@ -184,7 +173,6 @@ function renderRecallResultaten() {
     return;
   }
 
-  // Sort
   results.sort((a, b) => {
     switch(col) {
       case 'omschrijving': return (a.omschrijving).localeCompare(b.omschrijving);
@@ -197,7 +185,6 @@ function renderRecallResultaten() {
     }
   });
 
-  // Unique klanten count
   const uniqKlanten = new Set(results.map(r => r.klantId || r.klantNaam));
 
   sortBar.style.display = 'block';
@@ -233,7 +220,7 @@ function renderRecallResultaten() {
               <td style="font-family:monospace;font-size:12px;">${r.serienummer || '—'}</td>
               <td style="font-weight:600;color:var(--warning);">${fabrStr}</td>
               <td style="font-size:12px;">${r.gebruiker || '—'}</td>
-              <td><a href="#" onclick="event.preventDefault();navigateTo('keuringen');setTimeout(()=>{const el=document.querySelector('[data-keuring-id=&quot;${r.keuringId}&quot;]');if(el)el.click();},100);" style="color:var(--sg-green);">${r.klantNaam}</a></td>
+              <td><a href="#" onclick="event.preventDefault();navigateTo('keuringen');setTimeout(()=>openKeuringDetail('${r.keuringId}'),100);" style="color:var(--sg-green);">${r.klantNaam}</a></td>
               <td style="font-size:12px;">${r.keuringDatum ? formatDate(r.keuringDatum) : '—'}</td>
               <td>${statusBadge}</td>
             </tr>`;
@@ -262,7 +249,8 @@ function exportRecallCSV() {
   toast('CSV geëxporteerd', 'success');
 }
 
-// SN ZOEKEN - zoek op serienummer door alle keuringen
+// ============================================================
+// SN ZOEKEN
 // ============================================================
 function renderSNZoeken(el) {
   el.innerHTML = `
@@ -296,7 +284,6 @@ function doSNZoeken(query) {
     return;
   }
 
-  // Search through all keuringen items
   const results = [];
   for (const keuring of store.keuringen) {
     for (const item of (keuring.items || [])) {
@@ -325,7 +312,6 @@ function doSNZoeken(query) {
     return;
   }
 
-  // Group by serienummer
   const grouped = {};
   for (const r of results) {
     const key = r.serienummer;
@@ -338,7 +324,6 @@ function doSNZoeken(query) {
       <strong>${results.length}</strong> resultaat${results.length!==1?'en':''} gevonden voor "${query}" in <strong>${Object.keys(grouped).length}</strong> uniek${Object.keys(grouped).length!==1?'e':''} serienummer${Object.keys(grouped).length!==1?'s':''}
     </div>
     ${Object.entries(grouped).map(([sn, items]) => {
-      // Sort by date newest first
       items.sort((a, b) => (b.keuringDatum||'').localeCompare(a.keuringDatum||''));
       const latest = items[0];
       const statusBadge = latest.status === 'goedgekeurd'
@@ -361,7 +346,6 @@ function doSNZoeken(query) {
                 <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Laatste keuring</div>
               </div>
             </div>
-
             <div style="background:var(--bg-input);border-radius:var(--radius);padding:12px;margin-top:8px;">
               <div style="font-size:11px;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;font-weight:600;">Keuringshistorie (${items.length})</div>
               ${items.map(r => `
@@ -378,7 +362,6 @@ function doSNZoeken(query) {
                 </div>
               `).join('')}
             </div>
-
             ${latest.gebruiker ? `<div style="font-size:12px;color:var(--text-muted);margin-top:8px;">Gebruiker: <strong>${latest.gebruiker}</strong></div>` : ''}
             ${latest.fabrJaar ? `<div style="font-size:12px;color:var(--text-muted);">Fabricage: ${latest.fabrJaar}${latest.fabrMaand ? ' — ' + MAANDEN[latest.fabrMaand] : ''}</div>` : ''}
           </div>
@@ -389,6 +372,8 @@ function doSNZoeken(query) {
 
 // ============================================================
 // SN REFERENTIE
+// Zichtbaar voor alle keurmeesters.
+// Bewerken / toevoegen / verwijderen: alleen platform-admins.
 // ============================================================
 function renderSNRef(el) {
   const snItems = store.snData || SN_DATA;
@@ -400,17 +385,21 @@ function renderSNRef(el) {
             Spiekbriefje voor het aflezen van serienummers per merk.
             <br><em style="font-size:12px;">Y=Jaar, M=Maand, D=Dag, W=Week, x=overig cijfer, #=letter</em>
           </p>
+          ${!_isPlatformAdmin ? `<p style="color:var(--text-muted);font-size:12px;margin-top:6px;">📖 Alleen lezen — wijzigingen via de platform-beheerder</p>` : ''}
         </div>
-        <button class="btn btn-primary" onclick="openSNModal()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Toevoegen
-        </button>
+        ${_isPlatformAdmin ? `
+          <button class="btn btn-primary" onclick="openSNModal()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Toevoegen
+          </button>
+        ` : ''}
       </div>
       <div class="sn-grid">
         ${snItems.map((s, i) => `
           <div class="sn-card">
             <div style="display:flex;justify-content:space-between;align-items:start;">
               <div class="sn-card-merk">${s.merk}</div>
+              ${_isPlatformAdmin ? `
               <div style="display:flex;gap:4px;">
                 <button class="btn-icon" title="Bewerken" onclick="openSNModal(${i})">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -419,6 +408,7 @@ function renderSNRef(el) {
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
               </div>
+              ` : ''}
             </div>
             <div class="sn-card-row">Voorbeeld: <span>${s.voorbeeld}</span></div>
             <div class="sn-card-row">Formaat: <span>${s.formaat}</span></div>
@@ -432,6 +422,7 @@ function renderSNRef(el) {
 }
 
 function openSNModal(idx) {
+  if (!_isPlatformAdmin) return; // extra beveiliging
   const snItems = store.snData || [];
   const s = idx !== undefined ? snItems[idx] : null;
   showModal(s ? 'SN Kaart Bewerken' : 'Nieuwe SN Kaart', `
@@ -462,12 +453,13 @@ function openSNModal(idx) {
       <input class="form-input" id="snOpmerking" value="${s?.opmerking || ''}" placeholder="Extra toelichting">
     </div>
   `, () => {
+    if (!_isPlatformAdmin) return;
     const i = parseInt(document.getElementById('snIdx').value);
     const data = {
-      merk: document.getElementById('snMerk').value,
+      merk:     document.getElementById('snMerk').value,
       voorbeeld: document.getElementById('snVoorbeeld').value,
-      formaat: document.getElementById('snFormaat').value,
-      link: document.getElementById('snLink').value,
+      formaat:  document.getElementById('snFormaat').value,
+      link:     document.getElementById('snLink').value,
       opmerking: document.getElementById('snOpmerking').value,
     };
     if (!data.merk) { toast('Vul een merknaam in', 'error'); return; }
@@ -483,6 +475,7 @@ function openSNModal(idx) {
 }
 
 function deleteSN(idx) {
+  if (!_isPlatformAdmin) return; // extra beveiliging
   if (!confirm('Weet je zeker dat je deze SN kaart wilt verwijderen?')) return;
   if (!store.snData) store.snData = JSON.parse(JSON.stringify(SN_DATA));
   store.snData.splice(idx, 1);
