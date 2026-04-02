@@ -167,7 +167,6 @@ function toonResetScherm() {
 /**
  * Naam afleiden uit email-adres
  * bijv. c.van.den.hoogen@safetygreen.nl  →  C. Van Den Hoogen
- *       erik.bottenheft@safetygreen.nl   →  Erik Bottenheft
  */
 function naamUitEmail(email) {
   const prefix = (email || '').split('@')[0];
@@ -175,28 +174,6 @@ function naamUitEmail(email) {
     .split(/[._-]/)
     .map(w => w.charAt(0).toUpperCase() + w.slice(1))
     .join(' ');
-}
-
-/**
- * Koppeling zoeken op basis van user metadata of email-match
- * Geeft { gevonden: bool, naam: string } terug
- */
-function zoekKoppeling(user) {
-  // 1. Eerder opgeslagen koppeling in user metadata
-  const metaNaam = user.user_metadata && user.user_metadata.keurmeester_naam;
-  if (metaNaam) return { gevonden: true, naam: metaNaam };
-
-  // 2. Probeer te matchen met een bestaande keurmeester op achternaam
-  const email = (user.email || '').toLowerCase();
-  const kms   = (store && store.keurmeesters) ? store.keurmeesters : [];
-  for (const km of kms) {
-    const achternaam = (km.naam || '').toLowerCase().split(' ').pop();
-    if (achternaam.length > 3 && email.includes(achternaam)) {
-      return { gevonden: true, naam: km.naam };
-    }
-  }
-
-  return { gevonden: false, naam: null };
 }
 
 /**
@@ -212,21 +189,24 @@ function verbergAuthOverlay(keurmeesterNaam) {
 
 /**
  * pasInstellingenToe — vertaal bedrijven-record naar store.settings
- * Wordt aangeroepen na het laden van _bedrijfInfo, zodat store.settings
- * altijd de echte bedrijfsdata bevat en niet de hardcoded standaardwaarden.
+ *
+ * Altijd alle velden overschrijven — ook als ze leeg zijn.
+ * Dit voorkomt dat Safety Green-data blijft hangen bij andere bedrijven
+ * die bepaalde velden nog niet hebben ingevuld.
  */
 function pasInstellingenToe(bedrijf) {
   if (!bedrijf || !store) return;
 
-  if (bedrijf.naam)           store.settings.bedrijfsnaam          = bedrijf.naam;
-  if (bedrijf.kvk)            store.settings.kvk                   = bedrijf.kvk;
-  if (bedrijf.adres)          store.settings.adres                 = bedrijf.adres;
-  if (bedrijf.telefoon)       store.settings.telefoon              = bedrijf.telefoon;
-  if (bedrijf.email)          store.settings.email                 = bedrijf.email;
-  if (bedrijf.logo_url)       store.settings.logo                  = bedrijf.logo_url;
-  if (bedrijf.handtekening)   store.settings.handtekening          = bedrijf.handtekening;
-  if (bedrijf.cert_koptekst)  store.settings.certificaatTekst      = bedrijf.cert_koptekst;
-  if (bedrijf.cert_voettekst) store.settings.certificaatTekstOnder = bedrijf.cert_voettekst;
+  store.settings.bedrijfsnaam          = bedrijf.naam            || '';
+  store.settings.kvk                   = bedrijf.kvk             || '';
+  store.settings.adres                 = bedrijf.adres           || '';
+  store.settings.telefoon              = bedrijf.telefoon        || '';
+  store.settings.email                 = bedrijf.email           || '';
+  store.settings.logo                  = bedrijf.logo_url        || null;
+  store.settings.handtekening          = bedrijf.handtekening    || null;
+  store.settings.certificaatTekst      = bedrijf.cert_koptekst   || '';
+  store.settings.certificaatTekstOnder = bedrijf.cert_voettekst  || '';
+
   if (bedrijf.cert_kolommen) {
     try {
       store.settings.certColumns = JSON.parse(bedrijf.cert_kolommen);
@@ -234,8 +214,10 @@ function pasInstellingenToe(bedrijf) {
       console.warn('cert_kolommen kon niet worden geparsed:', e);
     }
   }
+
   const bnEl = document.getElementById('sidebarBedrijfNaam');
-  if (bnEl && bedrijf.naam) bnEl.textContent = bedrijf.naam;
+  if (bnEl) bnEl.textContent = bedrijf.naam || '';
+
   // Lokale store bijwerken zodat andere modules altijd actuele data lezen
   saveStore(store);
 }
@@ -254,7 +236,6 @@ async function handleAuthState(session) {
     _isPlatformAdmin = false;
     _bedrijfInfo = null;
     if (overlay) {
-      // Herstel het loginscherm als de overlay overschreven was door de laadindicator
       if (!document.getElementById('authLogin')) {
         overlay.innerHTML = `
           <div class="auth-box fade-in" id="authLogin">
@@ -265,14 +246,14 @@ async function handleAuthState(session) {
               </svg>
               <div class="auth-logo-text">
                 <strong>KlimKeur Pro</strong>
-                <span>Safety Green B.V.</span>
+                <span>Keuringsbeheer</span>
               </div>
             </div>
             <div class="auth-title">Inloggen</div>
             <div class="auth-sub">Log in met je KlimKeur account om door te gaan.</div>
             <div class="auth-field">
               <label>E-mailadres</label>
-              <input type="email" id="authEmail" placeholder="naam@safetygreen.nl" autocomplete="email" onkeydown="if(event.key==='Enter')authLogin()">
+              <input type="email" id="authEmail" placeholder="naam@bedrijf.nl" autocomplete="email" onkeydown="if(event.key==='Enter')authLogin()">
             </div>
             <div class="auth-field">
               <label>Wachtwoord</label>
@@ -283,6 +264,7 @@ async function handleAuthState(session) {
               Inloggen
             </button>
             <div class="auth-error" id="authError"></div>
+            <div style="text-align:center;margin-top:12px;"><a href="#" onclick="authWachtwoordVergeten();return false;" style="color:var(--text-muted);font-size:12px;text-decoration:none;" onmouseover="this.style.color='var(--sg-green)'" onmouseout="this.style.color='var(--text-muted)'">Wachtwoord vergeten?</a></div>
           </div>
         `;
       }
@@ -301,8 +283,8 @@ async function handleAuthState(session) {
 
   // App al gestart (bijv. token refresh) — alleen sidebar bijwerken
   if (_appStarted) {
-    const koppeling = zoekKoppeling(_currentUser);
-    verbergAuthOverlay(koppeling.gevonden ? koppeling.naam : _currentUser.email);
+    const naam = _currentUser.user_metadata?.keurmeester_naam || _currentUser.email;
+    verbergAuthOverlay(naam);
     return;
   }
 
@@ -323,16 +305,18 @@ async function handleAuthState(session) {
 
   // ── BEVEILIGINGSCHECK ──
   // Controleer of deze gebruiker een geregistreerde keurmeester is
-  // met een geldig bedrijf_id. Zo niet → uitloggen en foutmelding tonen.
-  // Dit voorkomt dat klant-accounts toegang krijgen tot KlimKeur Pro.
+  // met een geldig bedrijf_id. Haal ook meteen de naam op — dit is
+  // de enige betrouwbare bron voor de keurmeester-naam.
+  let kmCheck = null;
   try {
-    const { data: kmCheck } = await sb.from('keurmeesters')
-      .select('bedrijf_id')
+    const { data } = await sb.from('keurmeesters')
+      .select('bedrijf_id, naam')
       .eq('auth_user_id', session.user.id)
       .maybeSingle();
 
+    kmCheck = data;
+
     if (!kmCheck || !kmCheck.bedrijf_id) {
-      // Geen keurmeester-record of geen bedrijf_id → geen toegang
       console.warn('Geen keurmeester-record gevonden voor:', session.user.email);
       _appStarted = false;
       await sb.auth.signOut();
@@ -346,16 +330,15 @@ async function handleAuthState(session) {
       return;
     }
 
-    // Keurmeester gevonden — sla bedrijf_id alvast op
     _huidigBedrijfId = kmCheck.bedrijf_id;
     await laadBranding(_huidigBedrijfId);
+
   } catch(err) {
     console.error('Beveiligingscheck fout:', err);
-    // Bij een fout toch doorlaten (bijv. netwerkprobleem) —
-    // de RLS policies in Supabase beschermen de data sowieso
+    // Bij een netwerkfout toch doorlaten — RLS beschermt de data
   }
 
-  // Store laden
+  // Store laden (gebruikt _huidigBedrijfId voor geïsoleerde cache)
   try {
     store = await initStore();
   } catch(err) {
@@ -371,38 +354,26 @@ async function handleAuthState(session) {
     return;
   }
 
-  // Keurmeester koppelen
-  let koppeling = zoekKoppeling(_currentUser);
-  let keurmeesterNaam;
+  // ── KEURMEESTER NAAM ──
+  // Altijd uit de keurmeesters-tabel halen — nooit uit localStorage-cache
+  // of uit een email-afleiding. Dit garandeert dat elke keurmeester
+  // zijn eigen naam ziet, ook bij een nieuw bedrijf.
+  const keurmeesterNaam = (kmCheck && kmCheck.naam)
+    ? kmCheck.naam
+    : naamUitEmail(_currentUser.email);
 
-  if (koppeling.gevonden) {
-    keurmeesterNaam = koppeling.naam;
-    // Zorg dat de actieve keurmeester klopt
-    if (store.settings.keurmeester !== keurmeesterNaam) {
-      store.settings.keurmeester = keurmeesterNaam;
-      saveStore(store);
-    }
-  } else {
-    // Keurmeester staat in de database (beveiligingscheck hierboven is geslaagd)
-    // maar is nog niet gekoppeld in de lokale store. Koppel nu.
-    keurmeesterNaam = naamUitEmail(_currentUser.email);
+  store.settings.keurmeester = keurmeesterNaam;
+  saveStore(store);
 
-    if (!store.keurmeesters) store.keurmeesters = [];
-    const bestaatAl = store.keurmeesters.some(
-      k => k.naam.toLowerCase() === keurmeesterNaam.toLowerCase()
-    );
-    if (!bestaatAl) {
-      store.keurmeesters.push({ naam: keurmeesterNaam, handtekening: '' });
-      await sbSaveKeurmeesters(store.keurmeesters).catch(console.error);
-    }
+  // Sla naam op in user metadata als cache voor snellere toekomstige logins
+  // (alleen als het nog niet overeenkomt om onnodige DB-schrijfacties te voorkomen)
+  const bestaandeMeta = _currentUser.user_metadata?.keurmeester_naam;
+  if (bestaandeMeta !== keurmeesterNaam) {
+    sb.auth.updateUser({ data: { keurmeester_naam: keurmeesterNaam } }).catch(console.error);
+  }
 
-    // Sla koppeling op in Supabase user metadata
-    await sb.auth.updateUser({ data: { keurmeester_naam: keurmeesterNaam } });
-
-    // Stel in als actieve keurmeester
-    store.settings.keurmeester = keurmeesterNaam;
-    saveStore(store);
-
+  // Welkomstmelding bij eerste keer inloggen (geen metadata aanwezig)
+  if (!bestaandeMeta) {
     toast(`Welkom, ${keurmeesterNaam}!`);
   }
 
@@ -418,6 +389,8 @@ async function handleAuthState(session) {
   }
 
   // Bedrijfsinfo laden en toepassen op store.settings
+  // pasInstellingenToe overschrijft ALLE velden — ook lege —
+  // zodat geen Safety Green-data overblijft bij andere bedrijven
   if (_huidigBedrijfId) {
     try {
       const { data: bedrijf } = await sb.from('bedrijven')
@@ -426,20 +399,21 @@ async function handleAuthState(session) {
         .maybeSingle();
       if (bedrijf) {
         _bedrijfInfo = bedrijf;
-        pasInstellingenToe(bedrijf);  // ← store.settings vullen vanuit bedrijven tabel
+        pasInstellingenToe(bedrijf);
       }
     } catch(err) {
       console.error('Fout bij laden bedrijfsinfo:', err);
     }
   }
 
-  // App starten
+  // Admin-navigatie tonen
   if (_isPlatformAdmin) {
     const navBedrijven = document.getElementById('navBedrijven');
     const navSectie = document.getElementById('navSectieAdmin');
     if (navBedrijven) navBedrijven.style.display = '';
     if (navSectie) navSectie.style.display = '';
   }
+
   verbergAuthOverlay(keurmeesterNaam);
   initTheme();
   navigateTo('dashboard');
