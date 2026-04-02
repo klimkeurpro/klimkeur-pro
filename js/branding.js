@@ -29,11 +29,18 @@ async function laadBranding(bedrijfId) {
     }
 
     pasKleurenToe(data);
-
-    if (data.logo_url) {
-      const logo = document.querySelector('.sidebar-logo img');
-      if (logo) logo.src = data.logo_url;
-    }
+const logo = document.querySelector('.sidebar-logo img');
+if (logo) {
+  if (data.logo_url) {
+    logo.src = data.logo_url;
+    logo.style.display = 'block';
+  } else {
+    logo.src = '';
+    logo.style.display = 'none';
+  }
+}
+  
+    
 
     if (data.naam) {
       const headerSub = document.querySelector('.sidebar-logo span');
