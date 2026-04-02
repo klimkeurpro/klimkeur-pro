@@ -17,7 +17,7 @@ function generateCertPDF(k, items, subtitle) {
   const contentW = pageW - margin * 2;
   let y = margin;
 
-  const brandColor = [91, 154, 47];
+  function hexNaarRgb(hex) {   const r = parseInt((hex||'').slice(1,3),16);   const g = parseInt((hex||'').slice(3,5),16);   const b = parseInt((hex||'').slice(5,7),16);   return (isNaN(r)||isNaN(g)||isNaN(b)) ? [91,154,47] : [r,g,b]; } const brandColor = hexNaarRgb(_bedrijfInfo?.kleur_primair || store.settings.kleurPrimair);
   const textDark   = [30, 30, 30];
   const textGray   = [100, 100, 100];
   const lineColor  = [200, 200, 200];
