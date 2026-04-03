@@ -426,7 +426,7 @@ async function handleAuthState(session) {
 
 // Start auth listener — dit is het enige startpunt
 sb.auth.onAuthStateChange((event, session) => {
-  if (event === 'PASSWORD_RECOVERY' || event === 'USER_UPDATED') {
+  if (event === 'PASSWORD_RECOVERY')  {
     toonResetScherm();
     return;
   }
