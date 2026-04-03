@@ -46,17 +46,17 @@ async function loadStoreFromSupabase() {
       { data: afkeurcodes,  error: e4 },
       { data: keurmeesters, error: e5 },
     ] = await Promise.all([
-      sb.from('klanten').select('*').order('aangemaakt_op', { ascending: true }),
-      sb.from('keuringen').select('*, keuring_items(*)').order('datum', { ascending: false }),
-      sb.from('producten').select('*').order('omschrijving'),
+      sb.from('klanten').select('*').eq('bedrijf_id', _huidigBedrijfId).order('aangemaakt_op', { ascending: true }),
+      sb.from('keuringen').select('*, keuring_items(*)').eq('bedrijf_id', _huidigBedrijfId).order('datum', { ascending: false }),
+      sb.from('producten').select('*').eq('bedrijf_id', _huidigBedrijfId).order('omschrijving'),
       // Gefilterd op bedrijf_id zodat afkeurcodes van andere bedrijven
       // nooit in de verkeerde store terechtkomen
       sb.from('afkeurcodes').select('*').eq('bedrijf_id', _huidigBedrijfId).order('code'),
       sb.from('keurmeesters').select('naam, handtekening, email').eq('bedrijf_id', _huidigBedrijfId),
     ]);
 
-    if (e1 || e2 || e3 || e4) {
-      const err = e1 || e2 || e3 || e4;
+    if (e1 || e2 || e3 || e4 || e5) {
+      const err = e1 || e2 || e3 || e4 || e5;
       console.error('Supabase laad-fout:', err);
       throw err;
     }
@@ -181,11 +181,8 @@ async function sbSaveSnData(snData) {
 }
 
 async function sbSaveKeurmeesters(keurmeesters) {
-  const { error } = await sb.from('instellingen').upsert(
-    { sleutel: 'keurmeesters', waarde: JSON.stringify(keurmeesters), bijgewerkt_op: new Date().toISOString(), bedrijf_id: _huidigBedrijfId },
-    { onConflict: 'sleutel,bedrijf_id' }
-  );
-  if (error) console.error('sbSaveKeurmeesters fout:', error);
+  // Uitgefaseerd — keurmeesters worden nu rechtstreeks in de keurmeesters tabel beheerd
+  // Deze functie blijft bestaan zodat bestaande aanroepen niet crashen
 }
 
 async function sbSaveAfkeurcodes(afkeurcodes) {
