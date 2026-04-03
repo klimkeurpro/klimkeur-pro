@@ -1,23 +1,41 @@
 // ============================================================
 // auth.js — inloggen, uitloggen, keurmeester koppelen, handleAuthState
 // ============================================================
-// Detecteer invite-link bij laden
+
+// ============================================================
+// INVITE DETECTIE
+// Supabase stuurt de invite-token soms als query-parameter
+// (?token_hash=...) en soms als hash-fragment (#token_hash=...).
+// We controleren beide zodat de link altijd werkt.
+// ============================================================
 (function detecteerInvite() {
-  const hash = window.location.hash.substring(1);
-  const params = new URLSearchParams(hash);
-  if (params.get('token_hash') && params.get('type') === 'invite') {
-    // Verwerk de invite-token via Supabase
+  const hashParams  = new URLSearchParams(window.location.hash.substring(1));
+  const queryParams = new URLSearchParams(window.location.search);
+
+  const token_hash = queryParams.get('token_hash') || hashParams.get('token_hash');
+  const type       = queryParams.get('type')       || hashParams.get('type');
+
+  if (token_hash && type === 'invite') {
+    console.log('Invite-link gedetecteerd, token verifiëren...');
+
     sb.auth.verifyOtp({
-      token_hash: params.get('token_hash'),
+      token_hash,
       type: 'invite',
     }).then(({ data, error }) => {
       if (error) {
         console.error('Invite verificatie fout:', error);
+        setTimeout(() => {
+          const errEl = document.getElementById('authError');
+          if (errEl) {
+            errEl.textContent = 'Activatielink is verlopen of al gebruikt. Vraag een nieuwe aan bij je beheerder.';
+            errEl.classList.add('visible');
+          }
+        }, 300);
         return;
       }
-      // Toon wachtwoord-instellen scherm
+      // Succes — toon wachtwoord-instellen scherm
       toonResetScherm();
-      // Hash wissen
+      // URL opschonen zodat de token niet hergebruikt wordt
       history.replaceState(null, '', window.location.pathname);
     });
   }
@@ -64,9 +82,7 @@ async function authLogout() {
   if (!confirm('Wil je uitloggen?')) return;
   _appStarted = false;
   await sb.auth.signOut();
-  // onAuthStateChange toont het loginscherm
 }
-
 
 /**
  * authWachtwoordVergeten — stuur resetmail naar keurmeester
@@ -126,7 +142,7 @@ async function authNieuwWachtwoord() {
   const { error } = await sb.auth.updateUser({ password: ww1 });
 
   btn.disabled = false;
-  btn.textContent = 'Wachtwoord instellen';
+  btn.textContent = 'Account activeren';
 
   if (error) {
     errEl.textContent = 'Fout: ' + error.message;
@@ -134,7 +150,7 @@ async function authNieuwWachtwoord() {
   } else {
     const resetOverlay = document.getElementById('authResetOverlay');
     if (resetOverlay) resetOverlay.remove();
-    toast('Wachtwoord succesvol ingesteld!');
+    toast('Wachtwoord succesvol ingesteld! Je wordt ingelogd...');
   }
 }
 
@@ -150,23 +166,26 @@ function toonResetScherm() {
   overlay.innerHTML = '<div class="auth-box fade-in">' +
     '<div class="auth-logo">' +
     '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--sg-green)" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>' +
-    '<div class="auth-logo-text"><strong>KlimKeur Pro</strong><span>Nieuw wachtwoord</span></div>' +
+    '<div class="auth-logo-text"><strong>KlimKeur Pro</strong><span>Account activeren</span></div>' +
     '</div>' +
     '<div class="auth-title">Wachtwoord instellen</div>' +
-    '<div class="auth-sub">Kies een nieuw wachtwoord voor je account.</div>' +
+    '<div class="auth-sub">Kies een wachtwoord om je account te activeren.</div>' +
     '<div class="auth-field"><label>Nieuw wachtwoord</label>' +
     '<input type="password" id="authNieuwWw" placeholder="Minimaal 6 tekens" autocomplete="new-password"></div>' +
     '<div class="auth-field"><label>Herhaal wachtwoord</label>' +
     '<input type="password" id="authNieuwWw2" placeholder="Herhaal wachtwoord" autocomplete="new-password"></div>' +
-    '<button class="auth-btn" id="authResetBtn" onclick="authNieuwWachtwoord()">Wachtwoord instellen</button>' +
+    '<button class="auth-btn" id="authResetBtn" onclick="authNieuwWachtwoord()">Account activeren</button>' +
     '<div class="auth-error" id="authResetError"></div>' +
     '</div>';
   document.body.appendChild(overlay);
+  setTimeout(() => {
+    const ww1 = document.getElementById('authNieuwWw');
+    if (ww1) ww1.focus();
+  }, 100);
 }
 
 /**
  * Naam afleiden uit email-adres
- * bijv. c.van.den.hoogen@safetygreen.nl  →  C. Van Den Hoogen
  */
 function naamUitEmail(email) {
   const prefix = (email || '').split('@')[0];
@@ -190,9 +209,8 @@ function verbergAuthOverlay(keurmeesterNaam) {
 /**
  * pasInstellingenToe — vertaal bedrijven-record naar store.settings
  *
- * Altijd alle velden overschrijven — ook als ze leeg zijn.
- * Dit voorkomt dat Safety Green-data blijft hangen bij andere bedrijven
- * die bepaalde velden nog niet hebben ingevuld.
+ * Altijd ALLE velden overschrijven — ook lege waarden.
+ * Dit voorkomt dat Safety Green-data blijft hangen bij andere bedrijven.
  */
 function pasInstellingenToe(bedrijf) {
   if (!bedrijf || !store) return;
@@ -218,7 +236,6 @@ function pasInstellingenToe(bedrijf) {
   const bnEl = document.getElementById('sidebarBedrijfNaam');
   if (bnEl) bnEl.textContent = bedrijf.naam || '';
 
-  // Lokale store bijwerken zodat andere modules altijd actuele data lezen
   saveStore(store);
 }
 
@@ -229,12 +246,12 @@ async function handleAuthState(session) {
   const overlay = document.getElementById('authOverlay');
 
   if (!session) {
-    // Niet ingelogd: toon loginscherm
-    _currentUser = null;
-    _appStarted  = false;
+    _currentUser     = null;
+    _appStarted      = false;
     _huidigBedrijfId = null;
     _isPlatformAdmin = false;
-    _bedrijfInfo = null;
+    _bedrijfInfo     = null;
+
     if (overlay) {
       if (!document.getElementById('authLogin')) {
         overlay.innerHTML = `
@@ -264,13 +281,13 @@ async function handleAuthState(session) {
               Inloggen
             </button>
             <div class="auth-error" id="authError"></div>
-            <div style="text-align:center;margin-top:12px;"><a href="#" onclick="authWachtwoordVergeten();return false;" style="color:var(--text-muted);font-size:12px;text-decoration:none;" onmouseover="this.style.color='var(--sg-green)'" onmouseout="this.style.color='var(--text-muted)'">Wachtwoord vergeten?</a></div>
+            <div style="text-align:center;margin-top:12px;">
+              <a href="#" onclick="authWachtwoordVergeten();return false;" style="color:var(--text-muted);font-size:12px;text-decoration:none;" onmouseover="this.style.color='var(--sg-green)'" onmouseout="this.style.color='var(--text-muted)'">Wachtwoord vergeten?</a>
+            </div>
           </div>
         `;
       }
       overlay.style.display = 'flex';
-      const loginEl = document.getElementById('authLogin');
-      if (loginEl) loginEl.style.display = 'block';
       const errorEl = document.getElementById('authError');
       if (errorEl) errorEl.classList.remove('visible');
       const pwEl = document.getElementById('authPassword');
@@ -290,23 +307,20 @@ async function handleAuthState(session) {
 
   _appStarted = true;
 
-  // Laad-indicator tonen
+  // Laad-indicator
   if (overlay) {
     overlay.innerHTML = `
       <div style="display:flex;flex-direction:column;align-items:center;gap:16px;">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--sg-green)" stroke-width="2" style="animation:spin 1s linear infinite">
           <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
         </svg>
-        <div style="color:var(--text-secondary);font-size:14px;">Data laden uit Supabase...</div>
+        <div style="color:var(--text-secondary);font-size:14px;">Data laden...</div>
         <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
       </div>
     `;
   }
 
-  // ── BEVEILIGINGSCHECK ──
-  // Controleer of deze gebruiker een geregistreerde keurmeester is
-  // met een geldig bedrijf_id. Haal ook meteen de naam op — dit is
-  // de enige betrouwbare bron voor de keurmeester-naam.
+  // ── BEVEILIGINGSCHECK + NAAM UIT DATABASE ──
   let kmCheck = null;
   try {
     const { data } = await sb.from('keurmeesters')
@@ -335,10 +349,9 @@ async function handleAuthState(session) {
 
   } catch(err) {
     console.error('Beveiligingscheck fout:', err);
-    // Bij een netwerkfout toch doorlaten — RLS beschermt de data
   }
 
-  // Store laden (gebruikt _huidigBedrijfId voor geïsoleerde cache)
+  // Store laden
   try {
     store = await initStore();
   } catch(err) {
@@ -354,10 +367,7 @@ async function handleAuthState(session) {
     return;
   }
 
-  // ── KEURMEESTER NAAM ──
-  // Altijd uit de keurmeesters-tabel halen — nooit uit localStorage-cache
-  // of uit een email-afleiding. Dit garandeert dat elke keurmeester
-  // zijn eigen naam ziet, ook bij een nieuw bedrijf.
+  // ── KEURMEESTER NAAM — altijd uit de database, nooit uit cache ──
   const keurmeesterNaam = (kmCheck && kmCheck.naam)
     ? kmCheck.naam
     : naamUitEmail(_currentUser.email);
@@ -365,19 +375,16 @@ async function handleAuthState(session) {
   store.settings.keurmeester = keurmeesterNaam;
   saveStore(store);
 
-  // Sla naam op in user metadata als cache voor snellere toekomstige logins
-  // (alleen als het nog niet overeenkomt om onnodige DB-schrijfacties te voorkomen)
   const bestaandeMeta = _currentUser.user_metadata?.keurmeester_naam;
   if (bestaandeMeta !== keurmeesterNaam) {
     sb.auth.updateUser({ data: { keurmeester_naam: keurmeesterNaam } }).catch(console.error);
   }
 
-  // Welkomstmelding bij eerste keer inloggen (geen metadata aanwezig)
   if (!bestaandeMeta) {
     toast(`Welkom, ${keurmeesterNaam}!`);
   }
 
-  // Admin-status laden
+  // Admin-status
   try {
     const { data: adminCheck } = await sb.from('platform_admins')
       .select('auth_user_id')
@@ -388,9 +395,7 @@ async function handleAuthState(session) {
     console.error('Fout bij admin-check:', err);
   }
 
-  // Bedrijfsinfo laden en toepassen op store.settings
-  // pasInstellingenToe overschrijft ALLE velden — ook lege —
-  // zodat geen Safety Green-data overblijft bij andere bedrijven
+  // Bedrijfsinfo laden — ALLE velden overschreven via pasInstellingenToe
   if (_huidigBedrijfId) {
     try {
       const { data: bedrijf } = await sb.from('bedrijven')
@@ -409,9 +414,9 @@ async function handleAuthState(session) {
   // Admin-navigatie tonen
   if (_isPlatformAdmin) {
     const navBedrijven = document.getElementById('navBedrijven');
-    const navSectie = document.getElementById('navSectieAdmin');
+    const navSectie    = document.getElementById('navSectieAdmin');
     if (navBedrijven) navBedrijven.style.display = '';
-    if (navSectie) navSectie.style.display = '';
+    if (navSectie)    navSectie.style.display    = '';
   }
 
   verbergAuthOverlay(keurmeesterNaam);
