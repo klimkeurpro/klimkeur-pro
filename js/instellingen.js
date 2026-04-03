@@ -1,5 +1,9 @@
 // ============================================================
 // instellingen.js — instellingen pagina, keurmeesters, afkeurcodes, branding
+//
+// Keurmeesters worden rechtstreeks beheerd in de keurmeesters
+// tabel in Supabase. De oude JSON-blob in de instellingen tabel
+// wordt niet meer gebruikt (sbSaveKeurmeesters is uitgefaseerd).
 // ============================================================
 
 function renderInstellingen(el) {
@@ -395,7 +399,7 @@ function uploadImage(type, input) {
 }
 
 // ============================================================
-// KEURMEESTER MODAL
+// KEURMEESTER MODAL — schrijft rechtstreeks naar de keurmeesters tabel
 // ============================================================
 function openKeurmeesterModal(idx) {
   const km = idx !== undefined ? (store.keurmeesters||[])[idx] : null;
@@ -423,37 +427,66 @@ function openKeurmeesterModal(idx) {
     const i = parseInt(document.getElementById('kmIdx').value);
     const naam = document.getElementById('kmNaam').value.trim();
     if (!naam) { toast('Vul een naam in', 'error'); return; }
-    if (!store.keurmeesters) store.keurmeesters = [];
 
     if (i >= 0) {
-      // Naam bijwerken
-      const oudeNaam = store.keurmeesters[i].naam;
-      store.keurmeesters[i].naam = naam;
-      if (oudeNaam === store.settings.keurmeester) {
-        store.settings.keurmeester = naam;
-        if (_currentUser) {
-          sb.auth.updateUser({ data: { keurmeester_naam: naam } }).catch(console.error);
-        }
-        const nm = document.getElementById('sidebarUserNaam');
-        if (nm) nm.textContent = naam;
-      }
-      saveStore(store);
-      sbSaveKeurmeesters(store.keurmeesters).catch(console.error);
-      closeModal();
-      toast('Keurmeester bijgewerkt');
-      navigateTo('keurmeesters');
+      // ── BEWERKEN — schrijf naar keurmeesters tabel ──
+      bewerkKeurmeester(i, naam);
     } else {
+      // ── NIEUW — uitnodiging versturen ──
       const email = document.getElementById('kmEmail')?.value?.trim();
       if (!email) { toast('Vul een e-mailadres in', 'error'); return; }
-      if (store.keurmeesters.some(k => k.naam === naam)) { toast('Keurmeester bestaat al', 'error'); return; }
+      if ((store.keurmeesters||[]).some(k => k.naam === naam)) { toast('Keurmeester bestaat al', 'error'); return; }
       verstuurKeurmeesterUitnodiging(naam, email);
     }
   });
 }
 
-/**
- * verstuurKeurmeesterUitnodiging
- */
+// ============================================================
+// KEURMEESTER BEWERKEN — rechtstreeks in de database
+// ============================================================
+async function bewerkKeurmeester(idx, nieuweNaam) {
+  const km = (store.keurmeesters||[])[idx];
+  if (!km || !km._id) {
+    toast('Kan keurmeester niet bijwerken — geen database ID', 'error');
+    return;
+  }
+
+  try {
+    const { error } = await sb
+      .from('keurmeesters')
+      .update({ naam: nieuweNaam })
+      .eq('id', km._id);
+
+    if (error) throw error;
+
+    // Lokale store bijwerken
+    const oudeNaam = km.naam;
+    km.naam = nieuweNaam;
+
+    // Als dit de actieve keurmeester is, ook settings bijwerken
+    if (oudeNaam === store.settings.keurmeester) {
+      store.settings.keurmeester = nieuweNaam;
+      if (_currentUser) {
+        sb.auth.updateUser({ data: { keurmeester_naam: nieuweNaam } }).catch(console.error);
+      }
+      const nm = document.getElementById('sidebarUserNaam');
+      if (nm) nm.textContent = nieuweNaam;
+    }
+
+    saveStore(store);
+    closeModal();
+    toast('Keurmeester bijgewerkt');
+    navigateTo('keurmeesters');
+
+  } catch(err) {
+    console.error('Keurmeester bewerken fout:', err);
+    toast('Fout bij bijwerken keurmeester', 'error');
+  }
+}
+
+// ============================================================
+// KEURMEESTER UITNODIGEN — maakt account aan en voegt toe aan tabel
+// ============================================================
 async function verstuurKeurmeesterUitnodiging(naam, email) {
   const statusEl = document.getElementById('kmUitnodigingStatus');
   if (statusEl) {
@@ -483,20 +516,33 @@ async function verstuurKeurmeesterUitnodiging(naam, email) {
 
     const result = await res.json();
 
-    if (!store.keurmeesters) store.keurmeesters = [];
-    store.keurmeesters.push({ naam, handtekening: null, email });
-    saveStore(store);
-    sbSaveKeurmeesters(store.keurmeesters).catch(console.error);
-
+    // Schrijf naar keurmeesters tabel met correct UUID
     if (result.user_id) {
-      await sb.from('keurmeesters').upsert({
-        id:        generateId(),
+      const { error: kmError } = await sb.from('keurmeesters').upsert({
+        id:           crypto.randomUUID(),
         naam,
-        bedrijf:   (_bedrijfInfo && _bedrijfInfo.naam) || '',
-        bedrijf_id: _huidigBedrijfId,
+        email,
+        bedrijf:      (_bedrijfInfo && _bedrijfInfo.naam) || '',
+        bedrijf_id:   _huidigBedrijfId,
         auth_user_id: result.user_id,
       }, { onConflict: 'auth_user_id' });
+
+      if (kmError) {
+        console.error('Keurmeester tabel upsert fout:', kmError);
+        toast('Account aangemaakt maar koppeling mislukt', 'warning');
+      }
     }
+
+    // Lokale store bijwerken zodat de UI direct klopt
+    if (!store.keurmeesters) store.keurmeesters = [];
+    store.keurmeesters.push({
+      _id:          null, // wordt bij volgende reload vanuit DB geladen
+      naam,
+      handtekening: null,
+      email,
+      auth_user_id: result.user_id || null,
+    });
+    saveStore(store);
 
     if (result.error?.includes('already')) {
       if (statusEl) {
@@ -519,16 +565,40 @@ async function verstuurKeurmeesterUitnodiging(naam, email) {
   }
 }
 
-function verwijderKeurmeester(idx) {
+// ============================================================
+// KEURMEESTER VERWIJDEREN — uit de database
+// ============================================================
+async function verwijderKeurmeester(idx) {
   const km = (store.keurmeesters||[])[idx];
   if (!km) return;
   if (!confirm(`Keurmeester "${km.naam}" verwijderen?`)) return;
+
+  // Verwijder uit database als we een _id hebben
+  if (km._id) {
+    try {
+      const { error } = await sb
+        .from('keurmeesters')
+        .delete()
+        .eq('id', km._id);
+
+      if (error) {
+        console.error('Keurmeester verwijderen fout:', error);
+        toast('Fout bij verwijderen in database', 'error');
+        return;
+      }
+    } catch(err) {
+      console.error('Keurmeester verwijderen fout:', err);
+      toast('Fout bij verwijderen', 'error');
+      return;
+    }
+  }
+
+  // Lokale store bijwerken
   store.keurmeesters.splice(idx, 1);
   if (store.settings.keurmeester === km.naam && store.keurmeesters.length > 0) {
     store.settings.keurmeester = store.keurmeesters[0].naam;
   }
   saveStore(store);
-  sbSaveKeurmeesters(store.keurmeesters).catch(console.error);
   toast('Keurmeester verwijderd');
   navigateTo('keurmeesters');
 }
