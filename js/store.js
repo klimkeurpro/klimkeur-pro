@@ -52,7 +52,7 @@ async function loadStoreFromSupabase() {
       // Gefilterd op bedrijf_id zodat afkeurcodes van andere bedrijven
       // nooit in de verkeerde store terechtkomen
       sb.from('afkeurcodes').select('*').eq('bedrijf_id', _huidigBedrijfId).order('code'),
-      sb.from('keurmeesters').select('naam, handtekening, email').eq('bedrijf_id', _huidigBedrijfId),
+      sb.from('keurmeesters').select('id, naam, handtekening, email, auth_user_id').eq('bedrijf_id', _huidigBedrijfId),
     ]);
 
     if (e1 || e2 || e3 || e4 || e5) {
@@ -132,9 +132,11 @@ async function loadStoreFromSupabase() {
     }));
 
     const keurmeestersMapped = (keurmeesters || []).map(k => ({
+      _id:          k.id,
       naam:         k.naam || '',
       handtekening: k.handtekening || '',
       email:        k.email || '',
+      auth_user_id: k.auth_user_id || null,
     }));
 
     return {
