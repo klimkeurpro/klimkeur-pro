@@ -7,9 +7,10 @@ function renderInstellingen(el) {
   el.innerHTML = `
     <div class="fade-in">
       <div class="tabs">
-        <div class="tab active"       onclick="switchSettingsTab(this,'general')">Algemeen</div>
-        <div class="tab"              onclick="switchSettingsTab(this,'certificaat')">Certificaat</div>
-        <div class="tab"              onclick="switchSettingsTab(this,'database')">Database</div>
+        <div class="tab active"  onclick="switchSettingsTab(this,'general')">Algemeen</div>
+        <div class="tab"         onclick="switchSettingsTab(this,'handtekening')">Mijn handtekening</div>
+        <div class="tab"         onclick="switchSettingsTab(this,'certificaat')">Certificaat</div>
+        <div class="tab"         onclick="switchSettingsTab(this,'database')">Database</div>
       </div>
 
       <!-- ═══════════════════════════════════════════════
@@ -48,28 +49,67 @@ function renderInstellingen(el) {
               ${(store.keurmeesters||[]).map(k=>`<option value="${k.naam}" ${s.keurmeester===k.naam?'selected':''}>${k.naam}</option>`).join('')}
             </select>
           </div>
-          <div style="display:flex;gap:20px;margin-top:16px;">
-            <div>
-              <label class="form-label">Logo</label>
-              <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);padding:12px;text-align:center;min-width:200px;">
-                ${s.logo ? `<img src="${s.logo}" style="max-height:60px;">` : '<span style="color:var(--text-muted);font-size:13px;">Geen logo</span>'}
-              </div>
-              <input type="file" id="logoUpload" accept="image/*" style="margin-top:8px;font-size:12px;" onchange="uploadImage('logo',this)">
+          <div style="margin-top:16px;">
+            <label class="form-label">Bedrijfslogo</label>
+            <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);padding:12px;text-align:center;min-width:200px;min-height:60px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:8px;">
+              ${s.logo ? `<img src="${s.logo}" style="max-height:60px;max-width:180px;object-fit:contain;">` : '<span style="color:var(--text-muted);font-size:13px;">Geen logo</span>'}
             </div>
-            <div>
-              <label class="form-label">Handtekening</label>
-              <div style="background:white;border:1px solid var(--border);border-radius:var(--radius);padding:12px;text-align:center;min-width:200px;">
-                ${s.handtekening ? `<img src="${s.handtekening}" style="max-height:60px;">` : '<span style="color:var(--text-muted);font-size:13px;">Geen handtekening</span>'}
-              </div>
-              <input type="file" id="handtekeningUpload" accept="image/*" style="margin-top:8px;font-size:12px;" onchange="uploadImage('handtekening',this)">
-            </div>
+            <br>
+            <input type="file" id="logoUpload" accept="image/*" style="font-size:12px;" onchange="uploadLogo(this)">
           </div>
           <button class="btn btn-primary" style="margin-top:20px;" onclick="saveSettings()">Opslaan</button>
         </div>
       </div>
 
       <!-- ═══════════════════════════════════════════════
-           TAB 2 — CERTIFICAAT
+           TAB 2 — MIJN HANDTEKENING
+      ═══════════════════════════════════════════════ -->
+      <div id="settingsHandtekening" class="card" style="display:none;margin-bottom:20px;">
+        <div class="card-header"><h3>Mijn handtekening</h3></div>
+        <div class="card-body">
+          <p style="font-size:13px;color:var(--text-secondary);margin-bottom:20px;">
+            Je handtekening verschijnt op alle certificaten die jij ondertekent.
+            Elke keurmeester heeft zijn eigen handtekening.
+          </p>
+
+          <div style="margin-bottom:20px;">
+            <label class="form-label">Huidige handtekening</label>
+            <div id="handtekeningPreviewWrap" style="background:white;border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:center;min-height:80px;display:flex;align-items:center;justify-content:center;max-width:320px;">
+              ${_getEigenHandtekening()
+                ? `<img id="handtekeningPreviewImg" src="${_getEigenHandtekening()}" style="max-height:70px;max-width:280px;">`
+                : `<span id="handtekeningLeeg" style="color:var(--text-muted);font-size:13px;">Nog geen handtekening ingesteld</span>`}
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Nieuwe handtekening uploaden</label>
+            <input type="file" id="handtekeningUpload" accept="image/*" style="font-size:13px;" onchange="previewEigenHandtekening(this)">
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">
+              PNG met transparante achtergrond werkt het mooist op het certificaat.
+            </div>
+          </div>
+
+          <div id="handtekeningNieuwPreview" style="display:none;margin-bottom:16px;">
+            <label class="form-label">Voorbeeld nieuw</label>
+            <div style="background:white;border:1px solid var(--sg-green);border-radius:var(--radius);padding:16px;text-align:center;max-width:320px;">
+              <img id="handtekeningNieuwImg" style="max-height:70px;max-width:280px;">
+            </div>
+          </div>
+
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn btn-primary" id="handtekeningOpslaanBtn" onclick="slaEigenHandtekeningOp()" style="display:none;">
+              Handtekening opslaan
+            </button>
+            ${_getEigenHandtekening() ? `
+            <button class="btn" style="color:var(--danger);border-color:var(--danger);" onclick="verwijderEigenHandtekening()">
+              Handtekening verwijderen
+            </button>` : ''}
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════
+           TAB 3 — CERTIFICAAT
       ═══════════════════════════════════════════════ -->
       <div id="settingsCertificaat" class="card" style="display:none;margin-bottom:20px;">
         <div class="card-header"><h3>Certificaat Instellingen</h3></div>
@@ -82,7 +122,7 @@ function renderInstellingen(el) {
             <label class="form-label">Certificaat tekst (onder)</label>
             <textarea class="form-textarea" id="setCertTekstOnder" rows="3" placeholder="Optionele tekst onder het certificaat">${s.certificaatTekstOnder||''}</textarea>
           </div>
-          <button class="btn btn-primary" style="margin-top:8px;margin-bottom:24px;" onclick="saveCertSettings()">Teksten Opslaan</button>
+          <button class="btn btn-primary" style="margin-top:8px;margin-bottom:24px;" onclick="saveCertSettings()">Teksten opslaan</button>
 
           <div class="form-group" style="margin-bottom:20px;">
             <label class="form-label" style="margin-bottom:10px;display:block;">Certificaat kolommen</label>
@@ -103,7 +143,7 @@ function renderInstellingen(el) {
                 Breuksterkte
               </label>
             </div>
-            <div style="font-size:11px;color:var(--text-secondary);margin-top:6px;">De kolommen Gebruiker, Opmerking en In gebruik worden automatisch verborgen als ze leeg zijn.</div>
+            <div style="font-size:11px;color:var(--text-secondary);margin-top:6px;">Gebruiker, Opmerking en In gebruik worden automatisch verborgen als ze leeg zijn.</div>
           </div>
 
           <div>
@@ -134,17 +174,16 @@ function renderInstellingen(el) {
       </div>
 
       <!-- ═══════════════════════════════════════════════
-           TAB 3 — DATABASE
+           TAB 4 — DATABASE
       ═══════════════════════════════════════════════ -->
       <div id="settingsDatabase" class="card" style="display:none;margin-bottom:20px;">
         <div class="card-header"><h3>Database &amp; Backup</h3></div>
         <div class="card-body">
 
-          <!-- PRODUCTEN -->
           <div style="margin-bottom:24px;">
             <h4 style="font-size:13px;font-weight:700;color:var(--sg-green);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;">Productendatabase</h4>
             <p style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">
-              Exporteer de productendatabase als Excel om te bewerken in Excel.
+              Exporteer de productendatabase als Excel om te bewerken.
               Importeer het bestand daarna terug om de database bij te werken.
             </p>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
@@ -160,18 +199,15 @@ function renderInstellingen(el) {
 
           <div style="border-top:1px solid var(--border);margin-bottom:24px;"></div>
 
-          <!-- HISTORISCHE CERTIFICATEN -->
           <div style="margin-bottom:24px;">
             <h4 style="font-size:13px;font-weight:700;color:var(--sg-green);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;">Historische certificaten importeren</h4>
             <p style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">
-              Upload een certificaat-Excel uit het oude systeem. KlimKeur Pro leest klantgegevens,
-              keuringsdatum en alle items automatisch uit.
+              Upload een certificaat-Excel uit het oude systeem.
             </p>
             <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;">
               <div>
                 <input type="file" id="certImportFile" accept=".xlsx,.xls" style="font-size:12px;">
                 <button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="importCertificaatExcel()">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                   Importeer certificaat Excel
                 </button>
               </div>
@@ -180,32 +216,24 @@ function renderInstellingen(el) {
 
           <div style="border-top:1px solid var(--border);margin-bottom:24px;"></div>
 
-          <!-- BACKUP -->
           <div style="margin-bottom:24px;">
             <h4 style="font-size:13px;font-weight:700;color:var(--sg-green);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;">Noodkopie downloaden</h4>
             <p style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">
-              Download een kopie van alle data als JSON-bestand. Alle data staat veilig in Supabase —
-              dit is een extra vangnet voor het geval dat.
+              Download een kopie van alle data als JSON-bestand.
             </p>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <button class="btn btn-sm" onclick="exportAllData()">↓ Download backup (JSON)</button>
-            </div>
+            <button class="btn btn-sm" onclick="exportAllData()">↓ Download backup (JSON)</button>
           </div>
 
           <div style="border-top:1px solid var(--border);margin-bottom:24px;"></div>
 
-          <!-- KLANTEN EXPORTEREN -->
           <div style="margin-bottom:24px;">
             <h4 style="font-size:13px;font-weight:700;color:var(--sg-green);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;">Klanten exporteren</h4>
-            <p style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">
-              Exporteer de klantenlijst als Excel — handig voor administratie of boekhoudprogramma.
-            </p>
             <button class="btn btn-sm" onclick="exportKlantenExcel()">↓ Klanten als Excel (.xlsx)</button>
           </div>
 
           <div style="border-top:1px solid var(--border);padding-top:20px;">
             <h4 style="font-size:13px;font-weight:700;color:var(--danger);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">Gevaarzone</h4>
-            <p style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">Herlaadt alle data vanuit Supabase. Handig als er iets mis lijkt met de lokale weergave.</p>
+            <p style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">Herlaadt alle data vanuit Supabase.</p>
             <button class="btn btn-danger btn-sm" onclick="resetAllData()">Data herladen vanuit Supabase</button>
           </div>
 
@@ -216,14 +244,114 @@ function renderInstellingen(el) {
   `;
 }
 
+// ============================================================
+// HANDTEKENING HULPFUNCTIES
+// ============================================================
+
+// Geeft de handtekening van de ingelogde keurmeester terug
+function _getEigenHandtekening() {
+  if (!store || !store.keurmeesters || !store.settings.keurmeester) return null;
+  const km = store.keurmeesters.find(k => k.naam === store.settings.keurmeester);
+  return km?.handtekening || null;
+}
+
+let _nieuweHandtekeningData = null;
+
+function previewEigenHandtekening(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    _nieuweHandtekeningData = e.target.result;
+    const preview = document.getElementById('handtekeningNieuwPreview');
+    const img     = document.getElementById('handtekeningNieuwImg');
+    const btn     = document.getElementById('handtekeningOpslaanBtn');
+    if (preview) preview.style.display = 'block';
+    if (img)     img.src = e.target.result;
+    if (btn)     btn.style.display = '';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function slaEigenHandtekeningOp() {
+  if (!_nieuweHandtekeningData) return;
+  if (!_currentUser) { toast('Niet ingelogd', 'error'); return; }
+
+  const btn = document.getElementById('handtekeningOpslaanBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Opslaan...'; }
+
+  try {
+    // Schrijf naar keurmeesters tabel op basis van auth_user_id
+    const { error } = await sb
+      .from('keurmeesters')
+      .update({ handtekening: _nieuweHandtekeningData })
+      .eq('auth_user_id', _currentUser.id);
+
+    if (error) throw error;
+
+    // Ook in lokale store bijwerken
+    if (store.keurmeesters) {
+      const km = store.keurmeesters.find(k => k.naam === store.settings.keurmeester);
+      if (km) km.handtekening = _nieuweHandtekeningData;
+      saveStore(store);
+    }
+
+    _nieuweHandtekeningData = null;
+    toast('Handtekening opgeslagen');
+    // Tab herladen zodat preview bijgewerkt is
+    renderInstellingen(document.getElementById('pageContent'));
+    switchSettingsTab(document.querySelector('.tab:nth-child(2)'), 'handtekening');
+
+  } catch(err) {
+    console.error('Handtekening opslaan fout:', err);
+    toast('Fout bij opslaan handtekening', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Handtekening opslaan'; }
+  }
+}
+
+async function verwijderEigenHandtekening() {
+  if (!confirm('Handtekening verwijderen?')) return;
+  if (!_currentUser) { toast('Niet ingelogd', 'error'); return; }
+
+  try {
+    const { error } = await sb
+      .from('keurmeesters')
+      .update({ handtekening: null })
+      .eq('auth_user_id', _currentUser.id);
+
+    if (error) throw error;
+
+    if (store.keurmeesters) {
+      const km = store.keurmeesters.find(k => k.naam === store.settings.keurmeester);
+      if (km) km.handtekening = null;
+      saveStore(store);
+    }
+
+    toast('Handtekening verwijderd');
+    renderInstellingen(document.getElementById('pageContent'));
+    switchSettingsTab(document.querySelector('.tab:nth-child(2)'), 'handtekening');
+
+  } catch(err) {
+    console.error('Handtekening verwijderen fout:', err);
+    toast('Fout bij verwijderen handtekening', 'error');
+  }
+}
+
+// ============================================================
+// TABS
+// ============================================================
 function switchSettingsTab(tab, section) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   tab.classList.add('active');
-  document.getElementById('settingsGeneral').style.display     = section==='general'    ? '' : 'none';
-  document.getElementById('settingsCertificaat').style.display = section==='certificaat'? '' : 'none';
-  document.getElementById('settingsDatabase').style.display    = section==='database'   ? '' : 'none';
+  document.getElementById('settingsGeneral').style.display      = section==='general'      ? '' : 'none';
+  document.getElementById('settingsHandtekening').style.display = section==='handtekening' ? '' : 'none';
+  document.getElementById('settingsCertificaat').style.display  = section==='certificaat'  ? '' : 'none';
+  document.getElementById('settingsDatabase').style.display     = section==='database'     ? '' : 'none';
 }
 
+// ============================================================
+// OPSLAAN
+// ============================================================
 function saveSettings() {
   store.settings.bedrijfsnaam = document.getElementById('setBedrijf').value;
   store.settings.kvk          = document.getElementById('setKvk').value;
@@ -244,6 +372,31 @@ function saveCertSettings() {
   toast('Certificaat teksten opgeslagen');
 }
 
+// ============================================================
+// LOGO UPLOAD (bedrijfslogo — apart van handtekening)
+// ============================================================
+function uploadLogo(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    store.settings.logo = e.target.result;
+    saveStore(store);
+    sbSlaInstellingenOp(store.settings).catch(console.error);
+    toast('Logo bijgewerkt');
+    renderInstellingen(document.getElementById('pageContent'));
+  };
+  reader.readAsDataURL(file);
+}
+
+// Verouderde functie — blijft bestaan zodat andere aanroepen niet crashen
+function uploadImage(type, input) {
+  if (type === 'logo') { uploadLogo(input); return; }
+}
+
+// ============================================================
+// KEURMEESTER MODAL
+// ============================================================
 function openKeurmeesterModal(idx) {
   const km = idx !== undefined ? (store.keurmeesters||[])[idx] : null;
   showModal(km ? 'Keurmeester Bewerken' : 'Nieuwe Keurmeester', `
@@ -266,24 +419,16 @@ function openKeurmeesterModal(idx) {
       <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">E-mailadres kan niet worden gewijzigd.</div>
     </div>
     `}
-    <div class="form-group">
-      <label class="form-label">Handtekening</label>
-      <div style="background:white;border:1px solid var(--border);border-radius:var(--radius);padding:12px;text-align:center;min-height:60px;display:flex;align-items:center;justify-content:center;">
-        ${km?.handtekening ? `<img id="kmHandtekeningPreview" src="${km.handtekening}" style="max-height:55px;">` : '<span id="kmHandtekeningPreview" style="color:var(--text-muted);font-size:13px;">Geen handtekening</span>'}
-      </div>
-      <input type="hidden" id="kmHandtekening" value="${km?.handtekening || ''}">
-      <input type="file" accept="image/*" style="margin-top:8px;font-size:12px;" onchange="previewKmHandtekening(this)">
-      ${km?.handtekening ? `<button type="button" class="btn btn-sm" style="margin-top:4px;color:var(--danger);" onclick="document.getElementById('kmHandtekening').value='';document.getElementById('kmHandtekeningPreview').outerHTML='<span id=\\'kmHandtekeningPreview\\' style=\\'color:var(--text-muted);font-size:13px;\\'>Geen handtekening</span>'">Handtekening verwijderen</button>` : ''}
-    </div>
   `, () => {
     const i = parseInt(document.getElementById('kmIdx').value);
     const naam = document.getElementById('kmNaam').value.trim();
-    const handtekening = document.getElementById('kmHandtekening').value;
     if (!naam) { toast('Vul een naam in', 'error'); return; }
     if (!store.keurmeesters) store.keurmeesters = [];
+
     if (i >= 0) {
+      // Naam bijwerken
       const oudeNaam = store.keurmeesters[i].naam;
-      store.keurmeesters[i] = { naam, handtekening };
+      store.keurmeesters[i].naam = naam;
       if (oudeNaam === store.settings.keurmeester) {
         store.settings.keurmeester = naam;
         if (_currentUser) {
@@ -292,25 +437,24 @@ function openKeurmeesterModal(idx) {
         const nm = document.getElementById('sidebarUserNaam');
         if (nm) nm.textContent = naam;
       }
+      saveStore(store);
+      sbSaveKeurmeesters(store.keurmeesters).catch(console.error);
+      closeModal();
+      toast('Keurmeester bijgewerkt');
+      navigateTo('keurmeesters');
     } else {
       const email = document.getElementById('kmEmail')?.value?.trim();
       if (!email) { toast('Vul een e-mailadres in', 'error'); return; }
       if (store.keurmeesters.some(k => k.naam === naam)) { toast('Keurmeester bestaat al', 'error'); return; }
-      verstuurKeurmeesterUitnodiging(naam, email, handtekening);
-      return;
+      verstuurKeurmeesterUitnodiging(naam, email);
     }
-    saveStore(store);
-    sbSaveKeurmeesters(store.keurmeesters).catch(console.error);
-    closeModal();
-    toast(i >= 0 ? 'Keurmeester bijgewerkt' : 'Keurmeester toegevoegd');
-    navigateTo('keurmeesters');
   });
 }
 
 /**
- * verstuurKeurmeesterUitnodiging — maak account aan en stuur uitnodiging
+ * verstuurKeurmeesterUitnodiging
  */
-async function verstuurKeurmeesterUitnodiging(naam, email, handtekening) {
+async function verstuurKeurmeesterUitnodiging(naam, email) {
   const statusEl = document.getElementById('kmUitnodigingStatus');
   if (statusEl) {
     statusEl.textContent = 'Uitnodiging versturen...';
@@ -329,62 +473,42 @@ async function verstuurKeurmeesterUitnodiging(naam, email, handtekening) {
       },
       body: JSON.stringify({
         email,
-        klant_id: null,
+        klant_id:   null,
         klant_naam: naam,
         redirect_to: 'https://klimkeurpro.github.io/klimkeur-pro/',
         rol: 'keurmeester',
+        bedrijf_id: _huidigBedrijfId,
       }),
     });
 
     const result = await res.json();
 
-    if (!res.ok) {
-      if (statusEl) {
-        statusEl.textContent = result.error?.includes('already')
-          ? '⚠ Dit e-mailadres heeft al een account. De keurmeester kan direct inloggen.'
-          : `Fout: ${result.error || 'Onbekende fout'}`;
-        statusEl.style.color = result.error?.includes('already') ? 'var(--warning)' : 'var(--danger)';
-      }
-      if (!store.keurmeesters) store.keurmeesters = [];
-      store.keurmeesters.push({ naam, handtekening, email });
-      saveStore(store);
-      sbSaveKeurmeesters(store.keurmeesters).catch(console.error);
-      if (result.user_id) {
-        await sb.from('keurmeesters').upsert({
-          id: generateId(),
-          naam,
-          bedrijf: (_bedrijfInfo && _bedrijfInfo.naam) || 'Safety Green B.V.',
-          bedrijf_id: _huidigBedrijfId,
-          auth_user_id: result.user_id,
-        }, { onConflict: 'auth_user_id' });
-      }
-      setTimeout(() => { closeModal(); navigateTo('keurmeesters'); }, 2000);
-      return;
-    }
-
-    // Succes
     if (!store.keurmeesters) store.keurmeesters = [];
-    store.keurmeesters.push({ naam, handtekening, email });
+    store.keurmeesters.push({ naam, handtekening: null, email });
     saveStore(store);
     sbSaveKeurmeesters(store.keurmeesters).catch(console.error);
 
     if (result.user_id) {
-      try {
-        await sb.from('keurmeesters').upsert({
-          id: generateId(),
-          naam,
-          bedrijf: (_bedrijfInfo && _bedrijfInfo.naam) || 'Safety Green B.V.',
-          bedrijf_id: _huidigBedrijfId,
-          auth_user_id: result.user_id,
-        }, { onConflict: 'auth_user_id' });
-      } catch(err) {
-        console.error('Keurmeester koppelen fout:', err);
-      }
+      await sb.from('keurmeesters').upsert({
+        id:        generateId(),
+        naam,
+        bedrijf:   (_bedrijfInfo && _bedrijfInfo.naam) || '',
+        bedrijf_id: _huidigBedrijfId,
+        auth_user_id: result.user_id,
+      }, { onConflict: 'auth_user_id' });
     }
 
-    toast(`Uitnodiging verstuurd naar ${email}`);
-    closeModal();
-    navigateTo('keurmeesters');
+    if (result.error?.includes('already')) {
+      if (statusEl) {
+        statusEl.textContent = '⚠ Dit e-mailadres heeft al een account. De keurmeester kan direct inloggen.';
+        statusEl.style.color = 'var(--warning)';
+      }
+      setTimeout(() => { closeModal(); navigateTo('keurmeesters'); }, 2000);
+    } else {
+      toast(`Uitnodiging verstuurd naar ${email}`);
+      closeModal();
+      navigateTo('keurmeesters');
+    }
 
   } catch(e) {
     console.error('Uitnodiging keurmeester fout:', e);
@@ -393,22 +517,6 @@ async function verstuurKeurmeesterUitnodiging(naam, email, handtekening) {
       statusEl.style.color = 'var(--danger)';
     }
   }
-}
-
-function previewKmHandtekening(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    document.getElementById('kmHandtekening').value = e.target.result;
-    const prev = document.getElementById('kmHandtekeningPreview');
-    if (prev.tagName === 'IMG') {
-      prev.src = e.target.result;
-    } else {
-      prev.outerHTML = `<img id="kmHandtekeningPreview" src="${e.target.result}" style="max-height:55px;">`;
-    }
-  };
-  reader.readAsDataURL(file);
 }
 
 function verwijderKeurmeester(idx) {
@@ -425,6 +533,9 @@ function verwijderKeurmeester(idx) {
   navigateTo('keurmeesters');
 }
 
+// ============================================================
+// AFKEURCODES
+// ============================================================
 function openAfkeurcodeModal(idx) {
   const codes = getAfkeurcodes();
   const c = idx !== undefined ? codes[idx] : null;
@@ -445,7 +556,6 @@ function openAfkeurcodeModal(idx) {
     const code = document.getElementById('afkeurCode').value.trim();
     const tekst = document.getElementById('afkeurTekst').value.trim();
     if (!code || !tekst) { toast('Vul code en omschrijving in', 'error'); return; }
-
     if (!store.afkeurcodes) store.afkeurcodes = JSON.parse(JSON.stringify(CERT_INFO.afkeurcodes));
     if (i >= 0) {
       store.afkeurcodes[i] = { code, tekst };
@@ -458,7 +568,7 @@ function openAfkeurcodeModal(idx) {
     closeModal();
     toast(i >= 0 ? 'Afkeurcode bijgewerkt' : 'Afkeurcode toegevoegd');
     renderInstellingen(document.getElementById('pageContent'));
-    switchSettingsTab(document.querySelector('.tab:nth-child(2)'), 'certificaat');
+    switchSettingsTab(document.querySelector('.tab:nth-child(3)'), 'certificaat');
   });
 }
 
@@ -470,19 +580,5 @@ function deleteAfkeurcode(idx) {
   sbSaveAfkeurcodes(store.afkeurcodes).catch(console.error);
   toast('Afkeurcode verwijderd');
   renderInstellingen(document.getElementById('pageContent'));
-  switchSettingsTab(document.querySelector('.tab:nth-child(2)'), 'certificaat');
-}
-
-function uploadImage(type, input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    store.settings[type] = e.target.result;
-    saveStore(store);
-    sbSlaInstellingenOp(store.settings).catch(console.error);
-    toast(type === 'logo' ? 'Logo bijgewerkt' : 'Handtekening bijgewerkt');
-    renderInstellingen(document.getElementById('pageContent'));
-  };
-  reader.readAsDataURL(file);
+  switchSettingsTab(document.querySelector('.tab:nth-child(3)'), 'certificaat');
 }
