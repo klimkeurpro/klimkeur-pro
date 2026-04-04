@@ -1,5 +1,13 @@
 // ============================================================
 // keuringen.js — keuringen aanmaken, items beheren, beoordelen, afkeurcodes
+//
+// ARTIKEL_ID FIX:
+// Items hebben nu twee ID's (zie store.js):
+//   - rowId   = uniek per database-rij
+//   - itemId  = persistent per fysiek artikel (= artikel_id in DB)
+//
+// Gewijzigde plekken t.o.v. origineel staan gemarkeerd met:
+//   // ── ARTIKEL_ID FIX ──
 // ============================================================
 
 // Afgevoerde item-IDs opgehaald uit Supabase — gevuld in checkVorigeKeuring()
@@ -235,11 +243,16 @@ function openKeuringModal() {
       afgerond: false
     };
 
+    // ── ARTIKEL_ID FIX ── Items overnemen uit vorige keuring
+    // itemId (artikel-ID) blijft hetzelfde — het is hetzelfde fysieke artikel.
+    // rowId wordt gewist zodat sbSyncAllKeuringItems een NIEUWE rij aanmaakt.
+    // Zo blijft de oude keuring-rij behouden → historie werkt.
     if (overnemen && klantId) {
       const result = getAllKlantItems(klantId, inclAfgevoerd);
       if (result.items.length > 0) {
         keuring.items = result.items.map(item => ({
           ...item,
+          rowId: undefined,   // ← NIEUW: forceer nieuwe database-rij
           status: '',
           afkeurcode: '',
           opmerking: '',
@@ -248,6 +261,9 @@ function openKeuringModal() {
       }
     }
 
+    // ── ARTIKEL_ID FIX ── Aangemeld materiaal overnemen
+    // item.id uit de database wordt het itemId (artikel-ID).
+    // Geen rowId meegeven → sbSyncAllKeuringItems maakt een nieuwe rij.
     const aangemeldBox = document.getElementById('aangemeldBox');
     const aangemeldOvernemen = document.getElementById('aangemeldOvernemen')?.checked;
     if (aangemeldOvernemen && aangemeldBox?._items?.length > 0) {
@@ -343,13 +359,19 @@ async function checkVorigeKeuring() {
   const info    = document.getElementById('vorigeKeuringInfo');
   if (!klantId || !box) { if(box) box.style.display='none'; return; }
 
+  // ── ARTIKEL_ID FIX ── Haal artikel_id op i.p.v. id
+  // artikel_id is het persistente artikel-ID waarmee we in
+  // getAllKlantItems afgevoerde items herkennen.
+  // Fallback naar id voor oude data zonder artikel_id.
   try {
     const { data: afgevoerd } = await sb
       .from('keuring_items')
-      .select('id')
+      .select('id, artikel_id')
       .eq('klant_id', klantId)
       .eq('afgevoerd', true);
-    _afgevoerdeItemIds = new Set((afgevoerd || []).map(r => String(r.id)));
+    _afgevoerdeItemIds = new Set(
+      (afgevoerd || []).map(r => String(r.artikel_id || r.id))
+    );
   } catch(e) {
     console.warn('Kon afgevoerde items niet ophalen:', e);
     _afgevoerdeItemIds = new Set();
@@ -635,7 +657,7 @@ function openKeuringDetail(id) {
                     : isOpen ? 'background:rgba(243,156,18,0.05);' : '';
 
                   const historieKnoopje = (item.itemId || item.serienummer)
-                    ? `<button class="btn-icon" title="Keuringshistorie artikel ID ${item.itemId||''}" onclick="showHistoriePopup(${item.itemId||'null'},'${(item.serienummer||'').replace(/'/g,"\\'")}','${(item.omschrijving||'').replace(/'/g,"\\'")}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>`
+                    ? `<button class="btn-icon" title="Keuringshistorie artikel ID ${item.itemId||''}" onclick="showHistoriePopup('${(item.itemId||'').toString().replace(/'/g,"\\'")}','${(item.serienummer||'').replace(/'/g,"\\'")}','${(item.omschrijving||'').replace(/'/g,"\\'")}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>`
                     : '';
 
                   const vorigBadge = (item.vorigeStatus === 'goedgekeurd'
@@ -1007,6 +1029,8 @@ function addKeuringItem(keuringId) {
   const prod   = store.products.find(p => p.omschrijving === omschr);
   const status = document.getElementById('itemStatus').value;
 
+  // ── ARTIKEL_ID FIX ── Nieuw artikel: nieuw itemId, geen rowId
+  // rowId wordt aangemaakt door sbUpsertKeuringItem
   const item = {
     itemId:      generateId(),
     omschrijving: omschr,
@@ -1039,9 +1063,12 @@ function duplicateKeuringItem(keuringId, idx) {
   const original = k.items[idx];
   if (!original) return;
 
+  // ── ARTIKEL_ID FIX ── Duplicaat = nieuw fysiek artikel
+  // Nieuw itemId (ander artikel) EN geen rowId (nieuwe rij)
   const kopie = {
     ...JSON.parse(JSON.stringify(original)),
     itemId:           generateId(),
+    rowId:            undefined,
     serienummer:      '',
     status:           '',
     afkeurcode:       '',
@@ -1064,10 +1091,13 @@ function removeKeuringItem(keuringId, idx) {
   if (!confirm('Item verwijderen?')) return;
   if (!k.auditLog) k.auditLog = [];
   k.auditLog.push({...k.items[idx], removedAt: new Date().toISOString()});
-  const removedItemId = k.items[idx].itemId;
+
+  // ── ARTIKEL_ID FIX ── Verwijder op rowId (database rij-ID),
+  // niet op itemId (dat is nu het persistente artikel-ID)
+  const removedRowId = k.items[idx].rowId;
   k.items.splice(idx, 1);
   saveStore(store);
-  if (removedItemId) sbDeleteKeuringItem(removedItemId).catch(console.error);
+  if (removedRowId) sbDeleteKeuringItem(removedRowId).catch(console.error);
   toast('Item verwijderd (bewaard in audit log)');
   openKeuringDetail(keuringId);
 }
