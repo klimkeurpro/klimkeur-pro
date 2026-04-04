@@ -1,5 +1,13 @@
 // ============================================================
 // store.js — lokale datastructuur, constanten, Supabase data laden en mappen
+//
+// ARTIKEL_ID FIX (v3):
+// Elk keuring_item heeft nu twee ID's:
+//   - rowId   → uniek per database-rij (= kolom 'id' in keuring_items)
+//   - itemId  → persistent per fysiek artikel (= kolom 'artikel_id')
+//
+// Bij overnemen naar nieuwe keuring: itemId blijft, rowId wordt nieuw.
+// Zo blijft de keuringshistorie per artikel behouden in de database.
 // ============================================================
 
 DEFAULT_PRODUCTS = [];
@@ -63,7 +71,14 @@ async function loadStoreFromSupabase() {
 
     const keuringenMapped = (keuringen || []).map(k => {
       const items = (k.keuring_items || []).map(item => ({
-        itemId:        item.id,
+        // ── ARTIKEL_ID FIX ──────────────────────────────────────
+        // rowId  = unieke database-rij (kolom 'id')
+        // itemId = persistent artikel-ID (kolom 'artikel_id')
+        // Fallback: als artikel_id nog niet gevuld is (oude data),
+        // gebruik dan het rij-id zodat bestaande logica niet breekt.
+        // ────────────────────────────────────────────────────────
+        rowId:         item.id,
+        itemId:        item.artikel_id || item.id,
         omschrijving:  item.omschrijving || '',
         merk:          item.merk || '',
         materiaal:     item.materiaal || '',
@@ -273,9 +288,23 @@ async function sbDeleteKeuring(id) {
 }
 
 // --- KEURING ITEMS ---
+
+// ── ARTIKEL_ID FIX ──────────────────────────────────────────
+// _itemToRow vertaalt een item-object naar een database-rij.
+//
+// Twee ID's:
+//   item.rowId  → database kolom 'id'         (uniek per rij)
+//   item.itemId → database kolom 'artikel_id' (persistent per fysiek artikel)
+//
+// Bij overnemen naar een nieuwe keuring krijgt het item een
+// nieuwe rowId maar behoudt dezelfde itemId. Zo ontstaat er
+// een rij per keuring per artikel, en kun je de volledige
+// keuringshistorie opvragen via artikel_id.
+// ─────────────────────────────────────────────────────────────
 function _itemToRow(item, keuringId, klantId) {
   return {
-    id:              item.itemId || generateId(),
+    id:              item.rowId || generateId(),
+    artikel_id:      item.itemId || null,
     keuring_id:      keuringId,
     klant_id:        klantId || null,
     omschrijving:    item.omschrijving || '',
@@ -299,21 +328,26 @@ function _itemToRow(item, keuringId, klantId) {
 }
 
 async function sbUpsertKeuringItem(item, keuringId, klantId) {
+  // Zorg dat beide ID's bestaan
   if (!item.itemId) item.itemId = generateId();
+  if (!item.rowId)  item.rowId  = generateId();
   const row = _itemToRow(item, keuringId, klantId);
   const { error } = await sb.from('keuring_items').upsert(row, { onConflict: 'id' });
   if (error) { console.error('sbUpsertKeuringItem fout:', error); toast('Fout bij opslaan item in Supabase', 'error'); }
 }
 
-async function sbDeleteKeuringItem(itemId) {
-  const { error } = await sb.from('keuring_items').delete().eq('id', itemId);
+async function sbDeleteKeuringItem(rowId) {
+  // Let op: parameter is rowId (database rij-id), NIET itemId (artikel-id)
+  const { error } = await sb.from('keuring_items').delete().eq('id', rowId);
   if (error) console.error('sbDeleteKeuringItem fout:', error);
 }
 
 async function sbSyncAllKeuringItems(keuring) {
   if (!keuring.items || keuring.items.length === 0) return;
   const rows = keuring.items.map(item => {
+    // Zorg dat beide ID's bestaan
     if (!item.itemId) item.itemId = generateId();
+    if (!item.rowId)  item.rowId  = generateId();
     return _itemToRow(item, keuring.id, keuring.klantId);
   });
   const { error } = await sb.from('keuring_items').upsert(rows, { onConflict: 'id' });
