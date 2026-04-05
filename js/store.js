@@ -8,6 +8,13 @@
 //
 // Bij overnemen naar nieuwe keuring: itemId blijft, rowId wordt nieuw.
 // Zo blijft de keuringshistorie per artikel behouden in de database.
+//
+// DB-VERVUILING FIX (v4):
+// Bij afronden van een keuring worden onaangeraakte items (lege status,
+// geen afkeurcode, geen opmerking, niet afgevoerd) uit de database
+// verwijderd via sbDeleteOnaangeraakteItems(). Zo blijven er geen lege
+// rijen achter van items die tijdens de keuring nooit beoordeeld zijn.
+// De historie van die artikelen blijft bestaan in eerdere keuringen.
 // ============================================================
 
 DEFAULT_PRODUCTS = [];
@@ -282,7 +289,21 @@ async function sbUpsertKeuring(keuring) {
   if (error) { console.error('sbUpsertKeuring fout:', error); toast('Fout bij opslaan keuring in Supabase', 'error'); }
 }
 
+// ── DB-VERVUILING FIX ──────────────────────────────────────
+// sbDeleteKeuring ruimt nu eerst alle keuring_items van deze keuring op,
+// daarna pas de keuring zelf. Zo blijven er geen weeskinderen achter
+// als je een lopende keuring verwijdert waar al items voor aangemaakt
+// zijn (inclusief lege overgenomen items).
+// ─────────────────────────────────────────────────────────────
 async function sbDeleteKeuring(id) {
+  // Stap 1: items van deze keuring verwijderen
+  const { error: itemErr } = await sb.from('keuring_items').delete().eq('keuring_id', id);
+  if (itemErr) {
+    console.error('sbDeleteKeuring (items cascade) fout:', itemErr);
+    toast('Fout bij verwijderen keuring items in Supabase', 'error');
+    return;
+  }
+  // Stap 2: keuring zelf verwijderen
   const { error } = await sb.from('keuringen').delete().eq('id', id);
   if (error) { console.error('sbDeleteKeuring fout:', error); toast('Fout bij verwijderen keuring in Supabase', 'error'); }
 }
@@ -352,6 +373,64 @@ async function sbSyncAllKeuringItems(keuring) {
   });
   const { error } = await sb.from('keuring_items').upsert(rows, { onConflict: 'id' });
   if (error) console.error('sbSyncAllKeuringItems fout:', error);
+}
+
+// ── DB-VERVUILING FIX ──────────────────────────────────────
+// isItemOnaangeraakt — controleert of een item tijdens deze keuring
+// nergens voor is gebruikt. Alleen items die aan ALLE vier voorwaarden
+// voldoen tellen als onaangeraakt:
+//   - status is leeg (niet goedgekeurd, niet afgekeurd)
+//   - afkeurcode is leeg
+//   - opmerking is leeg
+//   - afgevoerd is false (niet op pensioen gezet)
+//
+// Zodra je één van deze velden hebt ingevuld, blijft het item bestaan.
+// Zo raakt een item waar je alleen een opmerking of pensioen bij zet
+// niet per ongeluk kwijt.
+// ─────────────────────────────────────────────────────────────
+function isItemOnaangeraakt(item) {
+  if (!item) return false;
+  const statusLeeg     = !item.status || item.status === '';
+  const afkeurcodeLeeg = !item.afkeurcode || item.afkeurcode === '';
+  const opmerkingLeeg  = !item.opmerking || String(item.opmerking).trim() === '';
+  const nietAfgevoerd  = item.afgevoerd !== true;
+  return statusLeeg && afkeurcodeLeeg && opmerkingLeeg && nietAfgevoerd;
+}
+
+// ── DB-VERVUILING FIX ──────────────────────────────────────
+// sbDeleteOnaangeraakteItems — ruimt alle onaangeraakte rijen van
+// één specifieke keuring op via één gerichte DELETE query.
+//
+// VEILIG omdat:
+//   1. Filter op keuring_id → raakt alleen deze ene keuring
+//   2. Filter op alle "leeg" velden → raakt alleen items waar
+//      echt nog niets mee is gedaan
+//   3. Items uit eerdere keuringen (waar ze wél beoordeeld zijn)
+//      blijven onaangeraakt — de historie blijft dus bestaan
+//
+// Retourneert het aantal verwijderde rijen, of null bij een fout.
+// ─────────────────────────────────────────────────────────────
+async function sbDeleteOnaangeraakteItems(keuringId) {
+  if (!keuringId) return 0;
+  try {
+    const { data, error } = await sb
+      .from('keuring_items')
+      .delete()
+      .eq('keuring_id', keuringId)
+      .or('status.is.null,status.eq.')
+      .or('afkeurcode.is.null,afkeurcode.eq.')
+      .or('opmerking.is.null,opmerking.eq.')
+      .eq('afgevoerd', false)
+      .select('id');
+    if (error) {
+      console.error('sbDeleteOnaangeraakteItems fout:', error);
+      return null;
+    }
+    return (data || []).length;
+  } catch(err) {
+    console.error('sbDeleteOnaangeraakteItems onverwachte fout:', err);
+    return null;
+  }
 }
 
 // ============================================================
