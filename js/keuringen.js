@@ -267,22 +267,33 @@ function openKeuringModal() {
     }
 
     // ── ARTIKEL_ID FIX ── Aangemeld materiaal overnemen
-    // item.id uit de database wordt het itemId (artikel-ID).
+    // Gebruik artikel_id als persistent itemId — dat is dezelfde ID die
+    // ook bij eerdere keuringen van dit artikel hoort, zodat de historie
+    // gekoppeld blijft. Fallback naar item.id (rowId) als artikel_id leeg is.
     // Geen rowId meegeven → sbSyncAllKeuringItems maakt een nieuwe rij.
+    //
+    // Alle metadata wordt meegekopieerd (productiedatum, fabricagejaar/maand,
+    // in gebruik, gebruiker, opmerking) — dat heeft de klant al ingevuld en
+    // willen we niet verliezen bij het overzetten naar de keuring.
     const aangemeldBox = document.getElementById('aangemeldBox');
     const aangemeldOvernemen = document.getElementById('aangemeldOvernemen')?.checked;
     if (aangemeldOvernemen && aangemeldBox?._items?.length > 0) {
       aangemeldBox._items.forEach(item => {
         keuring.items.push({
-          itemId:      item.id,
-          omschrijving: item.omschrijving || '',
-          merk:        item.merk || '',
-          materiaal:   item.materiaal || '',
-          serienummer: item.serienummer || '',
-          status:      '',
-          afkeurcode:  '',
-          opmerking:   '',
-          afgevoerd:   false,
+          itemId:         item.artikel_id || item.id,
+          omschrijving:   item.omschrijving || '',
+          merk:           item.merk || '',
+          materiaal:      item.materiaal || '',
+          serienummer:    item.serienummer || '',
+          productieDatum: item.productie_datum || '',
+          fabrJaar:       item.fabr_jaar || '',
+          fabrMaand:      item.fabr_maand || '',
+          inGebruik:      item.in_gebruik || '',
+          gebruiker:      item.gebruiker || '',
+          opmerking:      item.opmerking || '',
+          status:         '',
+          afkeurcode:     '',
+          afgevoerd:      false,
         });
       });
     }
@@ -399,7 +410,7 @@ async function checkVorigeKeuring() {
 
   try {
     const { data: losse } = await sb.from('keuring_items')
-      .select('id, omschrijving, merk, materiaal, serienummer, afgevoerd')
+      .select('id, artikel_id, omschrijving, merk, materiaal, serienummer, productie_datum, fabr_jaar, fabr_maand, in_gebruik, gebruiker, opmerking, afgevoerd')
       .eq('klant_id', klantId)
       .is('keuring_id', null);
 
