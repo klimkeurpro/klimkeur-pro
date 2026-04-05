@@ -442,6 +442,73 @@ async function sbDeleteOnaangeraakteItems(keuringId, rowIds) {
   }
 }
 
+// ── AANGEMELD MATERIAAL CLEANUP ────────────────────────────
+// sbCleanupVerwerkteAanmeldingen — verwijdert originele aangemelde
+// rijen (keuring_id IS NULL) zodra het bijbehorende artikel in een
+// afgeronde keuring is beoordeeld.
+//
+// Waarom nodig:
+// Als een klant een artikel aanmeldt in KlantKeur komt er een rij
+// met keuring_id=NULL in keuring_items. Bij het aanmaken van een
+// keuring wordt daarvan een kopie in de keuring gezet (met keuring_id
+// gevuld). De originele rij bleef tot nu toe staan, waardoor het
+// artikel bij de volgende keuring opnieuw als "aangemeld materiaal"
+// werd aangeboden — dubbel werk en duplicaten.
+//
+// Deze functie wordt aangeroepen vanuit finishKeuring. Voor elk
+// beoordeeld item (niet onaangeraakt) zoekt hij de matchende
+// aangemelde rij en verwijdert die.
+//
+// VEILIG omdat:
+//   1. Filter op keuring_id IS NULL → raakt alleen losse aanmeldingen,
+//      nooit items die al in een keuring zitten
+//   2. Filter op klant_id → raakt alleen rijen van deze ene klant
+//   3. Filter op expliciete itemIds → alleen artikelen die nu echt
+//      zijn beoordeeld in de zojuist afgeronde keuring
+//
+// We doen twee deletes: één op artikel_id (het gewone geval) en één
+// op id (voor de fallback waar de itemId gelijk is aan de rowId van
+// de oorspronkelijke aangemelde rij omdat artikel_id toen nog niet
+// was ingevuld).
+// ─────────────────────────────────────────────────────────────
+async function sbCleanupVerwerkteAanmeldingen(klantId, itemIds) {
+  if (!klantId) return 0;
+  if (!Array.isArray(itemIds) || itemIds.length === 0) return 0;
+  let totaal = 0;
+  try {
+    // Ronde 1: match op artikel_id
+    const { data: viaArtikelId, error: e1 } = await sb
+      .from('keuring_items')
+      .delete()
+      .is('keuring_id', null)
+      .eq('klant_id', klantId)
+      .in('artikel_id', itemIds)
+      .select('id');
+    if (e1) {
+      console.error('sbCleanupVerwerkteAanmeldingen (artikel_id) fout:', e1);
+    } else {
+      totaal += (viaArtikelId || []).length;
+    }
+    // Ronde 2: match op id (fallback)
+    const { data: viaId, error: e2 } = await sb
+      .from('keuring_items')
+      .delete()
+      .is('keuring_id', null)
+      .eq('klant_id', klantId)
+      .in('id', itemIds)
+      .select('id');
+    if (e2) {
+      console.error('sbCleanupVerwerkteAanmeldingen (id) fout:', e2);
+    } else {
+      totaal += (viaId || []).length;
+    }
+    return totaal;
+  } catch(err) {
+    console.error('sbCleanupVerwerkteAanmeldingen onverwachte fout:', err);
+    return null;
+  }
+}
+
 // ============================================================
 // STANDAARD STORE — neutrale lege defaults
 // Geen bedrijfsspecifieke data. Alles komt uit de bedrijven
