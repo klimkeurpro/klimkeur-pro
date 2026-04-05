@@ -8,6 +8,11 @@
 //
 // Gewijzigde plekken t.o.v. origineel staan gemarkeerd met:
 //   // ── ARTIKEL_ID FIX ──
+//
+// DB-VERVUILING FIX (v4):
+// finishKeuring() ruimt bij afronden alle onaangeraakte items op
+// via sbDeleteOnaangeraakteItems() in store.js. Zo blijven er geen
+// lege rijen van overgenomen-maar-nooit-beoordeelde items achter.
 // ============================================================
 
 // Afgevoerde item-IDs opgehaald uit Supabase — gevuld in checkVorigeKeuring()
@@ -1201,20 +1206,69 @@ function convertWeek() {
   el.innerHTML = `<strong>${fmt(weekStart)} — ${fmt(weekEnd)}</strong> <span style="opacity:0.7;">(maand ${weekStart.getMonth()+1})</span>`;
 }
 
+// ============================================================
+// KEURING AFRONDEN — DB-VERVUILING FIX
+// ============================================================
+// Bij afronden:
+// 1. Tel hoeveel items onaangeraakt zijn (lege status, geen afkeurcode,
+//    geen opmerking, niet afgevoerd)
+// 2. Als > 0: vraag bevestiging via popup
+// 3. Verwijder onaangeraakte items uit k.items (in-memory)
+// 4. Sla store op, zet afgerond=true
+// 5. Roep sbDeleteOnaangeraakteItems aan → ruimt ze op in Supabase
+// 6. Roep sbSyncAllKeuringItems aan → zekerheidssync van wat overblijft
+//
+// De historie van de opgeruimde artikelen blijft bestaan in eerdere
+// keuringen — alleen de lege rij van déze keuring verdwijnt.
+// ============================================================
 function finishKeuring(id) {
   const k = store.keuringen.find(ke => ke.id === id);
   if (!k) return;
 
-  // Lege items (niet beoordeeld, niet op pensioen) blijven in de database
-  // en komen de volgende keer weer terug — dat is de bedoeling.
-  // Geen items verwijderen bij afronden.
+  // Stap 1: tel onaangeraakte items
+  const onaangeraakteItems = (k.items || []).filter(isItemOnaangeraakt);
+  const aantalOnaangeraakt = onaangeraakteItems.length;
+
+  // Stap 2: bevestiging vragen als er iets op te ruimen is
+  if (aantalOnaangeraakt > 0) {
+    const meervoud = aantalOnaangeraakt > 1;
+    const vraag =
+      `${aantalOnaangeraakt} ${meervoud ? 'items zijn' : 'item is'} niet beoordeeld en ${meervoud ? 'worden' : 'wordt'} niet opnieuw opgeslagen. Akkoord?\n\n` +
+      `(De keuringshistorie van ${meervoud ? 'deze artikelen' : 'dit artikel'} blijft gewoon bestaan.)`;
+    if (!confirm(vraag)) {
+      // Gebruiker klikte op Annuleren — keuring blijft lopend
+      return;
+    }
+  }
+
+  // Stap 3: verwijder onaangeraakte items uit de in-memory store
+  if (aantalOnaangeraakt > 0) {
+    k.items = (k.items || []).filter(item => !isItemOnaangeraakt(item));
+  }
+
+  // Stap 4: markeer afgerond en sla lokaal op
   k.afgerond      = true;
   k.afgerondDatum = new Date().toISOString();
   saveStore(store);
+
+  // Stap 5: Supabase bijwerken
+  // - Keuring-record updaten (afgerond=true)
+  // - Onaangeraakte items verwijderen uit DB via gerichte DELETE
+  // - Zekerheidssync van de overgebleven items
   sbUpsertKeuring(k).catch(console.error);
-  // Sync alle items zodat afgevoerd-veld ook opgeslagen is
+  if (aantalOnaangeraakt > 0) {
+    sbDeleteOnaangeraakteItems(id).catch(console.error);
+  }
   sbSyncAllKeuringItems(k).catch(console.error);
-  toast('✓ Keuring afgerond');
+
+  // Toast met feedback
+  if (aantalOnaangeraakt > 0) {
+    const meervoud = aantalOnaangeraakt > 1;
+    toast(`✓ Keuring afgerond — ${aantalOnaangeraakt} onbeoordeeld ${meervoud ? 'items' : 'item'} niet opnieuw opgeslagen`);
+  } else {
+    toast('✓ Keuring afgerond');
+  }
+
   openKeuringDetail(id);
 }
 
