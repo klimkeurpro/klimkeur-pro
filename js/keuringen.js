@@ -275,12 +275,24 @@ function openKeuringModal() {
     // Alle metadata wordt meegekopieerd (productiedatum, fabricagejaar/maand,
     // in gebruik, gebruiker, opmerking) — dat heeft de klant al ingevuld en
     // willen we niet verliezen bij het overzetten naar de keuring.
+    //
+    // DEDUPLICATIE: als hetzelfde artikel al via "items overnemen uit vorige
+    // keuring" is toegevoegd, slaan we het hier over. Anders zouden we twee
+    // rijen met dezelfde itemId in één keuring krijgen.
+    const reedsToegevoegdeItemIds = new Set(
+      keuring.items.map(it => it.itemId).filter(Boolean).map(String)
+    );
     const aangemeldBox = document.getElementById('aangemeldBox');
     const aangemeldOvernemen = document.getElementById('aangemeldOvernemen')?.checked;
     if (aangemeldOvernemen && aangemeldBox?._items?.length > 0) {
       aangemeldBox._items.forEach(item => {
+        const itemId = item.artikel_id || item.id;
+        if (itemId && reedsToegevoegdeItemIds.has(String(itemId))) {
+          // Zit al in de keuring via vorige-keuring-overname, skippen
+          return;
+        }
         keuring.items.push({
-          itemId:         item.artikel_id || item.id,
+          itemId:         itemId,
           omschrijving:   item.omschrijving || '',
           merk:           item.merk || '',
           materiaal:      item.materiaal || '',
@@ -295,6 +307,7 @@ function openKeuringModal() {
           afkeurcode:     '',
           afgevoerd:      false,
         });
+        if (itemId) reedsToegevoegdeItemIds.add(String(itemId));
       });
     }
 
@@ -1270,11 +1283,23 @@ function finishKeuring(id) {
   // - Keuring-record updaten (afgerond=true)
   // - Onaangeraakte items verwijderen via expliciete rowIds
   // - Zekerheidssync van de overgebleven items
+  // - Aangemelde rijen opruimen voor artikelen die in deze keuring zijn verwerkt
   sbUpsertKeuring(k).catch(console.error);
   if (onaangeraakteRowIds.length > 0) {
     sbDeleteOnaangeraakteItems(id, onaangeraakteRowIds).catch(console.error);
   }
   sbSyncAllKeuringItems(k).catch(console.error);
+
+  // Aangemelde rijen (keuring_id IS NULL) opruimen voor de artikelen die
+  // nu in deze keuring zijn beoordeeld. Zo verschijnen ze niet opnieuw als
+  // "aangemeld materiaal" bij de volgende keuring van deze klant.
+  const beoordeeldeItemIds = (k.items || [])
+    .filter(item => !isItemOnaangeraakt(item))
+    .map(item => item.itemId)
+    .filter(Boolean);
+  if (beoordeeldeItemIds.length > 0 && k.klantId) {
+    sbCleanupVerwerkteAanmeldingen(k.klantId, beoordeeldeItemIds).catch(console.error);
+  }
 
   // Toast met feedback
   if (aantalOnaangeraakt > 0) {
