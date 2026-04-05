@@ -398,29 +398,37 @@ function isItemOnaangeraakt(item) {
 }
 
 // ── DB-VERVUILING FIX ──────────────────────────────────────
-// sbDeleteOnaangeraakteItems — ruimt alle onaangeraakte rijen van
-// één specifieke keuring op via één gerichte DELETE query.
+// sbDeleteOnaangeraakteItems — verwijdert expliciet opgegeven rijen
+// uit één specifieke keuring.
+//
+// De aanroeper (finishKeuring in keuringen.js) bepaalt in de app zelf
+// welke items onaangeraakt zijn, en geeft hun rowIds door. Dit is veel
+// betrouwbaarder dan in Supabase te filteren op "lege" tekstvelden,
+// wat in PostgREST lastig goed te krijgen is.
 //
 // VEILIG omdat:
-//   1. Filter op keuring_id → raakt alleen deze ene keuring
-//   2. Filter op alle "leeg" velden → raakt alleen items waar
-//      echt nog niets mee is gedaan
-//   3. Items uit eerdere keuringen (waar ze wél beoordeeld zijn)
-//      blijven onaangeraakt — de historie blijft dus bestaan
+//   1. Filter op keuring_id → zelfs bij een verkeerd doorgegeven rowId
+//      kan deze query nooit iets buiten deze ene keuring raken
+//   2. Filter op expliciete id-lijst → alleen exact de rijen die de
+//      app als onaangeraakt heeft geïdentificeerd worden verwijderd
+//   3. Items uit eerdere keuringen blijven onaangeroerd — de historie
+//      van elk artikel blijft dus bestaan
+//
+// Parameters:
+//   keuringId → de keuring waartoe de rijen moeten behoren
+//   rowIds    → array van database rij-IDs (item.rowId) om te verwijderen
 //
 // Retourneert het aantal verwijderde rijen, of null bij een fout.
 // ─────────────────────────────────────────────────────────────
-async function sbDeleteOnaangeraakteItems(keuringId) {
+async function sbDeleteOnaangeraakteItems(keuringId, rowIds) {
   if (!keuringId) return 0;
+  if (!Array.isArray(rowIds) || rowIds.length === 0) return 0;
   try {
     const { data, error } = await sb
       .from('keuring_items')
       .delete()
       .eq('keuring_id', keuringId)
-      .or('status.is.null,status.eq.')
-      .or('afkeurcode.is.null,afkeurcode.eq.')
-      .or('opmerking.is.null,opmerking.eq.')
-      .eq('afgevoerd', false)
+      .in('id', rowIds)
       .select('id');
     if (error) {
       console.error('sbDeleteOnaangeraakteItems fout:', error);
