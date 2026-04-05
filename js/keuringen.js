@@ -1225,8 +1225,12 @@ function finishKeuring(id) {
   const k = store.keuringen.find(ke => ke.id === id);
   if (!k) return;
 
-  // Stap 1: tel onaangeraakte items
+  // Stap 1: tel onaangeraakte items en verzamel hun rowIds
+  // De rowIds zijn de database-rij-IDs die we straks gericht verwijderen.
   const onaangeraakteItems = (k.items || []).filter(isItemOnaangeraakt);
+  const onaangeraakteRowIds = onaangeraakteItems
+    .map(item => item.rowId)
+    .filter(Boolean);
   const aantalOnaangeraakt = onaangeraakteItems.length;
 
   // Stap 2: bevestiging vragen als er iets op te ruimen is
@@ -1253,11 +1257,11 @@ function finishKeuring(id) {
 
   // Stap 5: Supabase bijwerken
   // - Keuring-record updaten (afgerond=true)
-  // - Onaangeraakte items verwijderen uit DB via gerichte DELETE
+  // - Onaangeraakte items verwijderen via expliciete rowIds
   // - Zekerheidssync van de overgebleven items
   sbUpsertKeuring(k).catch(console.error);
-  if (aantalOnaangeraakt > 0) {
-    sbDeleteOnaangeraakteItems(id).catch(console.error);
+  if (onaangeraakteRowIds.length > 0) {
+    sbDeleteOnaangeraakteItems(id, onaangeraakteRowIds).catch(console.error);
   }
   sbSyncAllKeuringItems(k).catch(console.error);
 
