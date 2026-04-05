@@ -377,24 +377,25 @@ async function sbSyncAllKeuringItems(keuring) {
 
 // ── DB-VERVUILING FIX ──────────────────────────────────────
 // isItemOnaangeraakt — controleert of een item tijdens deze keuring
-// nergens voor is gebruikt. Alleen items die aan ALLE vier voorwaarden
-// voldoen tellen als onaangeraakt:
-//   - status is leeg (niet goedgekeurd, niet afgekeurd)
-//   - afkeurcode is leeg
-//   - opmerking is leeg
+// niet is beoordeeld. Een item telt als onaangeraakt als:
+//   - status is leeg (niet goedgekeurd, niet afgekeurd) EN
 //   - afgevoerd is false (niet op pensioen gezet)
 //
-// Zodra je één van deze velden hebt ingevuld, blijft het item bestaan.
-// Zo raakt een item waar je alleen een opmerking of pensioen bij zet
-// niet per ongeluk kwijt.
+// Let op: opmerking en afkeurcode worden NIET gecheckt. Een losse
+// opmerking zonder beoordeling telt dus niet als "aangeraakt" — als
+// je een opmerking hebt getypt maar niet hebt beoordeeld, gaat die
+// opmerking verloren bij afronden. De bevestigings-popup in
+// finishKeuring waarschuwt daarvoor.
+//
+// Pensioen (afgevoerd=true) telt WEL als aangeraakt: als je een item
+// op pensioen hebt gezet zonder het te beoordelen, moet dat bewaard
+// blijven — anders komt het artikel de volgende keuring gewoon terug.
 // ─────────────────────────────────────────────────────────────
 function isItemOnaangeraakt(item) {
   if (!item) return false;
-  const statusLeeg     = !item.status || item.status === '';
-  const afkeurcodeLeeg = !item.afkeurcode || item.afkeurcode === '';
-  const opmerkingLeeg  = !item.opmerking || String(item.opmerking).trim() === '';
-  const nietAfgevoerd  = item.afgevoerd !== true;
-  return statusLeeg && afkeurcodeLeeg && opmerkingLeeg && nietAfgevoerd;
+  const statusLeeg    = !item.status || item.status === '';
+  const nietAfgevoerd = item.afgevoerd !== true;
+  return statusLeeg && nietAfgevoerd;
 }
 
 // ── DB-VERVUILING FIX ──────────────────────────────────────
