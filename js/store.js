@@ -15,6 +15,11 @@
 // verwijderd via sbDeleteOnaangeraakteItems(). Zo blijven er geen lege
 // rijen achter van items die tijdens de keuring nooit beoordeeld zijn.
 // De historie van die artikelen blijft bestaan in eerdere keuringen.
+//
+// AFKEURCODES FIX (v5):
+// sbSaveAfkeurcodes schrijft nu naar de juiste afkeurcodes tabel
+// in plaats van de oude instellingen tabel. Gebruikt gerichte updates
+// en deletes per database-id — nooit bulk operations.
 // ============================================================
 
 DEFAULT_PRODUCTS = [];
@@ -209,14 +214,97 @@ async function sbSaveKeurmeesters(keurmeesters) {
   // Deze functie blijft bestaan zodat bestaande aanroepen niet crashen
 }
 
+// ── AFKEURCODES FIX (v5) ────────────────────────────────────
+// sbSaveAfkeurcodes schrijft nu naar de juiste afkeurcodes tabel
+// (eerder ging hij naar de oude instellingen tabel — latente bug).
+//
+// Werkwijze:
+//   1. Haal huidige codes uit DB voor dit bedrijf
+//   2. Voor elke code in de nieuwe lijst:
+//        - Bestaat hij al? → update tekst gericht op database-id
+//        - Bestaat hij niet? → nieuwe rij invoegen
+//   3. Codes die in de DB staan maar niet in de nieuwe lijst:
+//        → gericht verwijderen op database-id
+//
+// VEILIG omdat:
+//   - Geen bulk delete-then-reinsert
+//   - Alle updates en deletes gaan via expliciete database-id
+//   - Als één stap faalt, raakt dat alleen die ene code
+// ─────────────────────────────────────────────────────────────
 async function sbSaveAfkeurcodes(afkeurcodes) {
-  const { error } = await sb.from('instellingen').upsert(
-    { sleutel: 'afkeurcodes', waarde: JSON.stringify(afkeurcodes), bijgewerkt_op: new Date().toISOString(), bedrijf_id: _huidigBedrijfId },
-    { onConflict: 'sleutel,bedrijf_id' }
-  );
-  if (error) console.error('sbSaveAfkeurcodes fout:', error);
-}
+  if (!_huidigBedrijfId) {
+    console.warn('sbSaveAfkeurcodes: geen bedrijf_id bekend, opslaan overgeslagen');
+    return;
+  }
 
+  try {
+    // Stap 1: huidige codes uit DB lezen voor dit bedrijf
+    const { data: huidig, error: leesErr } = await sb
+      .from('afkeurcodes')
+      .select('id, code, tekst')
+      .eq('bedrijf_id', _huidigBedrijfId);
+
+    if (leesErr) {
+      console.error('sbSaveAfkeurcodes: kon huidige codes niet lezen:', leesErr);
+      toast('Fout bij opslaan afkeurcodes', 'error');
+      return;
+    }
+
+    // Map van code → DB-rij voor snelle lookup
+    const huidigeMap = new Map();
+    (huidig || []).forEach(r => huidigeMap.set(String(r.code), r));
+
+    // Set van nieuwe codes voor snelle lookup
+    const nieuweCodeSet = new Set(afkeurcodes.map(c => String(c.code)));
+
+    // Stap 2: nieuwe/gewijzigde codes verwerken
+    for (const nieuw of afkeurcodes) {
+      const codeKey = String(nieuw.code);
+      const bestaand = huidigeMap.get(codeKey);
+
+      if (bestaand) {
+        // Code bestaat al — alleen updaten als tekst gewijzigd is
+        if (bestaand.tekst !== nieuw.tekst) {
+          const { error } = await sb
+            .from('afkeurcodes')
+            .update({ tekst: nieuw.tekst })
+            .eq('id', bestaand.id);
+          if (error) {
+            console.error('sbSaveAfkeurcodes update-fout voor code ' + codeKey + ':', error);
+          }
+        }
+      } else {
+        // Nieuwe code — invoegen
+        const { error } = await sb.from('afkeurcodes').insert({
+          code: nieuw.code,
+          tekst: nieuw.tekst,
+          bedrijf_id: _huidigBedrijfId,
+        });
+        if (error) {
+          console.error('sbSaveAfkeurcodes insert-fout voor code ' + codeKey + ':', error);
+        }
+      }
+    }
+
+    // Stap 3: codes verwijderen die niet meer in de nieuwe lijst staan
+    // Gericht per database-id — nooit bulk delete op een filter
+    for (const [codeKey, dbRow] of huidigeMap) {
+      if (!nieuweCodeSet.has(codeKey)) {
+        const { error } = await sb
+          .from('afkeurcodes')
+          .delete()
+          .eq('id', dbRow.id);
+        if (error) {
+          console.error('sbSaveAfkeurcodes delete-fout voor code ' + codeKey + ':', error);
+        }
+      }
+    }
+
+  } catch (err) {
+    console.error('sbSaveAfkeurcodes onverwachte fout:', err);
+    toast('Fout bij opslaan afkeurcodes', 'error');
+  }
+}
 async function sbUpsertKlant(klant) {
   const row = {
     id:             klant.id,
