@@ -44,7 +44,7 @@ async function laadBedrijvenLijst() {
       .order('naam', { ascending: true });
 
     if (error) {
-      container.innerHTML = `<div style="color:var(--danger);">Fout bij laden: ${error.message}</div>`;
+      container.innerHTML = `<div style="color:var(--danger);">Fout bij laden: ${escB(error.message)}</div>`;
       return;
     }
 
@@ -81,7 +81,7 @@ async function laadBedrijvenLijst() {
     `).join('');
 
   } catch (err) {
-    container.innerHTML = `<div style="color:var(--danger);">Onverwachte fout: ${err.message}</div>`;
+    container.innerHTML = `<div style="color:var(--danger);">Onverwachte fout: ${escB(err.message)}</div>`;
   }
 }
 
@@ -226,7 +226,7 @@ async function laadKmLijstInModal(bedrijfId) {
       .order('naam', { ascending: true });
 
     if (error) {
-      container.innerHTML = `<div style="color:var(--danger);font-size:12px;">Fout: ${error.message}</div>`;
+      container.innerHTML = `<div style="color:var(--danger);font-size:12px;">Fout: ${escB(error.message)}</div>`;
       return;
     }
 
@@ -248,7 +248,7 @@ async function laadKmLijstInModal(bedrijfId) {
     `).join('');
 
   } catch (err) {
-    container.innerHTML = `<div style="color:var(--danger);font-size:12px;">Fout: ${err.message}</div>`;
+    container.innerHTML = `<div style="color:var(--danger);font-size:12px;">Fout: ${escB(err.message)}</div>`;
   }
 }
 
