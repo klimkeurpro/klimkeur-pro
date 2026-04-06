@@ -270,4 +270,86 @@ function openProductModal(idx) {
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">Max Leeftijd USE</label>
-        <input class="form-input" id="prod
+        <input class="form-input" id="prodAgeUse" value="${escP(p?.maxLeeftijdUSE || '')}" placeholder="bijv. 10 USE">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Max Leeftijd MFR</label>
+        <input class="form-input" id="prodAgeMfr" value="${escP(p?.maxLeeftijdMFR || '')}" placeholder="bijv. 15 MFR">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">EN-Norm</label>
+        <input class="form-input" id="prodEN" value="${escP(p?.enNorm || '')}" placeholder="bijv. EN 1891 type A">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Breuksterkte</label>
+        <input class="form-input" id="prodBreuk" value="${escP(p?.breuksterkte || '')}" placeholder="bijv. 35 kN">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Bijzonderheden</label>
+      <input class="form-input" id="prodBijz" value="${escP(p?.bijzonderheden || '')}" placeholder="Bijzonderheden / recalls">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Handleiding Link</label>
+      <input class="form-input" id="prodLink" value="${escP(p?.handleiding || p?.link || '')}" placeholder="URL naar handleiding">
+    </div>
+  `, () => {
+    const i = parseInt(document.getElementById('prodIdx').value);
+
+    // ── BUGFIX: id altijd meegeven ──────────────────────────────
+    // Bij nieuw product: genereer een id.
+    // Bij bewerken: bewaar het bestaande id — anders gaat Supabase
+    // upsert mis en raakt het product ontkoppeld van zijn record.
+    const data = {
+      id:             i >= 0 ? (store.products[i].id || generateId()) : generateId(),
+      omschrijving:   document.getElementById('prodOmschr').value,
+      merk:           document.getElementById('prodMerk').value,
+      materiaal:      document.getElementById('prodMat').value,
+      maxLeeftijdUSE: document.getElementById('prodAgeUse').value,
+      maxLeeftijdMFR: document.getElementById('prodAgeMfr').value,
+      enNorm:         document.getElementById('prodEN').value,
+      breuksterkte:   document.getElementById('prodBreuk').value,
+      bijzonderheden: document.getElementById('prodBijz').value,
+      handleiding:    document.getElementById('prodLink').value,
+    };
+    // ───────────────────────────────────────────────────────────
+
+    if (!data.omschrijving) { toast('Vul een omschrijving in', 'error'); return; }
+    if (i >= 0) store.products[i] = data;
+    else store.products.push(data);
+    saveStore(store);
+    sbUpsertProduct(data).catch(console.error);
+    closeModal();
+    toast(i >= 0 ? 'Product bijgewerkt' : 'Product toegevoegd');
+    renderProducten(document.getElementById('pageContent'));
+  });
+}
+
+function openColVisModal() {
+  const vis = store.settings.visibleColumns;
+  showModal('Zichtbare Kolommen', `
+    <div class="col-vis-grid">
+      ${Object.keys(COLUMN_LABELS).map(c => `
+        <label class="col-vis-item">
+          <input type="checkbox" data-col="${c}" ${vis[c] ? 'checked' : ''}>
+          ${COLUMN_LABELS[c]}
+        </label>
+      `).join('')}
+    </div>
+  `, () => {
+    document.querySelectorAll('.col-vis-item input').forEach(inp => {
+      store.settings.visibleColumns[inp.dataset.col] = inp.checked;
+    });
+    saveStore(store);
+    sbSaveSettings(store.settings).catch(console.error);
+    closeModal();
+    toast('Kolommen bijgewerkt');
+    renderProducten(document.getElementById('pageContent'));
+  });
+}
+
+// ============================================================
+// KEURINGEN
+// ============================================================
