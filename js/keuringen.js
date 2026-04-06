@@ -15,6 +15,16 @@
 // lege rijen van overgenomen-maar-nooit-beoordeelde items achter.
 // ============================================================
 
+// Lokale HTML escape — voorkomt dat user-data uit HTML-attributen breekt
+function escKr(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // Afgevoerde item-IDs opgehaald uit Supabase — gevuld in checkVorigeKeuring()
 let _afgevoerdeItemIds = new Set();
 
@@ -65,8 +75,8 @@ function renderKeuringenRows(keuringen) {
     const open = (k.items||[]).filter(i=>!i.status && !i.afgevoerd).length;
     return `<tr class="clickable" onclick="openKeuringDetail('${k.id}')" style="cursor:pointer;">
       <td>${formatDate(k.datum)}</td>
-      <td><strong>${k.klantNaam||''}</strong></td>
-      <td>${k.certificaatNr||''}</td>
+      <td><strong>${escKr(k.klantNaam||'')}</strong></td>
+      <td>${escKr(k.certificaatNr||'')}</td>
       <td>${(k.items||[]).length}${open > 0 ? ` <span style="color:var(--warning);font-size:11px;">(${open} open)</span>` : ''}</td>
       <td><span class="badge badge-green">${goed}</span></td>
       <td><span class="badge badge-red">${afk}</span></td>
@@ -156,7 +166,7 @@ function filterKeuringItemsTable() {
 }
 
 function openKeuringModal() {
-  const klantOptions = store.klanten.map(k => `<option value="${k.id}">${k.bedrijf}</option>`).join('');
+  const klantOptions = store.klanten.map(k => `<option value="${escKr(k.id)}">${escKr(k.bedrijf)}</option>`).join('');
   const todayStr = new Date().toISOString().split('T')[0];
   const todayCert = todayStr.replace(/-/g, '');
 
@@ -184,7 +194,7 @@ function openKeuringModal() {
       <div class="form-group">
         <label class="form-label">Keurmeester</label>
         <select class="form-select" id="keuringKeurmeester">
-          ${(store.keurmeesters||[]).map(k => `<option value="${k.naam}" ${k.naam===store.settings.keurmeester?'selected':''}>${k.naam}</option>`).join('')}
+          ${(store.keurmeesters||[]).map(k => `<option value="${escKr(k.naam)}" ${k.naam===store.settings.keurmeester?'selected':''}>${escKr(k.naam)}</option>`).join('')}
         </select>
       </div>
     </div>
@@ -267,18 +277,6 @@ function openKeuringModal() {
     }
 
     // ── ARTIKEL_ID FIX ── Aangemeld materiaal overnemen
-    // Gebruik artikel_id als persistent itemId — dat is dezelfde ID die
-    // ook bij eerdere keuringen van dit artikel hoort, zodat de historie
-    // gekoppeld blijft. Fallback naar item.id (rowId) als artikel_id leeg is.
-    // Geen rowId meegeven → sbSyncAllKeuringItems maakt een nieuwe rij.
-    //
-    // Alle metadata wordt meegekopieerd (productiedatum, fabricagejaar/maand,
-    // in gebruik, gebruiker, opmerking) — dat heeft de klant al ingevuld en
-    // willen we niet verliezen bij het overzetten naar de keuring.
-    //
-    // DEDUPLICATIE: als hetzelfde artikel al via "items overnemen uit vorige
-    // keuring" is toegevoegd, slaan we het hier over. Anders zouden we twee
-    // rijen met dezelfde itemId in één keuring krijgen.
     const reedsToegevoegdeItemIds = new Set(
       keuring.items.map(it => it.itemId).filter(Boolean).map(String)
     );
@@ -288,7 +286,6 @@ function openKeuringModal() {
       aangemeldBox._items.forEach(item => {
         const itemId = item.artikel_id || item.id;
         if (itemId && reedsToegevoegdeItemIds.has(String(itemId))) {
-          // Zit al in de keuring via vorige-keuring-overname, skippen
           return;
         }
         keuring.items.push({
@@ -334,7 +331,6 @@ function getAllKlantItems(klantId, inclAfgevoerd = false) {
   const seen = new Map();
   for (const keuring of keuringen) {
     for (const item of keuring.items) {
-      // Sla pensioen-items over (tenzij expliciet inclusief gevraagd)
       if (!inclAfgevoerd) {
         if (item.afgevoerd === true) continue;
         if (item.itemId && _afgevoerdeItemIds.has(String(item.itemId))) continue;
@@ -388,10 +384,6 @@ async function checkVorigeKeuring() {
   const info    = document.getElementById('vorigeKeuringInfo');
   if (!klantId || !box) { if(box) box.style.display='none'; return; }
 
-  // ── ARTIKEL_ID FIX ── Haal artikel_id op i.p.v. id
-  // artikel_id is het persistente artikel-ID waarmee we in
-  // getAllKlantItems afgevoerde items herkennen.
-  // Fallback naar id voor oude data zonder artikel_id.
   try {
     const { data: afgevoerd } = await sb
       .from('keuring_items')
@@ -452,14 +444,13 @@ function openKeuringDetail(id) {
   const goed     = (k.items||[]).filter(i => i.status === 'goedgekeurd').length;
   const afk      = (k.items||[]).filter(i => i.status === 'afgekeurd').length;
   const pensioen = (k.items||[]).filter(i => i.afgevoerd).length;
-  // Alleen echte lege items (niet afgevoerd) tellen als open
   const open     = (k.items||[]).filter(i => !i.status && !i.afgevoerd).length;
 
   el.innerHTML = `
     <div class="fade-in">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
         <button class="btn btn-sm" onclick="_keuringItemZoek='';renderKeuringen(document.getElementById('pageContent'))">← Terug</button>
-        <h2 style="font-size:20px;">Keuring ${k.certificaatNr} — ${k.klantNaam}</h2>
+        <h2 style="font-size:20px;">Keuring ${escKr(k.certificaatNr)} — ${escKr(k.klantNaam)}</h2>
         <button class="btn btn-sm" onclick="wijzigEigenaar('${id}')" title="Eigenaar aanpassen">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           Eigenaar aanpassen
@@ -475,7 +466,7 @@ function openKeuringDetail(id) {
         </div></div>
         <div class="card"><div class="card-body" style="padding:14px 20px;">
           <div style="font-size:12px;color:var(--text-secondary);text-transform:uppercase;">Keurmeester</div>
-          <div style="font-size:16px;font-weight:600;">${k.keurmeester}</div>
+          <div style="font-size:16px;font-weight:600;">${escKr(k.keurmeester)}</div>
         </div></div>
         <div class="card"><div class="card-body" style="padding:14px 20px;">
           <div style="font-size:12px;color:var(--text-secondary);text-transform:uppercase;">Goedgekeurd</div>
@@ -586,7 +577,7 @@ function openKeuringDetail(id) {
               <label class="form-label">Afkeurcode</label>
               <select class="form-select" id="itemCode" disabled tabindex="9">
                 <option value="">--</option>
-                ${getAfkeurcodes().map(c => `<option value="${c.code}">${c.code} - ${c.tekst}</option>`).join('')}
+                ${getAfkeurcodes().map(c => `<option value="${escKr(c.code)}">${escKr(c.code)} - ${escKr(c.tekst)}</option>`).join('')}
               </select>
             </div>
             <div class="form-group">
@@ -615,7 +606,7 @@ function openKeuringDetail(id) {
                 <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
               </svg>
               <input type="text" id="keuringItemZoek"
-                value="${_keuringItemZoek}"
+                value="${escKr(_keuringItemZoek)}"
                 placeholder="Zoek op SN, naam, merk..."
                 oninput="zoekKeuringItems(this.value)"
                 onkeydown="if(event.key==='Escape'){zoekKeuringItems('');this.value='';}"
@@ -680,19 +671,18 @@ function openKeuringDetail(id) {
                   const isOpen     = !item.status && !isPensioen;
                   const isAfgerond = k.afgerond;
 
-                  // Rijachtergrond: pensioen=grijs, open=oranje, rest normaal
                   const rijStijl = isPensioen
                     ? 'background:rgba(150,150,150,0.08);opacity:0.7;'
                     : isOpen ? 'background:rgba(243,156,18,0.05);' : '';
 
                   const historieKnoopje = (item.itemId || item.serienummer)
-                    ? `<button class="btn-icon" title="Keuringshistorie artikel ID ${item.itemId||''}" onclick="showHistoriePopup('${(item.itemId||'').toString().replace(/'/g,"\\'")}','${(item.serienummer||'').replace(/'/g,"\\'")}','${(item.omschrijving||'').replace(/'/g,"\\'")}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>`
+                    ? `<button class="btn-icon" title="Keuringshistorie artikel ID ${escKr(item.itemId||'')}" onclick="showHistoriePopup('${(item.itemId||'').toString().replace(/'/g,"\\'")}','${(item.serienummer||'').replace(/'/g,"\\'")}','${(item.omschrijving||'').replace(/'/g,"\\'")}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>`
                     : '';
 
                   const vorigBadge = (item.vorigeStatus === 'goedgekeurd'
                     ? '<span class="badge badge-green" style="opacity:0.6;font-size:10px;">Goed</span>'
                     : item.vorigeStatus === 'afgekeurd'
-                      ? '<span class="badge badge-red" style="opacity:0.6;font-size:10px;">Afk ' + (item.vorigeAfkeurcode||'') + '</span>'
+                      ? '<span class="badge badge-red" style="opacity:0.6;font-size:10px;">Afk ' + escKr(item.vorigeAfkeurcode||'') + '</span>'
                       : '<span style="color:var(--text-muted);font-size:11px;">—</span>') + historieKnoopje;
 
                   const prod = store.products.find(p => p.omschrijving === item.omschrijving);
@@ -714,10 +704,6 @@ function openKeuringDetail(id) {
 
                   const fabrStr = item.fabrJaar ? (item.fabrJaar + (item.fabrMaand ? '/' + String(item.fabrMaand).padStart(2,'0') : '')) : '';
 
-                  // -------------------------------------------------------
-                  // BEOORDELINGSKNOPPENRIJ
-                  // Goed | Afkeur | [afkeurcode als afgekeurd] | 🏖 Pensioen
-                  // -------------------------------------------------------
                   const pensioenKnopStijl = isPensioen
                     ? 'border-color:var(--warning);color:var(--warning);opacity:1;'
                     : 'opacity:0.5;';
@@ -734,7 +720,7 @@ function openKeuringDetail(id) {
                       ${isAfk ? `<select class="form-select" style="width:auto;min-width:60px;height:28px;font-size:11px;padding:2px 4px;"
                         onchange="setAfkeurCode('${id}',${i},this.value)" ${isAfgerond?'disabled':''}>
                         <option value="">Code</option>
-                        ${getAfkeurcodes().map(c => `<option value="${c.code}" ${String(item.afkeurcode)==String(c.code)?'selected':''}>${c.code}</option>`).join('')}
+                        ${getAfkeurcodes().map(c => `<option value="${escKr(c.code)}" ${String(item.afkeurcode)==String(c.code)?'selected':''}>${escKr(c.code)}</option>`).join('')}
                       </select>` : ''}
                       <button class="btn btn-sm btn-secondary"
                         onclick="togglePensioen('${id}',${i})"
@@ -743,24 +729,24 @@ function openKeuringDetail(id) {
                         >${pensioenLabel}</button>
                     </div>`;
 
-                  return `<tr style="${rijStijl}" data-item-idx="${i}" data-sort_omschrijving="${(item.omschrijving||'').toLowerCase()}" data-sort_merk="${(item.merk||'').toLowerCase()}" data-sort_materiaal="${(item.materiaal||'').toLowerCase()}" data-sort_serienummer="${(item.serienummer||'').toLowerCase()}" data-sort_fabrjaar="${item.fabrJaar||''}" data-sort_ingebruik="${item.inGebruik||''}" data-sort_gebruiker="${(item.gebruiker||'').toLowerCase()}">
+                  return `<tr style="${rijStijl}" data-item-idx="${i}" data-sort_omschrijving="${escKr((item.omschrijving||'').toLowerCase())}" data-sort_merk="${escKr((item.merk||'').toLowerCase())}" data-sort_materiaal="${escKr((item.materiaal||'').toLowerCase())}" data-sort_serienummer="${escKr((item.serienummer||'').toLowerCase())}" data-sort_fabrjaar="${escKr(item.fabrJaar||'')}" data-sort_ingebruik="${escKr(item.inGebruik||'')}" data-sort_gebruiker="${escKr((item.gebruiker||'').toLowerCase())}">
                     <td class="row-num">${displayIdx+1}</td>
-                    <td style="font-size:11px;color:var(--text-muted);font-family:monospace;">${item.itemId || '—'}</td>
-                    <td>${item.omschrijving||''}${ageIcon}${isPensioen?' <span style="font-size:10px;color:var(--text-muted);">(pensioen)</span>':''}</td>
-                    <td>${item.merk||''}</td>
-                    <td>${item.materiaal||''}</td>
-                    <td style="font-family:monospace;font-size:12px;">${item.serienummer||''}</td>
-                    <td style="font-size:12px;">${fabrStr}</td>
+                    <td style="font-size:11px;color:var(--text-muted);font-family:monospace;">${escKr(item.itemId || '—')}</td>
+                    <td>${escKr(item.omschrijving||'')}${ageIcon}${isPensioen?' <span style="font-size:10px;color:var(--text-muted);">(pensioen)</span>':''}</td>
+                    <td>${escKr(item.merk||'')}</td>
+                    <td>${escKr(item.materiaal||'')}</td>
+                    <td style="font-family:monospace;font-size:12px;">${escKr(item.serienummer||'')}</td>
+                    <td style="font-size:12px;">${escKr(fabrStr)}</td>
                     <td style="font-size:12px;">${item.inGebruik ? formatDate(item.inGebruik) : ''}</td>
                     <td>${beoordelingHtml}</td>
-                    <td title="${item.opmerking||''}" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;font-size:12px;">${item.opmerking||''}</td>
-                    <td style="font-size:12px;">${item.gebruiker||''}</td>
+                    <td title="${escKr(item.opmerking||'')}" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;font-size:12px;">${escKr(item.opmerking||'')}</td>
+                    <td style="font-size:12px;">${escKr(item.gebruiker||'')}</td>
                     <td>${vorigBadge}</td>
                     <td style="white-space:nowrap;">
                       ${(() => {
                         const p = store.products.find(pr => pr.omschrijving === item.omschrijving);
                         const link = p?.handleiding || p?.link || '';
-                        return link && link.startsWith('http') ? `<a href="${link}" target="_blank" class="btn-icon" title="Handleiding openen" style="color:var(--sg-green);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></a>` : '';
+                        return link && link.startsWith('http') ? `<a href="${escKr(link)}" target="_blank" class="btn-icon" title="Handleiding openen" style="color:var(--sg-green);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></a>` : '';
                       })()}
                       <button class="btn-icon" title="Bewerken" onclick="editKeuringItem('${id}',${i})">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -811,7 +797,7 @@ function buildGebruikerList(keuringId) {
       if (item.gebruiker) namen.add(normalizeGebruiker(item.gebruiker));
     });
   });
-  el.innerHTML = [...namen].sort().map(n => `<option value="${n}">`).join('');
+  el.innerHTML = [...namen].sort().map(n => `<option value="${escKr(n)}">`).join('');
 }
 
 function getAfkeurcodes() {
@@ -840,9 +826,9 @@ async function laadMerkMateriaalCache() {
 
 function vulMerkMateriaalDatalist() {
   const merkList = document.getElementById('merkList');
-  if (merkList && _merkCache) merkList.innerHTML = _merkCache.map(m => `<option value="${m}">`).join('');
+  if (merkList && _merkCache) merkList.innerHTML = _merkCache.map(m => `<option value="${escKr(m)}">`).join('');
   const materiaalList = document.getElementById('materiaalList');
-  if (materiaalList && _materiaalCache) materiaalList.innerHTML = _materiaalCache.map(m => `<option value="${m}">`).join('');
+  if (materiaalList && _materiaalCache) materiaalList.innerHTML = _materiaalCache.map(m => `<option value="${escKr(m)}">`).join('');
 }
 
 function filterItemLists() { vulMerkMateriaalDatalist(); }
@@ -911,16 +897,20 @@ async function _doOmschrZoeken(val) {
       const o  = p.omschrijving;
       const lo = o.toLowerCase();
       const idx = lo.indexOf(ql);
-      let label = o;
-      if (idx >= 0) label = o.slice(0, idx) + '<strong style="color:var(--sg-green);">' + o.slice(idx, idx + q.length) + '</strong>' + o.slice(idx + q.length);
+      let label;
+      if (idx >= 0) {
+        label = escKr(o.slice(0, idx)) + '<strong style="color:var(--sg-green);">' + escKr(o.slice(idx, idx + q.length)) + '</strong>' + escKr(o.slice(idx + q.length));
+      } else {
+        label = escKr(o);
+      }
       const sub = [p.merk, p.materiaal].filter(Boolean).join(' · ');
-      return `<div class="omschr-drop-item" data-val="${o}" data-idx="${i}"
+      return `<div class="omschr-drop-item" data-val="${escKr(o)}" data-idx="${i}"
         onmousedown="selectOmschrItem(this)"
         style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid rgba(255,255,255,0.07);color:var(--text-primary);transition:background 0.1s;"
         onmouseover="highlightOmschrItem(${i})"
         onmouseout="if(omschrDropIndex!==${i})this.style.background=''">
         <div>${label}</div>
-        ${sub ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${sub}</div>` : ''}
+        ${sub ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${escKr(sub)}</div>` : ''}
       </div>`;
     }).join('');
 
@@ -991,13 +981,13 @@ function showItemInfoBar(prod) {
   if (!prod) { bar.style.display = 'none'; return; }
 
   const parts = [];
-  if (prod.bijzonderheden) parts.push(`<span style="color:var(--warning);"><strong>⚠ Bijzonderheden:</strong> ${prod.bijzonderheden}</span>`);
+  if (prod.bijzonderheden) parts.push(`<span style="color:var(--warning);"><strong>⚠ Bijzonderheden:</strong> ${escKr(prod.bijzonderheden)}</span>`);
   const ages = [];
-  if (prod.max_leeftijd)     ages.push(`Max leeftijd: <strong>${prod.max_leeftijd} jaar</strong>`);
-  if (prod.max_leeftijd_use) ages.push(`Max vanaf gebruik: <strong>${prod.max_leeftijd_use} jaar</strong>`);
-  if (prod.max_leeftijd_mfr) ages.push(`Max vanaf fabricage: <strong>${prod.max_leeftijd_mfr} jaar</strong>`);
+  if (prod.max_leeftijd)     ages.push(`Max leeftijd: <strong>${escKr(prod.max_leeftijd)} jaar</strong>`);
+  if (prod.max_leeftijd_use) ages.push(`Max vanaf gebruik: <strong>${escKr(prod.max_leeftijd_use)} jaar</strong>`);
+  if (prod.max_leeftijd_mfr) ages.push(`Max vanaf fabricage: <strong>${escKr(prod.max_leeftijd_mfr)} jaar</strong>`);
   if (ages.length > 0) parts.push(ages.join(' · '));
-  if (prod.norm) parts.push(`EN-norm: ${prod.norm}`);
+  if (prod.norm) parts.push(`EN-norm: ${escKr(prod.norm)}`);
   if (parts.length === 0) { bar.style.display = 'none'; return; }
 
   const hasWarning = !!prod.bijzonderheden;
@@ -1059,7 +1049,6 @@ function addKeuringItem(keuringId) {
   const status = document.getElementById('itemStatus').value;
 
   // ── ARTIKEL_ID FIX ── Nieuw artikel: nieuw itemId, geen rowId
-  // rowId wordt aangemaakt door sbUpsertKeuringItem
   const item = {
     itemId:      generateId(),
     omschrijving: omschr,
@@ -1093,7 +1082,6 @@ function duplicateKeuringItem(keuringId, idx) {
   if (!original) return;
 
   // ── ARTIKEL_ID FIX ── Duplicaat = nieuw fysiek artikel
-  // Nieuw itemId (ander artikel) EN geen rowId (nieuwe rij)
   const kopie = {
     ...JSON.parse(JSON.stringify(original)),
     itemId:           generateId(),
@@ -1121,8 +1109,7 @@ function removeKeuringItem(keuringId, idx) {
   if (!k.auditLog) k.auditLog = [];
   k.auditLog.push({...k.items[idx], removedAt: new Date().toISOString()});
 
-  // ── ARTIKEL_ID FIX ── Verwijder op rowId (database rij-ID),
-  // niet op itemId (dat is nu het persistente artikel-ID)
+  // ── ARTIKEL_ID FIX ── Verwijder op rowId (database rij-ID)
   const removedRowId = k.items[idx].rowId;
   k.items.splice(idx, 1);
   saveStore(store);
@@ -1139,7 +1126,6 @@ function quickBeoordeel(keuringId, idx, newStatus) {
   if (!item) return;
 
   const oldStatus = item.status;
-  // Toggle: klik je op de actieve knop dan gaat de status leeg
   if (item.status === newStatus) {
     item.status    = '';
     item.afkeurcode = '';
@@ -1160,9 +1146,6 @@ function quickBeoordeel(keuringId, idx, newStatus) {
 
 // ============================================================
 // PENSIOEN TOGGLE
-// Afgevoerd=true  → artikel komt nooit meer terug in nieuwe keuringen
-// Status 'afgekeurd' + afgevoerd → staat WEL op het certificaat, komt niet meer terug
-// Status leeg + afgevoerd       → staat NIET op certificaat, komt niet meer terug
 // ============================================================
 function togglePensioen(keuringId, idx) {
   const k = store.keuringen.find(ke => ke.id === keuringId);
@@ -1172,17 +1155,13 @@ function togglePensioen(keuringId, idx) {
   if (!item) return;
 
   if (item.afgevoerd) {
-    // Pensioen ongedaan maken
     item.afgevoerd = false;
     toast('Pensioen ongedaan gemaakt — artikel komt de volgende keer weer terug');
   } else {
-    // Op pensioen sturen
     item.afgevoerd = true;
     if (item.status === 'afgekeurd') {
-      // Afgekeurd + pensioen: staat nog op certificaat
       toast('Artikel op pensioen — staat nog op dit certificaat maar komt niet meer terug');
     } else {
-      // Alleen pensioen, geen beoordeling: niet op certificaat, niet meer terug
       toast('Artikel op pensioen — komt niet meer terug in nieuwe keuringen');
     }
   }
@@ -1233,66 +1212,40 @@ function convertWeek() {
 // ============================================================
 // KEURING AFRONDEN — DB-VERVUILING FIX
 // ============================================================
-// Bij afronden:
-// 1. Tel hoeveel items onaangeraakt zijn (lege status, geen afkeurcode,
-//    geen opmerking, niet afgevoerd)
-// 2. Als > 0: vraag bevestiging via popup
-// 3. Verwijder onaangeraakte items uit k.items (in-memory)
-// 4. Sla store op, zet afgerond=true
-// 5. Roep sbDeleteOnaangeraakteItems aan → ruimt ze op in Supabase
-// 6. Roep sbSyncAllKeuringItems aan → zekerheidssync van wat overblijft
-//
-// De historie van de opgeruimde artikelen blijft bestaan in eerdere
-// keuringen — alleen de lege rij van déze keuring verdwijnt.
-// ============================================================
 function finishKeuring(id) {
   const k = store.keuringen.find(ke => ke.id === id);
   if (!k) return;
 
-  // Stap 1: tel onaangeraakte items en verzamel hun rowIds
-  // De rowIds zijn de database-rij-IDs die we straks gericht verwijderen.
   const onaangeraakteItems = (k.items || []).filter(isItemOnaangeraakt);
   const onaangeraakteRowIds = onaangeraakteItems
     .map(item => item.rowId)
     .filter(Boolean);
   const aantalOnaangeraakt = onaangeraakteItems.length;
 
-  // Stap 2: bevestiging vragen als er iets op te ruimen is
   if (aantalOnaangeraakt > 0) {
     const meervoud = aantalOnaangeraakt > 1;
     const vraag =
       `${aantalOnaangeraakt} ${meervoud ? 'items zijn' : 'item is'} niet beoordeeld en ${meervoud ? 'worden' : 'wordt'} niet opnieuw opgeslagen. Akkoord?\n\n` +
       `(De keuringshistorie van ${meervoud ? 'deze artikelen' : 'dit artikel'} blijft gewoon bestaan.)`;
     if (!confirm(vraag)) {
-      // Gebruiker klikte op Annuleren — keuring blijft lopend
       return;
     }
   }
 
-  // Stap 3: verwijder onaangeraakte items uit de in-memory store
   if (aantalOnaangeraakt > 0) {
     k.items = (k.items || []).filter(item => !isItemOnaangeraakt(item));
   }
 
-  // Stap 4: markeer afgerond en sla lokaal op
   k.afgerond      = true;
   k.afgerondDatum = new Date().toISOString();
   saveStore(store);
 
-  // Stap 5: Supabase bijwerken
-  // - Keuring-record updaten (afgerond=true)
-  // - Onaangeraakte items verwijderen via expliciete rowIds
-  // - Zekerheidssync van de overgebleven items
-  // - Aangemelde rijen opruimen voor artikelen die in deze keuring zijn verwerkt
   sbUpsertKeuring(k).catch(console.error);
   if (onaangeraakteRowIds.length > 0) {
     sbDeleteOnaangeraakteItems(id, onaangeraakteRowIds).catch(console.error);
   }
   sbSyncAllKeuringItems(k).catch(console.error);
 
-  // Aangemelde rijen (keuring_id IS NULL) opruimen voor de artikelen die
-  // nu in deze keuring zijn beoordeeld. Zo verschijnen ze niet opnieuw als
-  // "aangemeld materiaal" bij de volgende keuring van deze klant.
   const beoordeeldeItemIds = (k.items || [])
     .filter(item => !isItemOnaangeraakt(item))
     .map(item => item.itemId)
@@ -1301,7 +1254,6 @@ function finishKeuring(id) {
     sbCleanupVerwerkteAanmeldingen(k.klantId, beoordeeldeItemIds).catch(console.error);
   }
 
-  // Toast met feedback
   if (aantalOnaangeraakt > 0) {
     const meervoud = aantalOnaangeraakt > 1;
     toast(`✓ Keuring afgerond — ${aantalOnaangeraakt} onbeoordeeld ${meervoud ? 'items' : 'item'} niet opnieuw opgeslagen`);
@@ -1337,24 +1289,24 @@ function editKeuringItem(keuringId, idx) {
     <div class="form-row" style="grid-template-columns: 2fr 1fr 1fr 1fr 1fr;">
       <div class="form-group">
         <label class="form-label">Omschrijving</label>
-        <input class="form-input" id="editOmschr" list="editProdList" value="${item.omschrijving||''}">
-        <datalist id="editProdList">${allProds.map(p=>`<option value="${p}">`).join('')}</datalist>
+        <input class="form-input" id="editOmschr" list="editProdList" value="${escKr(item.omschrijving||'')}">
+        <datalist id="editProdList">${allProds.map(p=>`<option value="${escKr(p)}">`).join('')}</datalist>
       </div>
       <div class="form-group">
         <label class="form-label">Merk</label>
-        <input class="form-input" id="editMerk" value="${item.merk||''}">
+        <input class="form-input" id="editMerk" value="${escKr(item.merk||'')}">
       </div>
       <div class="form-group">
         <label class="form-label">Materiaal</label>
-        <input class="form-input" id="editMateriaal" value="${item.materiaal||''}">
+        <input class="form-input" id="editMateriaal" value="${escKr(item.materiaal||'')}">
       </div>
       <div class="form-group">
         <label class="form-label">Serienummer</label>
-        <input class="form-input" id="editSerial" value="${item.serienummer||''}">
+        <input class="form-input" id="editSerial" value="${escKr(item.serienummer||'')}">
       </div>
       <div class="form-group">
         <label class="form-label">Fabr. Jaar</label>
-        <input class="form-input" type="number" id="editJaar" value="${item.fabrJaar||''}" min="1990" max="2030">
+        <input class="form-input" type="number" id="editJaar" value="${escKr(item.fabrJaar||'')}" min="1990" max="2030">
       </div>
     </div>
     <div class="form-row" style="grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr;">
@@ -1366,7 +1318,7 @@ function editKeuringItem(keuringId, idx) {
       </div>
       <div class="form-group">
         <label class="form-label">In gebruik</label>
-        <input class="form-input" type="date" id="editInGebruik" value="${item.inGebruik||''}">
+        <input class="form-input" type="date" id="editInGebruik" value="${escKr(item.inGebruik||'')}">
       </div>
       <div class="form-group">
         <label class="form-label">Status${k.afgerond?' <span style="font-size:11px;color:var(--text-muted);">(vergrendeld)</span>':''}</label>
@@ -1380,17 +1332,17 @@ function editKeuringItem(keuringId, idx) {
         <label class="form-label">Afkeurcode</label>
         <select class="form-select" id="editCode" ${k.afgerond||item.status!=='afgekeurd'?'disabled':''}>
           <option value="">--</option>
-          ${getAfkeurcodes().map(c => `<option value="${c.code}" ${String(item.afkeurcode)==String(c.code)?'selected':''}>${c.code} - ${c.tekst}</option>`).join('')}
+          ${getAfkeurcodes().map(c => `<option value="${escKr(c.code)}" ${String(item.afkeurcode)==String(c.code)?'selected':''}>${escKr(c.code)} - ${escKr(c.tekst)}</option>`).join('')}
         </select>
       </div>
       <div class="form-group">
         <label class="form-label">Opmerking</label>
-        <input class="form-input" id="editOpm" value="${item.opmerking||''}">
+        <input class="form-input" id="editOpm" value="${escKr(item.opmerking||'')}">
       </div>
       <div class="form-group">
         <label class="form-label">Gebruiker</label>
-        <input class="form-input" id="editGebruiker" value="${item.gebruiker||''}" list="editGebruikerList" onblur="this.value=normalizeGebruiker(this.value)">
-        <datalist id="editGebruikerList">${[...new Set(store.keuringen.flatMap(ke => (ke.items||[]).map(it => it.gebruiker).filter(Boolean)).map(n => normalizeGebruiker(n)))].sort().map(n => `<option value="${n}">`).join('')}</datalist>
+        <input class="form-input" id="editGebruiker" value="${escKr(item.gebruiker||'')}" list="editGebruikerList" onblur="this.value=normalizeGebruiker(this.value)">
+        <datalist id="editGebruikerList">${[...new Set(store.keuringen.flatMap(ke => (ke.items||[]).map(it => it.gebruiker).filter(Boolean)).map(n => normalizeGebruiker(n)))].sort().map(n => `<option value="${escKr(n)}">`).join('')}</datalist>
       </div>
     </div>
     ${item.afgevoerd ? `
@@ -1400,7 +1352,7 @@ function editKeuringItem(keuringId, idx) {
     ${item.vorigeStatus ? `
     <div style="margin-top:8px;padding:8px 14px;background:var(--bg-input);border-radius:var(--radius);font-size:12px;color:var(--text-secondary);">
       Vorige keuring: <span class="badge ${item.vorigeStatus==='goedgekeurd'?'badge-green':'badge-red'}" style="font-size:11px;">
-        ${item.vorigeStatus==='goedgekeurd'?'Goed':'Afkeur'} ${item.vorigeAfkeurcode||''}
+        ${item.vorigeStatus==='goedgekeurd'?'Goed':'Afkeur'} ${escKr(item.vorigeAfkeurcode||'')}
       </span>
     </div>` : ''}
   `, () => {
@@ -1439,9 +1391,9 @@ function showHistoriePopup(itemId, sn, omschrijving) {
   const historie = getHistorieVoorItemId(itemId, sn);
   const bodyHtml = `
     <div style="margin-bottom:12px;">
-      <div style="font-family:monospace;font-size:16px;font-weight:700;color:var(--sg-lime);">${sn || '—'}</div>
-      <div style="font-size:14px;color:var(--text-secondary);margin-top:4px;">${omschrijving}</div>
-      ${itemId ? `<div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Artikel ID: <strong>${itemId}</strong></div>` : ''}
+      <div style="font-family:monospace;font-size:16px;font-weight:700;color:var(--sg-lime);">${escKr(sn || '—')}</div>
+      <div style="font-size:14px;color:var(--text-secondary);margin-top:4px;">${escKr(omschrijving)}</div>
+      ${itemId ? `<div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Artikel ID: <strong>${escKr(itemId)}</strong></div>` : ''}
     </div>
     ${historie.length === 0
       ? '<p style="color:var(--text-muted);text-align:center;padding:20px;">Geen keuringshistorie gevonden.</p>'
@@ -1452,23 +1404,23 @@ function showHistoriePopup(itemId, sn, omschrijving) {
                 <div style="display:flex;align-items:center;gap:8px;">
                   ${idx === 0 ? '<span style="font-size:10px;background:var(--sg-green);color:white;padding:1px 6px;border-radius:10px;">Laatste</span>' : ''}
                   <strong style="font-size:13px;">${formatDate(r.datum)}</strong>
-                  <span style="font-size:12px;color:var(--text-muted);">${r.certificaatNr}</span>
+                  <span style="font-size:12px;color:var(--text-muted);">${escKr(r.certificaatNr)}</span>
                 </div>
                 <div>
                   ${r.afgevoerd ? '<span class="badge" style="background:var(--text-muted);color:white;font-size:10px;">🏖 Pensioen</span>' : ''}
                   ${r.status === 'goedgekeurd' ? '<span class="badge badge-green">Goedgekeurd</span>'
-                    : r.status === 'afgekeurd' ? `<span class="badge badge-red">Afgekeurd ${r.afkeurcode ? '— ' + r.afkeurcode : ''}</span>`
+                    : r.status === 'afgekeurd' ? `<span class="badge badge-red">Afgekeurd ${r.afkeurcode ? '— ' + escKr(r.afkeurcode) : ''}</span>`
                     : r.status === 'pensioen'  ? '<span class="badge" style="background:var(--text-muted);color:white;">Pensioen</span>'
                     : '<span class="badge badge-orange">Onbeoordeeld</span>'}
                 </div>
               </div>
-              <div style="font-size:12px;color:var(--text-secondary);">${r.klantNaam} · ${r.keurmeester}${r.gebruiker ? ' · Gebruiker: ' + r.gebruiker : ''}</div>
-              ${r.opmerking ? `<div style="font-size:12px;color:var(--warning);margin-top:4px;">Opmerking: ${r.opmerking}</div>` : ''}
+              <div style="font-size:12px;color:var(--text-secondary);">${escKr(r.klantNaam)} · ${escKr(r.keurmeester)}${r.gebruiker ? ' · Gebruiker: ' + escKr(r.gebruiker) : ''}</div>
+              ${r.opmerking ? `<div style="font-size:12px;color:var(--warning);margin-top:4px;">Opmerking: ${escKr(r.opmerking)}</div>` : ''}
             </div>
           `).join('')}
         </div>`}
   `;
-  showModal(`Keuringshistorie — ${omschrijving || sn}`, bodyHtml, null);
+  showModal(`Keuringshistorie — ${escKr(omschrijving || sn)}`, bodyHtml, null);
   const footer = document.querySelector('#modalOverlay .modal-footer');
   if (footer) footer.innerHTML = `<button class="btn btn-primary" onclick="closeModal()">Sluiten</button>`;
 }
@@ -1476,12 +1428,12 @@ function showHistoriePopup(itemId, sn, omschrijving) {
 function wijzigEigenaar(keuringId) {
   const k = store.keuringen.find(ke => ke.id === keuringId);
   if (!k) return;
-  const klantOptions = store.klanten.map(kl => `<option value="${kl.id}" ${kl.id === k.klantId ? 'selected' : ''}>${kl.bedrijf}</option>`).join('');
+  const klantOptions = store.klanten.map(kl => `<option value="${escKr(kl.id)}" ${kl.id === k.klantId ? 'selected' : ''}>${escKr(kl.bedrijf)}</option>`).join('');
 
   showModal('Eigenaar aanpassen', `
     <div style="margin-bottom:16px;padding:12px 14px;background:var(--bg-input);border-radius:var(--radius);font-size:13px;color:var(--text-secondary);">
-      <strong>Huidige eigenaar:</strong> ${k.klantNaam || 'Onbekend'}<br>
-      <span style="font-size:12px;color:var(--text-muted);">Certificaat: ${k.certificaatNr || ''}</span>
+      <strong>Huidige eigenaar:</strong> ${escKr(k.klantNaam || 'Onbekend')}<br>
+      <span style="font-size:12px;color:var(--text-muted);">Certificaat: ${escKr(k.certificaatNr || '')}</span>
     </div>
     <div class="form-group">
       <label class="form-label">Nieuwe eigenaar <span style="color:var(--danger);">*</span></label>
