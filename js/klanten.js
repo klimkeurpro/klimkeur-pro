@@ -2,6 +2,16 @@
 // klanten.js — klantenbeheer, uitnodigingen, aangemeld materiaal
 // ============================================================
 
+// Lokale HTML escape — voorkomt dat klant/product-data uit het attribuut breekt
+function escK(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function renderKlanten(el) {
   const klanten = store.klanten;
   el.innerHTML = `
@@ -25,16 +35,16 @@ function renderKlanten(el) {
             ${klanten.length === 0 ? '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:40px;">Nog geen klanten. Voeg een klant toe om te beginnen.</td></tr>' :
               klanten.map(k => `
                 <tr>
-                  <td><strong>${esc(k.bedrijf || k.naam || '')}</strong></td>
-                  <td>${esc(k.klantnummer || '')}</td>
-                  <td>${esc(k.contactpersoon || '')}</td>
-                  <td>${esc(k.telefoon || '')}</td>
-                  <td>${esc(k.email || '')}</td>
+                  <td><strong>${escK(k.bedrijf || k.naam || '')}</strong></td>
+                  <td>${escK(k.klantnummer || '')}</td>
+                  <td>${escK(k.contactpersoon || '')}</td>
+                  <td>${escK(k.telefoon || '')}</td>
+                  <td>${escK(k.email || '')}</td>
                   <td><span class="badge badge-blue">${store.keuringen.filter(ke => ke.klantId === k.id).length}</span></td>
-                  <td id="aangemeld-${esc(k.id)}"><span class="badge badge-gray">—</span></td>
+                  <td id="aangemeld-${escK(k.id)}"><span class="badge badge-gray">—</span></td>
                   <td>
-                    <button class="btn btn-sm" onclick="openKlantModal('${esc(k.id)}')">Bewerk</button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteKlant('${esc(k.id)}')">Verwijder</button>
+                    <button class="btn btn-sm" onclick="openKlantModal('${escK(k.id)}')">Bewerk</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteKlant('${escK(k.id)}')">Verwijder</button>
                   </td>
                 </tr>
               `).join('')}
@@ -48,68 +58,68 @@ function renderKlanten(el) {
 function openKlantModal(id) {
   const klant = id ? store.klanten.find(k => k.id === id) : null;
   showModal(id ? 'Klant Bewerken' : 'Nieuwe Klant', `
-    <input type="hidden" id="klantId" value="${esc(id || '')}">
+    <input type="hidden" id="klantId" value="${escK(id || '')}">
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">Bedrijf / Naam</label>
-        <input class="form-input" id="klantBedrijf" value="${esc(klant?.bedrijf || '')}" placeholder="Bedrijfsnaam">
+        <input class="form-input" id="klantBedrijf" value="${escK(klant?.bedrijf || '')}" placeholder="Bedrijfsnaam">
       </div>
       <div class="form-group">
         <label class="form-label">Contactpersoon</label>
-        <input class="form-input" id="klantContact" value="${esc(klant?.contactpersoon || '')}" placeholder="Contactpersoon">
+        <input class="form-input" id="klantContact" value="${escK(klant?.contactpersoon || '')}" placeholder="Contactpersoon">
       </div>
     </div>
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">Klantnummer <span style="font-weight:400;color:var(--text-muted);">(optioneel — bijv. uit boekhoudprogramma)</span></label>
-        <input class="form-input" id="klantNummer" value="${esc(klant?.klantnummer || '')}" placeholder="bijv. 1042">
+        <input class="form-input" id="klantNummer" value="${escK(klant?.klantnummer || '')}" placeholder="bijv. 1042">
       </div>
     </div>
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">Telefoon</label>
-        <input class="form-input" id="klantTel" value="${esc(klant?.telefoon || '')}" placeholder="Telefoonnummer">
+        <input class="form-input" id="klantTel" value="${escK(klant?.telefoon || '')}" placeholder="Telefoonnummer">
       </div>
       <div class="form-group">
         <label class="form-label">Email <span style="font-weight:400;color:var(--text-muted);">wordt ook gebruikt voor klant-login</span></label>
-        <input class="form-input" id="klantEmail" value="${esc(klant?.email || '')}" placeholder="naam@voorbeeld.nl">
+        <input class="form-input" id="klantEmail" value="${escK(klant?.email || '')}" placeholder="naam@voorbeeld.nl">
       </div>
     </div>
     <div class="form-row" style="grid-template-columns:3fr 1fr;">
       <div class="form-group">
         <label class="form-label">Straatnaam</label>
-        <input class="form-input" id="klantStraat" value="${esc(klant?.straat || '')}" placeholder="Straatnaam">
+        <input class="form-input" id="klantStraat" value="${escK(klant?.straat || '')}" placeholder="Straatnaam">
       </div>
       <div class="form-group">
         <label class="form-label">Huisnr.</label>
-        <input class="form-input" id="klantHuisnr" value="${esc(klant?.huisnummer || '')}" placeholder="Nr.">
+        <input class="form-input" id="klantHuisnr" value="${escK(klant?.huisnummer || '')}" placeholder="Nr.">
       </div>
     </div>
     <div class="form-row" style="grid-template-columns:1fr 2fr 1fr;">
       <div class="form-group">
         <label class="form-label">Postcode</label>
-        <input class="form-input" id="klantPostcode" value="${esc(klant?.postcode || '')}" placeholder="1234 AB">
+        <input class="form-input" id="klantPostcode" value="${escK(klant?.postcode || '')}" placeholder="1234 AB">
       </div>
       <div class="form-group">
         <label class="form-label">Plaatsnaam</label>
-        <input class="form-input" id="klantPlaats" value="${esc(klant?.plaats || '')}" placeholder="Plaatsnaam">
+        <input class="form-input" id="klantPlaats" value="${escK(klant?.plaats || '')}" placeholder="Plaatsnaam">
       </div>
       <div class="form-group">
         <label class="form-label">Land</label>
-        <input class="form-input" id="klantLand" value="${esc(klant?.land || 'Nederland')}" placeholder="Land">
+        <input class="form-input" id="klantLand" value="${escK(klant?.land || 'Nederland')}" placeholder="Land">
       </div>
     </div>
     <div class="form-group">
       <label class="form-label">Opmerkingen</label>
-      <textarea class="form-textarea" id="klantOpm">${esc(klant?.opmerkingen || '')}</textarea>
+      <textarea class="form-textarea" id="klantOpm">${escK(klant?.opmerkingen || '')}</textarea>
     </div>
     <div class="form-group">
       <div style="display:flex;gap:8px;margin-top:4px;">
         <button type="button" class="btn btn-secondary btn-sm" onclick="zoekAuthUser()" style="white-space:nowrap;">Opzoeken</button>
         <button type="button" class="btn btn-primary btn-sm" onclick="verstuurKlantUitnodiging()" style="white-space:nowrap;" ${!id ? 'disabled title="Sla de klant eerst op"' : ''}>✉ Uitnodigen</button>
       </div>
-      <input type="hidden" id="klantAuthEmail" value="${esc(klant?.email || klant?.authEmail || '')}">
-      <input type="hidden" id="klantAuthUserId" value="${esc(klant?.auth_user_id || '')}">
+      <input type="hidden" id="klantAuthEmail" value="${escK(klant?.email || klant?.authEmail || '')}">
+      <input type="hidden" id="klantAuthUserId" value="${escK(klant?.auth_user_id || '')}">
       <div id="authUserStatus" style="font-size:12px;margin-top:4px;color:var(--text-muted);">${klant?.auth_user_id ? '✓ Account gekoppeld' : ''}</div>
     </div>
   `, () => {
@@ -159,7 +169,7 @@ async function laadAangemeldBadges() {
     // Update badges
     Object.entries(tellers).forEach(([klantId, count]) => {
       const el = document.getElementById(`aangemeld-${klantId}`);
-      if (el) el.innerHTML = `<span class="badge badge-green" style="cursor:pointer;" onclick="toonAangemeldMateriaal('${esc(klantId)}','')">${count} nieuw</span>`;
+      if (el) el.innerHTML = `<span class="badge badge-green" style="cursor:pointer;" onclick="toonAangemeldMateriaal('${escK(klantId)}','')">${count} nieuw</span>`;
     });
   } catch(e) { console.warn('Kon aangemeld materiaal niet laden:', e); }
 }
@@ -196,9 +206,9 @@ async function toonAangemeldMateriaal(klantId, klantNaam) {
             ${items.map(i => {
               const ks = keuringNodigStatus(i.in_gebruik);
               return `<tr style="border-bottom:1px solid var(--border);">
-                <td style="padding:8px;">${esc(i.omschrijving || '—')}<br><span style="font-size:11px;color:var(--text-muted);">${esc(i.materiaal || '')}</span></td>
-                <td style="padding:8px;">${esc(i.merk || '—')}</td>
-                <td style="padding:8px;font-family:monospace;">${esc(i.serienummer || '—')}</td>
+                <td style="padding:8px;">${escK(i.omschrijving || '—')}<br><span style="font-size:11px;color:var(--text-muted);">${escK(i.materiaal || '')}</span></td>
+                <td style="padding:8px;">${escK(i.merk || '—')}</td>
+                <td style="padding:8px;font-family:monospace;">${escK(i.serienummer || '—')}</td>
                 <td style="padding:8px;">${i.in_gebruik ? formatDate(i.in_gebruik) : '—'}</td>
                 <td style="padding:8px;"><span class="badge ${ks === 'overdue' ? 'badge-red' : ks === 'soon' ? 'badge-orange' : 'badge-green'}">${ks === 'overdue' ? 'Keuring nodig' : ks === 'soon' ? 'Keuring binnenkort' : 'OK'}</span></td>
               </tr>`;
@@ -207,7 +217,7 @@ async function toonAangemeldMateriaal(klantId, klantNaam) {
         </table>
       </div>`;
 
-    showModal(`Aangemeld materiaal — ${esc(klantNaam || klantId)}`, html, null, true);
+    showModal(`Aangemeld materiaal — ${escK(klantNaam || klantId)}`, html, null, true);
   } catch(e) {
     console.error('Fout bij laden aangemeld materiaal:', e);
     toast('Fout bij laden materiaal', 'error');
@@ -317,7 +327,7 @@ async function verstuurKlantUitnodiging() {
         console.error('auth_user_id opslaan mislukt:', saveErr);
       }
     }
-    statusEl.innerHTML = `✓ Uitnodiging verstuurd naar <strong>${esc(email)}</strong>`;
+    statusEl.innerHTML = `✓ Uitnodiging verstuurd naar <strong>${escK(email)}</strong>`;
     statusEl.style.color = 'var(--success)';
     toast(`Uitnodiging verstuurd naar ${email}`);
 
