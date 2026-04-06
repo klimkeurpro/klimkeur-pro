@@ -6,6 +6,16 @@
 // wordt niet meer gebruikt (sbSaveKeurmeesters is uitgefaseerd).
 // ============================================================
 
+// Lokale HTML escape — voorkomt dat data uit HTML-attributen breekt
+function escI(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function renderInstellingen(el) {
   const s = store.settings;
   el.innerHTML = `
@@ -26,37 +36,37 @@ function renderInstellingen(el) {
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">Bedrijfsnaam</label>
-              <input class="form-input" id="setBedrijf" value="${s.bedrijfsnaam||''}">
+              <input class="form-input" id="setBedrijf" value="${escI(s.bedrijfsnaam||'')}">
             </div>
             <div class="form-group">
               <label class="form-label">KvK Nummer</label>
-              <input class="form-input" id="setKvk" value="${s.kvk||''}">
+              <input class="form-input" id="setKvk" value="${escI(s.kvk||'')}">
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">Adres</label>
-              <input class="form-input" id="setAdres" value="${s.adres||''}">
+              <input class="form-input" id="setAdres" value="${escI(s.adres||'')}">
             </div>
             <div class="form-group">
               <label class="form-label">Telefoon</label>
-              <input class="form-input" id="setTel" value="${s.telefoon||''}">
+              <input class="form-input" id="setTel" value="${escI(s.telefoon||'')}">
             </div>
           </div>
           <div class="form-group">
             <label class="form-label">Email</label>
-            <input class="form-input" id="setEmail" value="${s.email||''}">
+            <input class="form-input" id="setEmail" value="${escI(s.email||'')}">
           </div>
           <div class="form-group">
             <label class="form-label">Standaard keurmeester</label>
             <select class="form-select" id="setKeurmeester">
-              ${(store.keurmeesters||[]).map(k=>`<option value="${k.naam}" ${s.keurmeester===k.naam?'selected':''}>${k.naam}</option>`).join('')}
+              ${(store.keurmeesters||[]).map(k=>`<option value="${escI(k.naam)}" ${s.keurmeester===k.naam?'selected':''}>${escI(k.naam)}</option>`).join('')}
             </select>
           </div>
           <div style="margin-top:16px;">
             <label class="form-label">Bedrijfslogo</label>
             <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);padding:12px;text-align:center;min-width:200px;min-height:60px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:8px;">
-              ${s.logo ? `<img src="${s.logo}" style="max-height:60px;max-width:180px;object-fit:contain;">` : '<span style="color:var(--text-muted);font-size:13px;">Geen logo</span>'}
+              ${s.logo ? `<img src="${escI(s.logo)}" style="max-height:60px;max-width:180px;object-fit:contain;">` : '<span style="color:var(--text-muted);font-size:13px;">Geen logo</span>'}
             </div>
             <br>
             <input type="file" id="logoUpload" accept="image/*" style="font-size:12px;" onchange="uploadLogo(this)">
@@ -80,7 +90,7 @@ function renderInstellingen(el) {
             <label class="form-label">Huidige handtekening</label>
             <div id="handtekeningPreviewWrap" style="background:white;border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:center;min-height:80px;display:flex;align-items:center;justify-content:center;max-width:320px;">
               ${_getEigenHandtekening()
-                ? `<img id="handtekeningPreviewImg" src="${_getEigenHandtekening()}" style="max-height:70px;max-width:280px;">`
+                ? `<img id="handtekeningPreviewImg" src="${escI(_getEigenHandtekening())}" style="max-height:70px;max-width:280px;">`
                 : `<span id="handtekeningLeeg" style="color:var(--text-muted);font-size:13px;">Nog geen handtekening ingesteld</span>`}
             </div>
           </div>
@@ -120,11 +130,11 @@ function renderInstellingen(el) {
         <div class="card-body">
           <div class="form-group">
             <label class="form-label">Certificaat tekst (boven)</label>
-            <textarea class="form-textarea" id="setCertTekst" rows="5">${s.certificaatTekst||''}</textarea>
+            <textarea class="form-textarea" id="setCertTekst" rows="5">${escI(s.certificaatTekst||'')}</textarea>
           </div>
           <div class="form-group">
             <label class="form-label">Certificaat tekst (onder)</label>
-            <textarea class="form-textarea" id="setCertTekstOnder" rows="3" placeholder="Optionele tekst onder het certificaat">${s.certificaatTekstOnder||''}</textarea>
+            <textarea class="form-textarea" id="setCertTekstOnder" rows="3" placeholder="Optionele tekst onder het certificaat">${escI(s.certificaatTekstOnder||'')}</textarea>
           </div>
           <button class="btn btn-primary" style="margin-top:8px;margin-bottom:24px;" onclick="saveCertSettings()">Teksten opslaan</button>
 
@@ -159,8 +169,8 @@ function renderInstellingen(el) {
               ${getAfkeurcodes().map((c, i) => `
                 <div style="padding:6px 10px;background:var(--bg-input);border-radius:var(--radius);display:flex;gap:8px;align-items:center;justify-content:space-between;">
                   <div style="display:flex;gap:8px;">
-                    <span style="color:var(--sg-green);font-weight:700;min-width:24px;">${c.code}</span>
-                    <span>${c.tekst}</span>
+                    <span style="color:var(--sg-green);font-weight:700;min-width:24px;">${escI(c.code)}</span>
+                    <span>${escI(c.tekst)}</span>
                   </div>
                   <div style="display:flex;gap:2px;">
                     <button class="btn-icon" title="Bewerken" onclick="openAfkeurcodeModal(${i})">
@@ -407,7 +417,7 @@ function openKeurmeesterModal(idx) {
     <input type="hidden" id="kmIdx" value="${idx !== undefined ? idx : -1}">
     <div class="form-group">
       <label class="form-label">Naam</label>
-      <input class="form-input" id="kmNaam" value="${km?.naam || ''}" placeholder="Volledige naam">
+      <input class="form-input" id="kmNaam" value="${escI(km?.naam || '')}" placeholder="Volledige naam">
     </div>
     ${idx === undefined ? `
     <div class="form-group">
@@ -419,7 +429,7 @@ function openKeurmeesterModal(idx) {
     ` : `
     <div class="form-group">
       <label class="form-label">E-mailadres</label>
-      <input class="form-input" type="email" id="kmEmail" value="${km?.email || ''}" placeholder="naam@bedrijf.nl" disabled style="opacity:0.6;">
+      <input class="form-input" type="email" id="kmEmail" value="${escI(km?.email || '')}" placeholder="naam@bedrijf.nl" disabled style="opacity:0.6;">
       <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">E-mailadres kan niet worden gewijzigd.</div>
     </div>
     `}
@@ -614,11 +624,11 @@ function openAfkeurcodeModal(idx) {
     <div class="form-row">
       <div class="form-group" style="max-width:100px;">
         <label class="form-label">Code</label>
-        <input class="form-input" id="afkeurCode" value="${c?.code || ''}" placeholder="Nr." ${c ? 'readonly style="opacity:0.7;"' : ''}>
+        <input class="form-input" id="afkeurCode" value="${escI(c?.code || '')}" placeholder="Nr." ${c ? 'readonly style="opacity:0.7;"' : ''}>
       </div>
       <div class="form-group">
         <label class="form-label">Omschrijving</label>
-        <input class="form-input" id="afkeurTekst" value="${c?.tekst || ''}" placeholder="Omschrijving van de afkeurcode">
+        <input class="form-input" id="afkeurTekst" value="${escI(c?.tekst || '')}" placeholder="Omschrijving van de afkeurcode">
       </div>
     </div>
   `, () => {
