@@ -2,6 +2,16 @@
 // producten.js — productdatabase, autocomplete, kolom-instellingen
 // ============================================================
 
+// Lokale HTML escape — voorkomt dat product-data uit HTML-attributen breekt
+function escP(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function renderProducten(el) {
   const vis = store.settings.visibleColumns;
   const cols = Object.keys(COLUMN_LABELS).filter(c => vis[c]);
@@ -34,16 +44,16 @@ function renderProducten(el) {
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px;" class="fade-in">
       <div class="search-box" style="min-width:250px;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" id="prodSearch" placeholder="Zoek product..." value="${productFilter.search}" oninput="handleProductSearch(this)">
+        <input type="text" id="prodSearch" placeholder="Zoek product..." value="${escP(productFilter.search)}" oninput="handleProductSearch(this)">
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <select class="form-select" style="width:auto;min-width:140px;" onchange="productFilter.merk=this.value;productPage=0;renderProducten(document.getElementById('pageContent'))">
           <option value="">Alle Merken</option>
-          ${allMerken.map(m => `<option value="${m}" ${productFilter.merk===m?'selected':''}>${m}</option>`).join('')}
+          ${allMerken.map(m => `<option value="${escP(m)}" ${productFilter.merk===m?'selected':''}>${escP(m)}</option>`).join('')}
         </select>
         <select class="form-select" style="width:auto;min-width:140px;" onchange="productFilter.materiaal=this.value;productPage=0;renderProducten(document.getElementById('pageContent'))">
           <option value="">Alle Materialen</option>
-          ${allMateriaal.map(m => `<option value="${m}" ${productFilter.materiaal===m?'selected':''}>${m}</option>`).join('')}
+          ${allMateriaal.map(m => `<option value="${escP(m)}" ${productFilter.materiaal===m?'selected':''}>${escP(m)}</option>`).join('')}
         </select>
         <button class="btn btn-sm" onclick="openColVisModal()">Kolommen</button>
         <button class="btn btn-primary btn-sm" onclick="openProductModal()">+ Product</button>
@@ -53,8 +63,8 @@ function renderProducten(el) {
     ${(productFilter.merk || productFilter.materiaal) ? `
     <div class="filter-bar fade-in" id="prodFilterBar">
       <span style="font-size:12px;color:var(--text-muted);">Filters:</span>
-      ${productFilter.merk ? `<div class="filter-chip">${productFilter.merk} <button onclick="productFilter.merk='';productPage=0;renderProducten(document.getElementById('pageContent'))">×</button></div>` : ''}
-      ${productFilter.materiaal ? `<div class="filter-chip">${productFilter.materiaal} <button onclick="productFilter.materiaal='';productPage=0;renderProducten(document.getElementById('pageContent'))">×</button></div>` : ''}
+      ${productFilter.merk ? `<div class="filter-chip">${escP(productFilter.merk)} <button onclick="productFilter.merk='';productPage=0;renderProducten(document.getElementById('pageContent'))">×</button></div>` : ''}
+      ${productFilter.materiaal ? `<div class="filter-chip">${escP(productFilter.materiaal)} <button onclick="productFilter.materiaal='';productPage=0;renderProducten(document.getElementById('pageContent'))">×</button></div>` : ''}
     </div>` : '<div id="prodFilterBar"></div>'}
 
     <div class="card fade-in">
@@ -71,10 +81,10 @@ function renderProducten(el) {
                   ${cols.map(c => {
                     let v = p[c] || '';
                     if (c === 'link' || c === 'handleiding') {
-                      if (v && v.startsWith('http')) return `<td><a href="${v}" target="_blank" style="color:var(--sg-green);font-size:12px;">Link</a></td>`;
-                      return `<td style="font-size:12px;color:var(--text-muted);">${v}</td>`;
+                      if (v && String(v).startsWith('http')) return `<td><a href="${escP(v)}" target="_blank" style="color:var(--sg-green);font-size:12px;">Link</a></td>`;
+                      return `<td style="font-size:12px;color:var(--text-muted);">${escP(v)}</td>`;
                     }
-                    return `<td title="${v}">${v}</td>`;
+                    return `<td title="${escP(v)}">${escP(v)}</td>`;
                   }).join('')}
                   <td>
                     <button class="btn-icon" title="Bewerken" onclick="openProductModal(${store.products.indexOf(p)})">
@@ -203,10 +213,10 @@ function updateProductTable() {
           ${cols.map(c => {
             let v = p[c] || '';
             if (c === 'link' || c === 'handleiding') {
-              if (v && String(v).startsWith('http')) return `<td><a href="${v}" target="_blank" style="color:var(--sg-green);font-size:12px;">Link</a></td>`;
-              return `<td style="font-size:12px;color:var(--text-muted);">${v}</td>`;
+              if (v && String(v).startsWith('http')) return `<td><a href="${escP(v)}" target="_blank" style="color:var(--sg-green);font-size:12px;">Link</a></td>`;
+              return `<td style="font-size:12px;color:var(--text-muted);">${escP(v)}</td>`;
             }
-            return `<td title="${v}">${v}</td>`;
+            return `<td title="${escP(v)}">${escP(v)}</td>`;
           }).join('')}
           <td>
             <button class="btn-icon" title="Bewerken" onclick="openProductModal(${store.products.indexOf(p)})">
@@ -226,8 +236,8 @@ function updateProductTable() {
   if (filterBar) {
     filterBar.innerHTML = (productFilter.merk || productFilter.materiaal) ? `
       <span style="font-size:12px;color:var(--text-muted);">Filters:</span>
-      ${productFilter.merk ? `<div class="filter-chip">${productFilter.merk} <button onclick="productFilter.merk='';productPage=0;renderProducten(document.getElementById('pageContent'))">×</button></div>` : ''}
-      ${productFilter.materiaal ? `<div class="filter-chip">${productFilter.materiaal} <button onclick="productFilter.materiaal='';productPage=0;renderProducten(document.getElementById('pageContent'))">×</button></div>` : ''}
+      ${productFilter.merk ? `<div class="filter-chip">${escP(productFilter.merk)} <button onclick="productFilter.merk='';productPage=0;renderProducten(document.getElementById('pageContent'))">×</button></div>` : ''}
+      ${productFilter.materiaal ? `<div class="filter-chip">${escP(productFilter.materiaal)} <button onclick="productFilter.materiaal='';productPage=0;renderProducten(document.getElementById('pageContent'))">×</button></div>` : ''}
     ` : '';
   }
 }
@@ -242,104 +252,22 @@ function openProductModal(idx) {
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">Omschrijving</label>
-        <input class="form-input" id="prodOmschr" value="${p?.omschrijving || ''}" placeholder="Productnaam">
+        <input class="form-input" id="prodOmschr" value="${escP(p?.omschrijving || '')}" placeholder="Productnaam">
       </div>
       <div class="form-group">
         <label class="form-label">Merk</label>
-        <input class="form-input" id="prodMerk" list="merkList" value="${p?.merk || ''}" placeholder="Merk">
-        <datalist id="merkList">${allMerken.map(m=>`<option value="${m}">`).join('')}</datalist>
+        <input class="form-input" id="prodMerk" list="merkList" value="${escP(p?.merk || '')}" placeholder="Merk">
+        <datalist id="merkList">${allMerken.map(m=>`<option value="${escP(m)}">`).join('')}</datalist>
       </div>
     </div>
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">Materiaal</label>
-        <input class="form-input" id="prodMat" list="matList" value="${p?.materiaal || ''}" placeholder="Materiaaltype">
-        <datalist id="matList">${allMateriaal.map(m=>`<option value="${m}">`).join('')}</datalist>
+        <input class="form-input" id="prodMat" list="matList" value="${escP(p?.materiaal || '')}" placeholder="Materiaaltype">
+        <datalist id="matList">${allMateriaal.map(m=>`<option value="${escP(m)}">`).join('')}</datalist>
       </div>
     </div>
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">Max Leeftijd USE</label>
-        <input class="form-input" id="prodAgeUse" value="${p?.maxLeeftijdUSE || ''}" placeholder="bijv. 10 USE">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Max Leeftijd MFR</label>
-        <input class="form-input" id="prodAgeMfr" value="${p?.maxLeeftijdMFR || ''}" placeholder="bijv. 15 MFR">
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">EN-Norm</label>
-        <input class="form-input" id="prodEN" value="${p?.enNorm || ''}" placeholder="bijv. EN 1891 type A">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Breuksterkte</label>
-        <input class="form-input" id="prodBreuk" value="${p?.breuksterkte || ''}" placeholder="bijv. 35 kN">
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Bijzonderheden</label>
-      <input class="form-input" id="prodBijz" value="${p?.bijzonderheden || ''}" placeholder="Bijzonderheden / recalls">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Handleiding Link</label>
-      <input class="form-input" id="prodLink" value="${p?.handleiding || p?.link || ''}" placeholder="URL naar handleiding">
-    </div>
-  `, () => {
-    const i = parseInt(document.getElementById('prodIdx').value);
-
-    // ── BUGFIX: id altijd meegeven ──────────────────────────────
-    // Bij nieuw product: genereer een id.
-    // Bij bewerken: bewaar het bestaande id — anders gaat Supabase
-    // upsert mis en raakt het product ontkoppeld van zijn record.
-    const data = {
-      id:             i >= 0 ? (store.products[i].id || generateId()) : generateId(),
-      omschrijving:   document.getElementById('prodOmschr').value,
-      merk:           document.getElementById('prodMerk').value,
-      materiaal:      document.getElementById('prodMat').value,
-      maxLeeftijdUSE: document.getElementById('prodAgeUse').value,
-      maxLeeftijdMFR: document.getElementById('prodAgeMfr').value,
-      enNorm:         document.getElementById('prodEN').value,
-      breuksterkte:   document.getElementById('prodBreuk').value,
-      bijzonderheden: document.getElementById('prodBijz').value,
-      handleiding:    document.getElementById('prodLink').value,
-    };
-    // ───────────────────────────────────────────────────────────
-
-    if (!data.omschrijving) { toast('Vul een omschrijving in', 'error'); return; }
-    if (i >= 0) store.products[i] = data;
-    else store.products.push(data);
-    saveStore(store);
-    sbUpsertProduct(data).catch(console.error);
-    closeModal();
-    toast(i >= 0 ? 'Product bijgewerkt' : 'Product toegevoegd');
-    renderProducten(document.getElementById('pageContent'));
-  });
-}
-
-function openColVisModal() {
-  const vis = store.settings.visibleColumns;
-  showModal('Zichtbare Kolommen', `
-    <div class="col-vis-grid">
-      ${Object.keys(COLUMN_LABELS).map(c => `
-        <label class="col-vis-item">
-          <input type="checkbox" data-col="${c}" ${vis[c] ? 'checked' : ''}>
-          ${COLUMN_LABELS[c]}
-        </label>
-      `).join('')}
-    </div>
-  `, () => {
-    document.querySelectorAll('.col-vis-item input').forEach(inp => {
-      store.settings.visibleColumns[inp.dataset.col] = inp.checked;
-    });
-    saveStore(store);
-    sbSaveSettings(store.settings).catch(console.error);
-    closeModal();
-    toast('Kolommen bijgewerkt');
-    renderProducten(document.getElementById('pageContent'));
-  });
-}
-
-// ============================================================
-// KEURINGEN
-// ============================================================
+        <input class="form-input" id="prod
