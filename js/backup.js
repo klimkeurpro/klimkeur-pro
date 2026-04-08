@@ -42,27 +42,7 @@ function importCertificaatExcel(inputEl) {
   // Can be called from keuringen page (with inputEl) or from instellingen (with #certImportFile)
   const fileInput = inputEl || document.getElementById('certImportFile');
   const file = fileInput?.files?.[0];
-  if (!file) {
-    // Geen bestand gekozen. Als er nog een onafgeronde import in de wacht staat,
-    // bied dan aan om die te hervatten.
-    if (_certImportState && _certImportState.items && _certImportState.items.length > 0) {
-      const hervatten = confirm(
-        `Er staat nog een onafgeronde certificaat-import klaar voor "${_certImportState.eigenaarUitExcel}" ` +
-        `met ${_certImportState.items.length} items.\n\n` +
-        `OK = hervatten (kies een andere klant)\n` +
-        `Annuleren = wissen en opnieuw beginnen`
-      );
-      if (hervatten) {
-        const st = _certImportState;
-        showImportPreview(st.eigenaarUitExcel, st.keuringDatum, st.keuringCertNr, st.items, 'hervat');
-        return;
-      } else {
-        _certImportState = null;
-      }
-    }
-    toast('Selecteer eerst een Excel bestand', 'error');
-    return;
-  }
+  if (!file) { toast('Selecteer eerst een Excel bestand', 'error'); return; }
 
   // Reset the file input so the same file can be re-selected
   setTimeout(() => { if (fileInput) fileInput.value = ''; }, 100);
@@ -293,12 +273,14 @@ function showImportPreview(eigenaar, datum, certNr, items, sheetName) {
         </label>
       ` : ''}
 
-      ${eigenaar ? `
-        <label style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;cursor:pointer;">
-          <input type="radio" name="impKlantKeuze" value="nieuw" ${defaultKeuze==='nieuw'?'checked':''} onchange="_impKlantKeuzeWissel()">
-          <span>Nieuwe klant aanmaken met naam: <strong>${esc(eigenaar)}</strong></span>
-        </label>
-      ` : ''}
+      <label style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;cursor:pointer;">
+        <input type="radio" name="impKlantKeuze" value="nieuw" ${defaultKeuze==='nieuw'?'checked':''} onchange="_impKlantKeuzeWissel()">
+        <span>Nieuwe klant aanmaken</span>
+      </label>
+      <div id="impKlantNieuwWrap" style="margin-top:4px;margin-bottom:8px;margin-left:24px;display:${defaultKeuze==='nieuw'?'block':'none'};">
+        <input class="form-input" id="impKlantNieuwNaam" value="${esc(eigenaar)}" placeholder="Bedrijfsnaam" style="max-width:400px;">
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Adres, email en overige gegevens kun je later aanvullen via Klanten.</div>
+      </div>
 
       <label style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;cursor:pointer;">
         <input type="radio" name="impKlantKeuze" value="handmatig" ${defaultKeuze==='handmatig'?'checked':''} onchange="_impKlantKeuzeWissel()">
@@ -353,18 +335,16 @@ function showImportPreview(eigenaar, datum, certNr, items, sheetName) {
   });
 }
 
-// Toggle voor het handmatige klant-dropdown
+// Toggle voor het handmatige klant-dropdown en nieuwe-klant veldje
 function _impKlantKeuzeWissel() {
   const keuze = document.querySelector('input[name="impKlantKeuze"]:checked')?.value;
-  const wrap = document.getElementById('impKlantHandmatigWrap');
-  if (wrap) wrap.style.display = (keuze === 'handmatig') ? 'block' : 'none';
+  const handWrap = document.getElementById('impKlantHandmatigWrap');
+  const nieuwWrap = document.getElementById('impKlantNieuwWrap');
+  if (handWrap) handWrap.style.display = (keuze === 'handmatig') ? 'block' : 'none';
+  if (nieuwWrap) nieuwWrap.style.display = (keuze === 'nieuw') ? 'block' : 'none';
 }
 
-// Tijdelijke opslag voor de import-state als we via het klant-modal gaan
-// (de import-modal sluit dan, en we heropenen hem na het opslaan van de klant)
-let _certImportState = null;
-
-// Verwerkt de bevestiging van de import — bepaalt de klant en routeert door
+// Verwerkt de bevestiging van de import — bepaalt de klant en rondt af
 async function _verwerkCertificaatImport(eigenaarUitExcel, items) {
   try {
     // 1. Veiligheid: er moet een ingelogde keurmeester zijn
@@ -383,31 +363,27 @@ async function _verwerkCertificaatImport(eigenaarUitExcel, items) {
     const keuringDatum  = document.getElementById('importDatum').value || new Date().toISOString().split('T')[0];
     const keuringCertNr = document.getElementById('importCertNr').value || '';
 
-    // 3. Routering op basis van keuze
+    // 3. Klant bepalen op basis van keuze
+    let klant = null;
+
     if (keuze === 'bestaand') {
       const eigenaarLower = (eigenaarUitExcel || '').toLowerCase().trim();
-      const klant = (store.klanten || []).find(
+      klant = (store.klanten || []).find(
         k => (k.bedrijf || '').toLowerCase().trim() === eigenaarLower
       );
       if (!klant) { toast('Bestaande klant niet meer gevonden', 'error'); return; }
-      await _rondCertificaatImportAf(klant, items, keuringDatum, keuringCertNr, keurmeesterNaam);
-      return;
-    }
 
-    if (keuze === 'handmatig') {
+    } else if (keuze === 'handmatig') {
       const klantId = document.getElementById('impKlantHandmatig').value;
       if (!klantId) { toast('Kies eerst een klant uit de lijst', 'error'); return; }
-      const klant = (store.klanten || []).find(k => k.id === klantId);
+      klant = (store.klanten || []).find(k => k.id === klantId);
       if (!klant) { toast('Gekozen klant niet gevonden', 'error'); return; }
-      await _rondCertificaatImportAf(klant, items, keuringDatum, keuringCertNr, keurmeesterNaam);
-      return;
-    }
 
-    if (keuze === 'nieuw') {
-      // Duplicaat-check: bestaat er al een klant met (bijna) dezelfde naam?
-      const naam = (eigenaarUitExcel || '').trim();
-      if (!naam) { toast('Geen klantnaam beschikbaar', 'error'); return; }
+    } else if (keuze === 'nieuw') {
+      const naam = (document.getElementById('impKlantNieuwNaam')?.value || '').trim();
+      if (!naam) { toast('Vul een bedrijfsnaam in voor de nieuwe klant', 'error'); return; }
 
+      // Duplicaat-check (hoofdletters genegeerd)
       const naamLower = naam.toLowerCase();
       const duplicaat = (store.klanten || []).find(
         k => (k.bedrijf || '').toLowerCase().trim() === naamLower
@@ -416,62 +392,45 @@ async function _verwerkCertificaatImport(eigenaarUitExcel, items) {
         const kies = confirm(
           `Er bestaat al een klant met de naam "${duplicaat.bedrijf}".\n\n` +
           `OK = bestaande klant gebruiken\n` +
-          `Annuleren = toch doorgaan en nieuwe klant aanmaken`
+          `Annuleren = stoppen`
         );
-        if (kies) {
-          await _rondCertificaatImportAf(duplicaat, items, keuringDatum, keuringCertNr, keurmeesterNaam);
+        if (!kies) return;
+        klant = duplicaat;
+      } else {
+        // Nieuwe klant aanmaken en opslaan
+        const nieuweKlant = {
+          id: generateId(),
+          bedrijf: naam,
+          contactpersoon: '',
+          klantnummer: '',
+          telefoon: '',
+          email: '',
+          straat: '',
+          huisnummer: '',
+          postcode: '',
+          plaats: '',
+          land: 'Nederland',
+          adres: '',
+          opmerkingen: 'Aangemaakt via certificaat-import',
+          auth_user_id: null,
+        };
+        try {
+          await sbUpsertKlant(nieuweKlant);
+        } catch (err) {
+          console.error('sbUpsertKlant fout:', err);
+          toast('Klant kon niet worden opgeslagen — import geannuleerd', 'error');
           return;
         }
-        // anders: gebruiker wil toch een nieuwe — ga door naar klant-modal
+        store.klanten.push(nieuweKlant);
+        klant = nieuweKlant;
       }
 
-      // Sla import-state op, sluit import-modal, open klant-modal
-      _certImportState = {
-        eigenaarUitExcel: naam,
-        items,
-        keuringDatum,
-        keuringCertNr,
-        keurmeesterNaam,
-      };
-      closeModal();
-
-      // Open het normale klant-modal. De tweede parameter is onze callback die
-      // na succesvol opslaan wordt aangeroepen met de nieuwe klant.
-      openKlantModal(undefined, async (nieuweKlant) => {
-        // De klant is al door openKlantModal naar Supabase gestuurd en in
-        // store.klanten gepusht. Wij hoeven alleen de import af te ronden.
-        const st = _certImportState;
-        _certImportState = null;
-        if (!st) { toast('Import-state verloren', 'error'); return; }
-        await _rondCertificaatImportAf(
-          nieuweKlant, st.items, st.keuringDatum, st.keuringCertNr, st.keurmeesterNaam
-        );
-      });
-
-      // Vul de velden in het klant-modal voor met wat we al weten uit Excel.
-      // setTimeout 0 zorgt dat het modal eerst in de DOM staat.
-      setTimeout(() => {
-        const bedrijfVeld = document.getElementById('klantBedrijf');
-        if (bedrijfVeld) bedrijfVeld.value = naam;
-        const opmVeld = document.getElementById('klantOpm');
-        if (opmVeld && !opmVeld.value) opmVeld.value = 'Aangemaakt via certificaat-import';
-      }, 0);
+    } else {
+      toast('Maak eerst een keuze hoe de klant gekoppeld moet worden', 'error');
       return;
     }
 
-    toast('Maak eerst een keuze hoe de klant gekoppeld moet worden', 'error');
-
-  } catch (err) {
-    console.error('Certificaat import onverwachte fout:', err);
-    toast('Onverwachte fout: ' + (err.message || err), 'error');
-  }
-}
-
-// Rondt de certificaat-import af met een bekende klant — slaat de keuring en
-// items veilig op in Supabase en de lokale store.
-async function _rondCertificaatImportAf(klant, items, keuringDatum, keuringCertNr, keurmeesterNaam) {
-  try {
-    // Keuring opbouwen
+    // 4. Keuring opbouwen
     const keuring = {
       id:            generateId(),
       datum:         keuringDatum,
@@ -484,7 +443,7 @@ async function _rondCertificaatImportAf(klant, items, keuringDatum, keuringCertN
       afgerond:      true,
     };
 
-    // Keuring naar Supabase
+    // 5. Keuring naar Supabase
     try {
       await sbUpsertKeuring(keuring);
     } catch (err) {
@@ -493,16 +452,15 @@ async function _rondCertificaatImportAf(klant, items, keuringDatum, keuringCertN
       return;
     }
 
-    // Items via veilige bulk-upsert (gebruikt onConflict: 'id', geen delete)
+    // 6. Items via veilige bulk-upsert (gebruikt onConflict: 'id', geen delete)
     try {
       await sbSyncAllKeuringItems(keuring);
     } catch (err) {
       console.error('sbSyncAllKeuringItems fout:', err);
       toast('Items konden niet worden opgeslagen — zie console', 'warning', 6000);
-      // niet terugdraaien — keuring staat al
     }
 
-    // Pas NU lokaal toevoegen
+    // 7. Pas NU lokaal toevoegen
     store.keuringen.push(keuring);
     saveStore(store);
 
@@ -511,7 +469,7 @@ async function _rondCertificaatImportAf(klant, items, keuringDatum, keuringCertN
     navigateTo('keuringen');
 
   } catch (err) {
-    console.error('Certificaat afronden onverwachte fout:', err);
+    console.error('Certificaat import onverwachte fout:', err);
     toast('Onverwachte fout: ' + (err.message || err), 'error');
   }
 }
