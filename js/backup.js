@@ -218,15 +218,42 @@ function showImportPreview(eigenaar, datum, certNr, items, sheetName) {
     datum = parts[2] + '-' + parts[1] + '-' + parts[0];
   }
   const goed = items.filter(i => i.status === 'goedgekeurd').length;
-  const afk = items.filter(i => i.status === 'afgekeurd').length;
+  const afk  = items.filter(i => i.status === 'afgekeurd').length;
+
+  // Veilig escapen voor in HTML attributen
+  const esc = (s) => String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+  // Exacte match (case-insensitive) op klantnaam
+  const eigenaarLower = (eigenaar || '').toLowerCase().trim();
+  const exacteMatch = (store.klanten || []).find(
+    k => (k.bedrijf || '').toLowerCase().trim() === eigenaarLower && eigenaarLower !== ''
+  );
+
+  // Sorteer alle klanten alfabetisch voor de dropdown
+  const alleKlanten = [...(store.klanten || [])].sort(
+    (a, b) => (a.bedrijf || '').localeCompare(b.bedrijf || '')
+  );
+
+  // Bepaal de standaard-keuze
+  // - Match? → "bestaand" voorgeselecteerd
+  // - Geen match maar wél een eigenaar uit Excel? → "nieuw" voorgeselecteerd
+  // - Geen eigenaar? → "handmatig" voorgeselecteerd
+  let defaultKeuze = 'handmatig';
+  if (exacteMatch) defaultKeuze = 'bestaand';
+  else if (eigenaar) defaultKeuze = 'nieuw';
+
+  // Ingelogde keurmeester bepalen — NOOIT hardcoden
+  const ingelogdeKeurmeester = (store.settings && store.settings.keurmeester) || '';
 
   showModal('Certificaat Import — Controleer', `
     <div style="background:var(--bg-input);border-radius:var(--radius);padding:14px;margin-bottom:16px;">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;">
-        <div><span style="color:var(--text-secondary);">Blad:</span> <strong>${sheetName}</strong></div>
-        <div><span style="color:var(--text-secondary);">Eigenaar:</span> <strong>${eigenaar || '(niet gevonden)'}</strong></div>
-        <div><span style="color:var(--text-secondary);">Datum:</span> <strong>${datum || '(niet gevonden)'}</strong></div>
-        <div><span style="color:var(--text-secondary);">Certificaat Nr:</span> <strong>${certNr || '(niet gevonden)'}</strong></div>
+        <div><span style="color:var(--text-secondary);">Blad:</span> <strong>${esc(sheetName)}</strong></div>
+        <div><span style="color:var(--text-secondary);">Eigenaar uit Excel:</span> <strong>${esc(eigenaar) || '(niet gevonden)'}</strong></div>
+        <div><span style="color:var(--text-secondary);">Datum:</span> <strong>${esc(datum) || '(niet gevonden)'}</strong></div>
+        <div><span style="color:var(--text-secondary);">Certificaat Nr:</span> <strong>${esc(certNr) || '(niet gevonden)'}</strong></div>
         <div><span style="color:var(--text-secondary);">Items:</span> <strong>${items.length}</strong></div>
         <div>
           <span class="badge badge-green" style="margin-right:4px;">${goed} goed</span>
@@ -235,19 +262,52 @@ function showImportPreview(eigenaar, datum, certNr, items, sheetName) {
       </div>
     </div>
 
-    <div style="margin-bottom:12px;">
-      <label class="form-label">Klant / Eigenaar (corrigeer indien nodig)</label>
-      <input class="form-input" id="importEigenaar" value="${eigenaar}">
+    <!-- KLANT KOPPELEN -->
+    <div style="background:var(--bg-input);border-radius:var(--radius);padding:14px;margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px;">Klant koppelen</div>
+
+      ${exacteMatch ? `
+        <label style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;cursor:pointer;">
+          <input type="radio" name="impKlantKeuze" value="bestaand" ${defaultKeuze==='bestaand'?'checked':''} onchange="_impKlantKeuzeWissel()">
+          <span>Koppelen aan bestaande klant: <strong>${esc(exacteMatch.bedrijf)}</strong> <span class="badge badge-green" style="font-size:10px;">match</span></span>
+        </label>
+      ` : ''}
+
+      ${eigenaar ? `
+        <label style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;cursor:pointer;">
+          <input type="radio" name="impKlantKeuze" value="nieuw" ${defaultKeuze==='nieuw'?'checked':''} onchange="_impKlantKeuzeWissel()">
+          <span>Nieuwe klant aanmaken met naam: <strong>${esc(eigenaar)}</strong></span>
+        </label>
+      ` : ''}
+
+      <label style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;cursor:pointer;">
+        <input type="radio" name="impKlantKeuze" value="handmatig" ${defaultKeuze==='handmatig'?'checked':''} onchange="_impKlantKeuzeWissel()">
+        <span>Kies handmatig een bestaande klant</span>
+      </label>
+
+      <div id="impKlantHandmatigWrap" style="margin-top:8px;margin-left:24px;display:${defaultKeuze==='handmatig'?'block':'none'};">
+        <select class="form-input" id="impKlantHandmatig" style="max-width:400px;">
+          <option value="">— kies klant —</option>
+          ${alleKlanten.map(k => `<option value="${esc(k.id)}">${esc(k.bedrijf)}</option>`).join('')}
+        </select>
+      </div>
     </div>
+
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">Keuringsdatum ${!datum ? '<span style="color:var(--warning);font-size:11px;">⚠ niet gevonden — controleer handmatig</span>' : ''}</label>
-        <input class="form-input" type="date" id="importDatum" value="${datum}" style="${!datum ? 'border-color:var(--warning);background:rgba(255,165,0,0.08);' : ''}">
+        <input class="form-input" type="date" id="importDatum" value="${esc(datum)}" style="${!datum ? 'border-color:var(--warning);background:rgba(255,165,0,0.08);' : ''}">
       </div>
       <div class="form-group">
         <label class="form-label">Certificaatnummer</label>
-        <input class="form-input" id="importCertNr" value="${certNr}">
+        <input class="form-input" id="importCertNr" value="${esc(certNr)}">
       </div>
+    </div>
+
+    <div style="background:var(--bg-input);border-radius:var(--radius);padding:10px 14px;margin-bottom:12px;font-size:12px;">
+      <span style="color:var(--text-secondary);">Keurmeester:</span>
+      <strong>${esc(ingelogdeKeurmeester) || '<span style="color:var(--danger);">⚠ geen keurmeester ingesteld</span>'}</strong>
+      <div style="color:var(--text-muted);font-size:11px;margin-top:2px;">Het certificaat wordt op naam van de ingelogde keurmeester geïmporteerd.</div>
     </div>
 
     <div style="font-size:13px;font-weight:600;margin:12px 0 8px;">Eerste 10 items ter controle:</div>
@@ -257,10 +317,10 @@ function showImportPreview(eigenaar, datum, certNr, items, sheetName) {
         <tbody>
           ${items.slice(0, 10).map(i => `
             <tr>
-              <td>${i.omschrijving}</td>
-              <td>${i.merk}</td>
-              <td style="font-family:monospace;">${i.serienummer}</td>
-              <td>${i.fabrJaar}</td>
+              <td>${esc(i.omschrijving)}</td>
+              <td>${esc(i.merk)}</td>
+              <td style="font-family:monospace;">${esc(i.serienummer)}</td>
+              <td>${esc(i.fabrJaar)}</td>
               <td><span class="badge ${i.status==='goedgekeurd'?'badge-green':'badge-red'}">${i.status==='goedgekeurd'?'Goed':'Afkeur'}</span></td>
             </tr>
           `).join('')}
@@ -269,39 +329,127 @@ function showImportPreview(eigenaar, datum, certNr, items, sheetName) {
       </table>
     </div>
   `, () => {
-    // Confirm import
-    const klantNaam = document.getElementById('importEigenaar').value || 'Onbekend';
-    const keuringDatum = document.getElementById('importDatum').value || new Date().toISOString().split('T')[0];
+    _verwerkCertificaatImport(eigenaar, items);
+  });
+}
+
+// Toggle voor het handmatige klant-dropdown
+function _impKlantKeuzeWissel() {
+  const keuze = document.querySelector('input[name="impKlantKeuze"]:checked')?.value;
+  const wrap = document.getElementById('impKlantHandmatigWrap');
+  if (wrap) wrap.style.display = (keuze === 'handmatig') ? 'block' : 'none';
+}
+
+// Verwerkt de bevestiging van de import — veilige opslag, geen halve writes
+async function _verwerkCertificaatImport(eigenaarUitExcel, items) {
+  try {
+    // 1. Veiligheid: er moet een ingelogde keurmeester zijn
+    const keurmeesterNaam = (store.settings && store.settings.keurmeester) || '';
+    if (!keurmeesterNaam) {
+      toast('Geen keurmeester ingesteld — stel eerst in via Instellingen', 'error');
+      return;
+    }
+    if (!_huidigBedrijfId) {
+      toast('Geen bedrijf bekend — opnieuw inloggen', 'error');
+      return;
+    }
+
+    // 2. Bepaal welke klant gebruikt wordt
+    const keuze = document.querySelector('input[name="impKlantKeuze"]:checked')?.value;
+    const keuringDatum  = document.getElementById('importDatum').value || new Date().toISOString().split('T')[0];
     const keuringCertNr = document.getElementById('importCertNr').value || '';
 
-    // Find or create klant
-    let klant = store.klanten.find(k => k.bedrijf.toLowerCase() === klantNaam.toLowerCase());
-    if (!klant) {
-      klant = { id: generateId(), bedrijf: klantNaam, contactpersoon: '', telefoon: '', email: '', adres: '', opmerkingen: '' };
+    let klant = null;
+    let klantIsNieuw = false;
+
+    if (keuze === 'bestaand') {
+      const eigenaarLower = (eigenaarUitExcel || '').toLowerCase().trim();
+      klant = (store.klanten || []).find(
+        k => (k.bedrijf || '').toLowerCase().trim() === eigenaarLower
+      );
+      if (!klant) { toast('Bestaande klant niet meer gevonden', 'error'); return; }
+
+    } else if (keuze === 'handmatig') {
+      const klantId = document.getElementById('impKlantHandmatig').value;
+      if (!klantId) { toast('Kies eerst een klant uit de lijst', 'error'); return; }
+      klant = (store.klanten || []).find(k => k.id === klantId);
+      if (!klant) { toast('Gekozen klant niet gevonden', 'error'); return; }
+
+    } else if (keuze === 'nieuw') {
+      const naam = (eigenaarUitExcel || '').trim();
+      if (!naam) { toast('Geen klantnaam beschikbaar', 'error'); return; }
+      klant = {
+        id: generateId(),
+        bedrijf: naam,
+        contactpersoon: '',
+        telefoon: '',
+        email: '',
+        adres: '',
+        opmerkingen: 'Aangemaakt via certificaat-import',
+      };
+      klantIsNieuw = true;
+
+    } else {
+      toast('Maak eerst een keuze hoe de klant gekoppeld moet worden', 'error');
+      return;
+    }
+
+    // 3. Eerst nieuwe klant naar Supabase (mét bedrijf_id) — pas daarna keuring
+    if (klantIsNieuw) {
+      try {
+        await sbUpsertKlant(klant);
+      } catch (err) {
+        console.error('sbUpsertKlant fout:', err);
+        toast('Klant kon niet worden opgeslagen — import geannuleerd', 'error');
+        return;
+      }
+      // Pas NU lokaal toevoegen — niet eerder
       store.klanten.push(klant);
     }
 
-    // Create keuring
+    // 4. Keuring opbouwen
     const keuring = {
-      id: generateId(),
-      datum: keuringDatum,
+      id:            generateId(),
+      datum:         keuringDatum,
       certificaatNr: keuringCertNr,
-      klantId: klant.id,
-      klantNaam: klant.bedrijf,
-      keurmeester: store.settings.keurmeester || 'C. M. van den Hoogen',
-      opmerkingen: 'Geïmporteerd uit Excel',
-      items: items,
-      afgerond: true
+      klantId:       klant.id,
+      klantNaam:     klant.bedrijf,
+      keurmeester:   keurmeesterNaam,    // ingelogde keurmeester — nooit hardcoded
+      opmerkingen:   'Geïmporteerd uit Excel',
+      items:         items.map(i => ({ ...i, id: i.id || generateId() })),
+      afgerond:      true,
     };
+
+    // 5. Keuring naar Supabase
+    try {
+      await sbUpsertKeuring(keuring);
+    } catch (err) {
+      console.error('sbUpsertKeuring fout:', err);
+      toast('Keuring kon niet worden opgeslagen — import geannuleerd', 'error');
+      return;
+    }
+
+    // 6. Items via veilige bulk-upsert (gebruikt onConflict: 'id', geen delete)
+    try {
+      await sbSyncAllKeuringItems(keuring);
+    } catch (err) {
+      console.error('sbSyncAllKeuringItems fout:', err);
+      toast('Items konden niet worden opgeslagen — zie console', 'warning', 6000);
+      // niet terugdraaien — keuring staat al, alleen items hebben mogelijk problemen
+    }
+
+    // 7. Pas NU lokaal toevoegen
     store.keuringen.push(keuring);
     saveStore(store);
-    sbUpsertKeuring(keuring)
-      .then(() => sbSyncAllKeuringItems(keuring))
-      .catch(console.error);
+
     closeModal();
-    toast(`Certificaat geïmporteerd: ${items.length} items voor ${klant.bedrijf}`, 'success');
+    toast(`Certificaat geïmporteerd: ${keuring.items.length} items voor ${klant.bedrijf}`, 'success');
     navigateTo('keuringen');
-  });
+
+  } catch (err) {
+    console.error('Certificaat import onverwachte fout:', err);
+    toast('Onverwachte fout: ' + (err.message || err), 'error');
+  }
 }
 
 // ============================================================
