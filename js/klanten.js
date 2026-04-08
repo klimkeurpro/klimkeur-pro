@@ -55,7 +55,7 @@ function renderKlanten(el) {
   `;
 }
 
-function openKlantModal(id, onSaved) {
+function openKlantModal(id) {
   const klant = id ? store.klanten.find(k => k.id === id) : null;
   showModal(id ? 'Klant Bewerken' : 'Nieuwe Klant', `
     <input type="hidden" id="klantId" value="${escK(id || '')}">
@@ -145,8 +145,7 @@ function openKlantModal(id, onSaved) {
     if (idx >= 0) store.klanten[idx] = data;
     else store.klanten.push(data);
     saveStore(store);
-    sbUpsertKlant(data).catch(console.error);     
-    if (typeof onSaved === 'function') { try { onSaved(data); } catch(e) { console.error('onSaved callback fout:', e); } }     
+    sbUpsertKlant(data).catch(console.error);
     closeModal();
     toast(idx >= 0 ? 'Klant bijgewerkt' : 'Klant toegevoegd');
     renderKlanten(document.getElementById('pageContent'));
