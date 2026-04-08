@@ -691,11 +691,17 @@ function importProductenExcel(input) {
       );
       if (!keuze) return;
 
-      store.products = nieuweProducten.map(p => ({ ...p, id: p.id || generateId() }));
-      saveStore(store);
+      // Veilige import: eerst upsert naar Supabase met bedrijf_id, pas daarna
+      // oude producten van DIT bedrijf opruimen die niet in de nieuwe set zitten.
+      // NOOIT eerst delete en dan insert — als de insert faalt ben je alles kwijt.
+      if (!_huidigBedrijfId) {
+        toast('Geen bedrijf bekend — opnieuw inloggen', 'error');
+        return;
+      }
 
-      // Bulk upsert naar Supabase
-      const sbProductRows = store.products.map(p => ({
+      const nieuweMetId = nieuweProducten.map(p => ({ ...p, id: p.id || generateId() }));
+
+      const sbProductRows = nieuweMetId.map(p => ({
         id:               p.id,
         omschrijving:     p.omschrijving || '',
         merk:             p.merk || '',
@@ -708,16 +714,47 @@ function importProductenExcel(input) {
         max_leeftijd_mfr: p.maxLeeftijdMFR || '',
         breuksterkte:     p.breuksterkte || '',
         bijzonderheden:   p.bijzonderheden || '',
+        bedrijf_id:       _huidigBedrijfId,
       }));
-      sb.from('producten').delete().neq('id', '')
-        .then(() => sb.from('producten').insert(sbProductRows))
-        .then(() => toast(`${store.products.length} producten geïmporteerd en opgeslagen in Supabase`))
-        .catch(err => {
-          console.error('Supabase product import fout:', err);
-          toast(`${store.products.length} producten geïmporteerd (lokaal — Supabase sync mislukt)`, 'warning');
-        });
 
-      navigateTo('producten');
+      // Upsert in batches van 200 — voorkomt time-outs en geeft duidelijkere fouten
+      (async () => {
+        try {
+          const BATCH = 200;
+          for (let i = 0; i < sbProductRows.length; i += BATCH) {
+            const batch = sbProductRows.slice(i, i + BATCH);
+            const { error } = await sb.from('producten').upsert(batch, { onConflict: 'id' });
+            if (error) throw error;
+          }
+
+          // Pas NA succesvolle upsert: oude producten van dit bedrijf opruimen
+          // die niet in de nieuwe import voorkomen.
+          const nieuweIds = sbProductRows.map(r => r.id);
+          const teVerwijderen = (store.products || [])
+            .filter(p => !nieuweIds.includes(p.id))
+            .map(p => p.id);
+
+          if (teVerwijderen.length > 0) {
+            const { error: delErr } = await sb.from('producten')
+              .delete()
+              .eq('bedrijf_id', _huidigBedrijfId)
+              .in('id', teVerwijderen);
+            if (delErr) {
+              console.error('Opruimen oude producten mislukt:', delErr);
+              toast('Import gelukt, opruimen oude producten mislukt', 'warning');
+            }
+          }
+
+          // Lokale store pas bijwerken NA succesvolle Supabase-write
+          store.products = nieuweMetId;
+          saveStore(store);
+          toast(`${store.products.length} producten geïmporteerd en opgeslagen`);
+          navigateTo('producten');
+        } catch (err) {
+          console.error('Supabase product import fout:', err);
+          toast('Import mislukt: ' + (err.message || 'onbekende fout') + ' — bestaande producten zijn NIET gewijzigd', 'error', 6000);
+        }
+      })();
     } catch(err) {
       toast('Fout bij importeren: ' + err.message, 'error');
     }
