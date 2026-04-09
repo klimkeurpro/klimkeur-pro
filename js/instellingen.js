@@ -495,7 +495,11 @@ async function bewerkKeurmeester(idx, nieuweNaam) {
 }
 
 // ============================================================
-// KEURMEESTER UITNODIGEN — maakt account aan en voegt toe aan tabel
+// KEURMEESTER UITNODIGEN
+// ============================================================
+// Browser doet niks meer aan de database — de Edge Function
+// 'quick-action' regelt alles: uitnodiging versturen + rij in
+// keurmeesters-tabel + dubbel-detectie. Eén plek, één waarheid.
 // ============================================================
 async function verstuurKeurmeesterUitnodiging(naam, email) {
   const statusEl = document.getElementById('kmUitnodigingStatus');
@@ -516,62 +520,39 @@ async function verstuurKeurmeesterUitnodiging(naam, email) {
       },
       body: JSON.stringify({
         email,
-        klant_id:   null,
         klant_naam: naam,
-        redirect_to: 'https://klimkeurpro.github.io/klimkeur-pro/',
         rol: 'keurmeester',
-        bedrijf_id: _huidigBedrijfId,
+        redirect_to: 'https://klimkeurpro.github.io/klimkeur-pro/',
       }),
     });
 
     const result = await res.json();
 
-    // Schrijf naar keurmeesters tabel met correct UUID
-    if (result.user_id) {
-      const { error: kmError } = await sb.from('keurmeesters').upsert({
-        id:           crypto.randomUUID(),
-        naam,
-        email,
-        bedrijf:      (_bedrijfInfo && _bedrijfInfo.naam) || '',
-        bedrijf_id:   _huidigBedrijfId,
-        auth_user_id: result.user_id,
-      }, { onConflict: 'auth_user_id' });
-
-      if (kmError) {
-        console.error('Keurmeester tabel upsert fout:', kmError);
-        toast('Account aangemaakt maar koppeling mislukt', 'warning');
-      }
-    }
-
-    // Lokale store bijwerken zodat de UI direct klopt
-    if (!store.keurmeesters) store.keurmeesters = [];
-    store.keurmeesters.push({
-      _id:          null, // wordt bij volgende reload vanuit DB geladen
-      naam,
-      handtekening: null,
-      email,
-      auth_user_id: result.user_id || null,
-    });
-    saveStore(store);
-
-    if (result.error?.includes('already')) {
+    if (!res.ok || result.error) {
+      const melding = result.error || 'Onbekende fout';
       if (statusEl) {
-        statusEl.textContent = '⚠ Dit e-mailadres heeft al een account. De keurmeester kan direct inloggen.';
-        statusEl.style.color = 'var(--warning)';
+        statusEl.textContent = '⚠ ' + melding;
+        statusEl.style.color = 'var(--danger)';
       }
-      setTimeout(() => { closeModal(); navigateTo('keurmeesters'); }, 2000);
-    } else {
-      toast(`Uitnodiging verstuurd naar ${email}`);
-      closeModal();
-      navigateTo('keurmeesters');
+      toast(melding, 'error', 6000);
+      return;
     }
+
+    // Succes — herlaad de keurmeesters uit Supabase zodat de lijst klopt
+    toast(`Uitnodiging verstuurd naar ${email}`, 'success');
+    closeModal();
+    if (typeof loadFromSupabase === 'function') {
+      await loadFromSupabase();
+    }
+    navigateTo('keurmeesters');
 
   } catch(e) {
     console.error('Uitnodiging keurmeester fout:', e);
     if (statusEl) {
-      statusEl.textContent = 'Fout bij versturen uitnodiging';
+      statusEl.textContent = 'Fout bij versturen uitnodiging: ' + (e.message || e);
       statusEl.style.color = 'var(--danger)';
     }
+    toast('Fout bij versturen uitnodiging', 'error');
   }
 }
 
