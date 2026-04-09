@@ -301,6 +301,9 @@ async function slaaBedrijfOp(isNieuw) {
 // ============================================================
 // KEURMEESTER UITNODIGEN
 // ============================================================
+// Browser doet niks meer aan de database — de Edge Function
+// 'quick-action' regelt alles. Eén plek, één waarheid.
+// ============================================================
 async function nodigKeurmeesterUitVoorBedrijf(naam, email, bedrijfId, bedrijfNaam) {
   const statusEl = document.getElementById('bKmStatus');
   if (statusEl) { statusEl.textContent = 'Uitnodiging versturen...'; statusEl.style.color = 'var(--text-muted)'; }
@@ -318,39 +321,24 @@ async function nodigKeurmeesterUitVoorBedrijf(naam, email, bedrijfId, bedrijfNaa
       body: JSON.stringify({
         email,
         klant_naam: naam || email,
-        redirect_to: 'https://klimkeurpro.github.io/klimkeur-pro/',
         rol: 'keurmeester',
-        bedrijf_id: bedrijfId,
-        bedrijf: bedrijfNaam,
+        bedrijf_id: bedrijfId, // platform-admin nodigt voor specifiek bedrijf uit
+        redirect_to: 'https://klimkeurpro.github.io/klimkeur-pro/',
       }),
     });
 
     const result = await res.json();
 
-    if (result.success || result.user_id) {
-      const { error: kmError } = await sb.from('keurmeesters').upsert({
-        id: crypto.randomUUID(),
-        naam: naam || email,
-        bedrijf: bedrijfNaam,
-        bedrijf_id: bedrijfId,
-        auth_user_id: result.user_id,
-      }, { onConflict: 'auth_user_id' });
-
-      if (kmError) {
-        toast('Account aangemaakt maar koppeling mislukt: ' + kmError.message, 'warning');
-      }
-
-      if (statusEl) { statusEl.textContent = `✓ Uitnodiging verstuurd naar ${email}`; statusEl.style.color = 'var(--success)'; }
-      toast(`Uitnodiging verstuurd naar ${email}`, 'success');
-      setTimeout(() => { closeModal(); laadBedrijvenLijst(); }, 1500);
-
-    } else if (result.error?.includes('already')) {
-      if (statusEl) { statusEl.textContent = '⚠ Dit e-mailadres heeft al een account'; statusEl.style.color = 'var(--warning)'; }
-      toast('Dit e-mailadres heeft al een account', 'warning');
-    } else {
-      if (statusEl) { statusEl.textContent = `Fout: ${result.error || 'onbekend'}`; statusEl.style.color = 'var(--danger)'; }
-      toast('Uitnodiging mislukt: ' + (result.error || 'onbekende fout'), 'error');
+    if (!res.ok || result.error) {
+      const melding = result.error || 'Onbekende fout';
+      if (statusEl) { statusEl.textContent = '⚠ ' + melding; statusEl.style.color = 'var(--danger)'; }
+      toast(melding, 'error', 6000);
+      return;
     }
+
+    if (statusEl) { statusEl.textContent = `✓ Uitnodiging verstuurd naar ${email}`; statusEl.style.color = 'var(--success)'; }
+    toast(`Uitnodiging verstuurd naar ${email}`, 'success');
+    setTimeout(() => { closeModal(); laadBedrijvenLijst(); }, 1500);
 
   } catch (err) {
     if (statusEl) { statusEl.textContent = 'Fout: ' + err.message; statusEl.style.color = 'var(--danger)'; }
