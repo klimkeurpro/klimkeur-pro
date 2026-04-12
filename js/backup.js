@@ -61,12 +61,6 @@ function importCertificaatExcel(inputEl) {
       const ws = wb.Sheets[sheetName];
       if (!ws) { toast('Kan geen blad vinden in het bestand', 'error'); return; }
 
-      // Parse the certificate - based on the known template format
-      // Row 1: Keuringsdatum in A1/A2, Certificaatnummer in H1/K1
-      // Row 4: Eigenaar in A4 (value in B4 or merged)
-      // Row 13: Header row for items
-      // Row 14+: Item data
-
       const getVal = (cell) => {
         if (!ws[cell]) return '';
         const v = ws[cell].v;
@@ -74,12 +68,10 @@ function importCertificaatExcel(inputEl) {
         return v != null ? String(v).trim() : '';
       };
 
-      // Extract header info
       let keuringsDatum = '';
       let certificaatNr = '';
       let eigenaar = '';
 
-      // Datum altijd in A2 - kan Excel date serial zijn
       const datumCellA2 = ws['A2'];
       if (datumCellA2) {
         if (datumCellA2.t === 'd' || (datumCellA2.t === 'n' && datumCellA2.v > 25000)) {
@@ -89,11 +81,9 @@ function importCertificaatExcel(inputEl) {
           keuringsDatum = String(datumCellA2.v || '').trim();
         }
       }
-      // Eigenaar altijd in B4
       const eigenaarCelB4 = ws['B4'];
       if (eigenaarCelB4) eigenaar = String(eigenaarCelB4.v || '').trim();
 
-      // Certificaatnummer: zoek label "Certificaatnummer:" en pak cel rechts ervan
       const scanRangeCert = XLSX.utils.decode_range(ws['!ref'] || 'A1:T250');
       for (let r2 = 0; r2 <= scanRangeCert.e.r && !certificaatNr; r2++) {
         for (let c2 = 0; c2 <= Math.min(scanRangeCert.e.c, 4); c2++) {
@@ -105,27 +95,24 @@ function importCertificaatExcel(inputEl) {
           }
         }
       }
-      // Fallback: datum uit certificaatnummer (formaat yyyymmdd-bedrijfsnaam)
       if (!keuringsDatum && certificaatNr) {
         const m = String(certificaatNr).match(/^(\d{4})(\d{2})(\d{2})-/);
         if (m) keuringsDatum = m[3] + '-' + m[2] + '-' + m[1];
       }
 
-      // Find the header row (look for "Omschrijving" in ANY column)
-      let headerRow = 13; // default based on template
+      let headerRow = 13;
       const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:T200');
       outerLoop:
       for (let r = 0; r <= Math.min(range.e.r, 30); r++) {
         for (let c = 0; c <= Math.min(range.e.c, 15); c++) {
           const cell = ws[XLSX.utils.encode_cell({r:r, c:c})];
           if (cell && String(cell.v || '').toLowerCase().includes('omschrijving')) {
-            headerRow = r + 1; // 1-indexed
+            headerRow = r + 1;
             break outerLoop;
           }
         }
       }
 
-      // Read column headers to map positions
       const colMap = {};
       const headerNames = {
         'omschrijving': 'omschrijving', 'merk': 'merk', 'materiaal': 'materiaal',
@@ -142,7 +129,6 @@ function importCertificaatExcel(inputEl) {
           const val = String(cell.v || '').toLowerCase().trim();
           for (const [key, mapped] of Object.entries(headerNames)) {
             if (val.includes(key)) {
-              // Only set if not already mapped (first/best match wins)
               if (colMap[mapped] === undefined) {
                 colMap[mapped] = c;
               }
@@ -152,7 +138,6 @@ function importCertificaatExcel(inputEl) {
         }
       }
 
-      // Read items starting from row after header
       const items = [];
       for (let r = headerRow; r <= range.e.r; r++) {
         const omschrCell = ws[XLSX.utils.encode_cell({r: r, c: colMap.omschrijving ?? 0})];
@@ -166,7 +151,6 @@ function importCertificaatExcel(inputEl) {
           return cell ? String(cell.v ?? '').trim() : '';
         };
 
-        // Determine status
         let status = 'goedgekeurd';
         let afkeurcode = '';
         const goedVal = getCellVal('goed');
@@ -176,7 +160,6 @@ function importCertificaatExcel(inputEl) {
           afkeurcode = afkeurVal;
         }
 
-        // Lookup product in database for extra info
         const prod = store.products.find(p => p.omschrijving === omschr);
 
         items.push({
@@ -200,7 +183,6 @@ function importCertificaatExcel(inputEl) {
         return;
       }
 
-      // Show preview before confirming import
       showImportPreview(eigenaar, keuringsDatum, certificaatNr, items, sheetName);
 
     } catch(err) {
@@ -212,7 +194,6 @@ function importCertificaatExcel(inputEl) {
 }
 
 function showImportPreview(eigenaar, datum, certNr, items, sheetName) {
-  // Converteer dd-mm-yyyy naar yyyy-mm-dd voor <input type="date">
   if (datum && datum.match(/^\d{2}-\d{2}-\d{4}$/)) {
     const parts = datum.split('-');
     datum = parts[2] + '-' + parts[1] + '-' + parts[0];
@@ -220,31 +201,23 @@ function showImportPreview(eigenaar, datum, certNr, items, sheetName) {
   const goed = items.filter(i => i.status === 'goedgekeurd').length;
   const afk  = items.filter(i => i.status === 'afgekeurd').length;
 
-  // Veilig escapen voor in HTML attributen
   const esc = (s) => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
-  // Exacte match (case-insensitive) op klantnaam
   const eigenaarLower = (eigenaar || '').toLowerCase().trim();
   const exacteMatch = (store.klanten || []).find(
     k => (k.bedrijf || '').toLowerCase().trim() === eigenaarLower && eigenaarLower !== ''
   );
 
-  // Sorteer alle klanten alfabetisch voor de dropdown
   const alleKlanten = [...(store.klanten || [])].sort(
     (a, b) => (a.bedrijf || '').localeCompare(b.bedrijf || '')
   );
 
-  // Bepaal de standaard-keuze
-  // - Match? → "bestaand" voorgeselecteerd
-  // - Geen match maar wél een eigenaar uit Excel? → "nieuw" voorgeselecteerd
-  // - Geen eigenaar? → "handmatig" voorgeselecteerd
   let defaultKeuze = 'handmatig';
   if (exacteMatch) defaultKeuze = 'bestaand';
   else if (eigenaar) defaultKeuze = 'nieuw';
 
-  // Ingelogde keurmeester bepalen — NOOIT hardcoden
   const ingelogdeKeurmeester = (store.settings && store.settings.keurmeester) || '';
 
   showModal('Certificaat Import — Controleer', `
@@ -262,7 +235,6 @@ function showImportPreview(eigenaar, datum, certNr, items, sheetName) {
       </div>
     </div>
 
-    <!-- KLANT KOPPELEN -->
     <div style="background:var(--bg-input);border-radius:var(--radius);padding:14px;margin-bottom:16px;">
       <div style="font-size:13px;font-weight:600;margin-bottom:10px;">Klant koppelen</div>
 
@@ -335,7 +307,6 @@ function showImportPreview(eigenaar, datum, certNr, items, sheetName) {
   });
 }
 
-// Toggle voor het handmatige klant-dropdown en nieuwe-klant veldje
 function _impKlantKeuzeWissel() {
   const keuze = document.querySelector('input[name="impKlantKeuze"]:checked')?.value;
   const handWrap = document.getElementById('impKlantHandmatigWrap');
@@ -344,10 +315,8 @@ function _impKlantKeuzeWissel() {
   if (nieuwWrap) nieuwWrap.style.display = (keuze === 'nieuw') ? 'block' : 'none';
 }
 
-// Verwerkt de bevestiging van de import — bepaalt de klant en rondt af
 async function _verwerkCertificaatImport(eigenaarUitExcel, items) {
   try {
-    // 1. Veiligheid: er moet een ingelogde keurmeester zijn
     const keurmeesterNaam = (store.settings && store.settings.keurmeester) || '';
     if (!keurmeesterNaam) {
       toast('Geen keurmeester ingesteld — stel eerst in via Instellingen', 'error');
@@ -358,12 +327,10 @@ async function _verwerkCertificaatImport(eigenaarUitExcel, items) {
       return;
     }
 
-    // 2. Lees import-velden uit het modal
     const keuze = document.querySelector('input[name="impKlantKeuze"]:checked')?.value;
     const keuringDatum  = document.getElementById('importDatum').value || new Date().toISOString().split('T')[0];
     const keuringCertNr = document.getElementById('importCertNr').value || '';
 
-    // 3. Klant bepalen op basis van keuze
     let klant = null;
 
     if (keuze === 'bestaand') {
@@ -383,7 +350,6 @@ async function _verwerkCertificaatImport(eigenaarUitExcel, items) {
       const naam = (document.getElementById('impKlantNieuwNaam')?.value || '').trim();
       if (!naam) { toast('Vul een bedrijfsnaam in voor de nieuwe klant', 'error'); return; }
 
-      // Duplicaat-check (hoofdletters genegeerd)
       const naamLower = naam.toLowerCase();
       const duplicaat = (store.klanten || []).find(
         k => (k.bedrijf || '').toLowerCase().trim() === naamLower
@@ -397,7 +363,6 @@ async function _verwerkCertificaatImport(eigenaarUitExcel, items) {
         if (!kies) return;
         klant = duplicaat;
       } else {
-        // Nieuwe klant aanmaken en opslaan
         const nieuweKlant = {
           id: generateId(),
           bedrijf: naam,
@@ -430,20 +395,18 @@ async function _verwerkCertificaatImport(eigenaarUitExcel, items) {
       return;
     }
 
-    // 4. Keuring opbouwen
     const keuring = {
       id:            generateId(),
       datum:         keuringDatum,
       certificaatNr: keuringCertNr,
       klantId:       klant.id,
       klantNaam:     klant.bedrijf,
-      keurmeester:   keurmeesterNaam,    // ingelogde keurmeester — nooit hardcoded
+      keurmeester:   keurmeesterNaam,
       opmerkingen:   'Geïmporteerd uit Excel',
       items:         items.map(i => ({ ...i, id: i.id || generateId() })),
       afgerond:      true,
     };
 
-    // 5. Keuring naar Supabase
     try {
       await sbUpsertKeuring(keuring);
     } catch (err) {
@@ -452,7 +415,6 @@ async function _verwerkCertificaatImport(eigenaarUitExcel, items) {
       return;
     }
 
-    // 6. Items via veilige bulk-upsert (gebruikt onConflict: 'id', geen delete)
     try {
       await sbSyncAllKeuringItems(keuring);
     } catch (err) {
@@ -460,7 +422,6 @@ async function _verwerkCertificaatImport(eigenaarUitExcel, items) {
       toast('Items konden niet worden opgeslagen — zie console', 'warning', 6000);
     }
 
-    // 7. Pas NU lokaal toevoegen
     store.keuringen.push(keuring);
     saveStore(store);
 
@@ -488,12 +449,9 @@ function exportKeuringExcel() {
   }
 
   const wb = XLSX.utils.book_new();
-
-  // Build certificate data
   const s = store.settings;
   const rows = [];
 
-  // Header section
   rows.push(['Keuringsdatum:', k.datum, '', 'KEURINGS-CERTIFICAAT', '', '', '', 'Certificaatnummer:', k.certificaatNr]);
   rows.push([]);
   rows.push(['', s.bedrijfsnaam || 'Safety Green B.V.']);
@@ -503,18 +461,14 @@ function exportKeuringExcel() {
   rows.push([]);
   rows.push([]);
 
-  // Afkeurcodes header
   rows.push(['Afkeurcodes:']);
   getAfkeurcodes().forEach(c => {
     rows.push(['', c.code, c.tekst]);
   });
   rows.push([]);
 
-  // Items header
   rows.push(['Omschrijving', 'Merk', 'Materiaal', 'Serie nummer', 'Fabr. Jaar', 'Fabr. Maand', 'Goed', 'Afkeur', 'Opmerking', 'Gebruiker']);
-  const itemHeaderRow = rows.length; // 1-indexed after push
 
-  // Items (sorted, only rated items)
   [...(k.items || [])].filter(item => item.status === 'goedgekeurd' || item.status === 'afgekeurd').sort((a, b) => {
     const col = keuringItemSort.col;
     const cmp = (x, y) => (x||'').localeCompare(y||'', 'nl', {sensitivity:'base'});
@@ -540,7 +494,6 @@ function exportKeuringExcel() {
     ]);
   });
 
-  // Footer
   rows.push([]);
   rows.push(['Eigenaar materiaal:', k.klantNaam]);
   rows.push(['Certificaatnummer:', k.certificaatNr]);
@@ -548,8 +501,6 @@ function exportKeuringExcel() {
   rows.push(['Keuringsdatum:', k.datum]);
 
   const ws = XLSX.utils.aoa_to_sheet(rows);
-
-  // Column widths
   ws['!cols'] = [
     {wch:25},{wch:16},{wch:16},{wch:18},{wch:10},{wch:12},{wch:6},{wch:8},{wch:20},{wch:16}
   ];
@@ -581,7 +532,59 @@ function exportProductenExcel() {
 }
 
 // ============================================================
-// EXCEL IMPORT — Producten
+// EXCEL EXPORT — Producten van een specifiek bedrijf (admin)
+// ============================================================
+// Haalt producten direct uit Supabase (niet uit lokale store, want
+// de lokale store bevat alleen producten van het ingelogde bedrijf).
+async function exportProductenVoorBedrijf(bedrijfId, bedrijfNaam) {
+  if (!bedrijfId) { toast('Geen bedrijf opgegeven', 'error'); return; }
+
+  try {
+    const { data, error } = await sb
+      .from('producten')
+      .select('*')
+      .eq('bedrijf_id', bedrijfId)
+      .order('omschrijving', { ascending: true });
+
+    if (error) { toast('Fout bij ophalen producten: ' + error.message, 'error'); return; }
+    if (!data || data.length === 0) {
+      toast(`${bedrijfNaam} heeft nog geen producten in de database`, 'warning');
+      return;
+    }
+
+    const wb = XLSX.utils.book_new();
+    const headers = ['Omschrijving','Merk','Materiaal','Bijzonderheden','Max Leeftijd','Max USE','Max MFR','EN-Norm','Breuksterkte','Handleiding'];
+    const rows = [headers];
+    data.forEach(p => {
+      rows.push([
+        p.omschrijving || '',
+        p.merk || '',
+        p.materiaal || '',
+        p.bijzonderheden || '',
+        p.max_leeftijd || '',
+        p.max_leeftijd_use || '',
+        p.max_leeftijd_mfr || '',
+        p.norm || '',
+        p.breuksterkte || '',
+        p.handleiding || ''
+      ]);
+    });
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{wch:30},{wch:16},{wch:18},{wch:20},{wch:12},{wch:10},{wch:10},{wch:18},{wch:12},{wch:40}];
+    XLSX.utils.book_append_sheet(wb, ws, 'Producten');
+
+    const veiligeBedrijfNaam = String(bedrijfNaam).replace(/[^a-zA-Z0-9_-]/g, '_');
+    XLSX.writeFile(wb, `Producten_${veiligeBedrijfNaam}_${new Date().toISOString().split('T')[0]}.xlsx`);
+    toast(`${data.length} producten van ${bedrijfNaam} geëxporteerd`);
+
+  } catch (err) {
+    console.error('exportProductenVoorBedrijf fout:', err);
+    toast('Onverwachte fout: ' + err.message, 'error');
+  }
+}
+
+// ============================================================
+// EXCEL IMPORT — Producten (eigen bedrijf, voor keurmeester/admin)
 // ============================================================
 function importKlantJSON(input) {
   const file = input.files[0];
@@ -591,21 +594,17 @@ function importKlantJSON(input) {
     try {
       const data = JSON.parse(e.target.result);
 
-      // Validate format
       if (!data._format || !data._format.startsWith('klimkeur-aanmelding')) {
-        // Try to be flexible - check for items array
         if (!data.items || !Array.isArray(data.items)) {
           toast('Ongeldig bestandsformaat — geen KlimKeur aanmelding herkend', 'error');
           return;
         }
       }
 
-      // Lokale HTML escape helper (Pro gebruikt esc() maar niet escHtml)
       function escHtml(s) {
         return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
       }
 
-      // Normaliseer klantnaam: trim, dubbele spaties weg, eerste letter hoofdletter per woord
       function normaliseerNaam(n) {
         if (!n) return '';
         return n.trim().replace(/\s+/g, ' ')
@@ -617,11 +616,9 @@ function importKlantJSON(input) {
       const klantId = data.klant?.id || '';
       const items = data.items || [];
 
-      // Sorteerbare staat voor de importdialoog
       let importSortCol = 'gebruiker';
       let importSortDir = 1;
 
-      // Zoek matching klant — op ID eerst, dan op genormaliseerde naam
       const klant = store.klanten.find(k =>
         (klantId && k.id === klantId) ||
         normaliseerNaam(k.bedrijf).toLowerCase() === klantNaam.toLowerCase()
@@ -661,7 +658,6 @@ function importKlantJSON(input) {
           </div>`;
       }
 
-      // Maak sorteer functie globaal beschikbaar voor onclick
       window.importSorteer = function(col) {
         if (importSortCol === col) importSortDir *= -1;
         else { importSortCol = col; importSortDir = 1; }
@@ -701,12 +697,10 @@ function importKlantJSON(input) {
           const geselecteerdeKlant = store.klanten.find(k => k.id === selectedKlantId);
           const keuringId = 'k_' + Date.now();
 
-          // Auto-generate certificate number
           const year = datum.split('-')[0];
           const existing = store.keuringen.filter(k => k.certificaatNr?.startsWith(year)).length;
           const certNr = `${year}-${String(existing + 1).padStart(3, '0')}`;
 
-          // Assign item IDs and enrich from product database
           const enrichedItems = items.map(i => {
             const prod = store.products.find(p =>
               p.omschrijving?.toLowerCase() === (i.omschrijving || '').toLowerCase()
@@ -761,170 +755,16 @@ function importKlantJSON(input) {
   input.value = '';
 }
 
+// ============================================================
+// EXCEL IMPORT — Producten (eigen bedrijf via Instellingen)
+// ============================================================
 function importProductenExcel(input) {
   const file = input.files[0];
   if (!file) return;
   const reader = new FileReader();
   reader.onload = e => {
     try {
-      const wb = XLSX.read(e.target.result, { type: 'array' });
-      // Smart sheet selection: prefer 'Bronlijst', or find sheet with 'Omschrijving' column
-      let sheetName = wb.SheetNames.find(n => n.toLowerCase().includes('bronlijst'));
-      if (!sheetName) {
-        // Try each sheet to find one with 'omschrijving' in first 20 rows
-        for (const sn of wb.SheetNames) {
-          const testRows = XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, defval: '' });
-          for (let r = 0; r < Math.min(20, testRows.length); r++) {
-            if (testRows[r].some(c => String(c).toLowerCase().trim() === 'omschrijving')) { sheetName = sn; break; }
-          }
-          if (sheetName) break;
-        }
-      }
-      if (!sheetName) sheetName = wb.SheetNames[0];
-      const ws = wb.Sheets[sheetName];
-      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-      if (rows.length < 2) { toast('Geen producten gevonden in bestand', 'error'); return; }
-
-      // Detect header row - scan first 20 rows for 'omschrijving'
-      let headerIdx = -1;
-      let headerRow = [];
-      for (let tryR = 0; tryR < Math.min(20, rows.length); tryR++) {
-        const tryH = rows[tryR].map(h => String(h).toLowerCase().trim());
-        if (tryH.some(h => h === 'omschrijving')) { headerIdx = tryR; headerRow = tryH; break; }
-      }
-      if (headerIdx < 0) {
-        // Fallback: try partial match
-        for (let tryR = 0; tryR < Math.min(20, rows.length); tryR++) {
-          const tryH = rows[tryR].map(h => String(h).toLowerCase().trim());
-          if (tryH.some(h => h.includes('omschrijving'))) { headerIdx = tryR; headerRow = tryH; break; }
-        }
-      }
-      if (headerIdx < 0) { toast('Kolom "Omschrijving" niet gevonden in de eerste 20 rijen. Zorg dat het Excel-bestand een rij heeft met kolomnamen (Omschrijving, Merk, Materiaal, etc.)', 'error'); return; }
-
-      const col = name => {
-        const idx = headerRow.findIndex(h => h.includes(name));
-        return idx >= 0 ? idx : -1;
-      };
-
-      const iOmschr  = col('omschrijving');
-      const iMerk    = col('merk');
-      const iMat     = col('materiaal');
-      const iBijz    = col('bijzonderheden');
-      const iAge     = col('max leeftijd') >= 0 ? col('max leeftijd') : col('leeftijd');
-      const iAgeUse  = col('max use') >= 0 ? col('max use') : col('use');
-      const iAgeMfr  = col('max mfr') >= 0 ? col('max mfr') : col('mfr');
-      const iEN      = col('en-norm') >= 0 ? col('en-norm') : (col('en norm') >= 0 ? col('en norm') : col('norm'));
-      const iBreuk   = col('breuksterkte') >= 0 ? col('breuksterkte') : col('breuk');
-      const iHand    = col('handleiding');
-      const iLink    = col('link');
-
-      const PCLOUD_BASE = 'https://filedn.eu/l2g18dcAx9UkaWPxITqj1nH/manual/';
-      const nieuweProducten = [];
-      for (let r = headerIdx + 1; r < rows.length; r++) {
-        const row = rows[r];
-        const omschr = String(row[iOmschr]||'').trim();
-        if (!omschr) continue;
-        // Skip category header rows (no merk)
-        const merk = iMerk >= 0 ? String(row[iMerk]||'').trim() : '';
-        if (iMerk >= 0 && !merk && iMat >= 0 && !String(row[iMat]||'').trim()) continue;
-
-        // Process handleiding: convert .pdf filenames to pCloud URLs
-        let handVal = iHand >= 0 ? String(row[iHand]||'').trim() : '';
-        let linkVal = iLink >= 0 ? String(row[iLink]||'').trim() : '';
-        if (handVal && !handVal.startsWith('http') && !handVal.startsWith('file:') && handVal.endsWith('.pdf')) {
-          handVal = PCLOUD_BASE + handVal;
-        }
-        // If no handleiding but link has URL, use link
-        if (!handVal && linkVal.startsWith('http')) handVal = linkVal;
-
-        nieuweProducten.push({
-          omschrijving: omschr,
-          merk:         merk,
-          materiaal:    iMat   >= 0 ? String(row[iMat]||'').trim()   : '',
-          bijzonderheden: iBijz >= 0 ? String(row[iBijz]||'').trim() : '',
-          maxLeeftijd:  iAge   >= 0 ? String(row[iAge]||'').trim()   : '',
-          maxLeeftijdUSE: iAgeUse >= 0 ? String(row[iAgeUse]||'').trim() : '',
-          maxLeeftijdMFR: iAgeMfr >= 0 ? String(row[iAgeMfr]||'').trim() : '',
-          enNorm:       iEN    >= 0 ? String(row[iEN]||'').trim()    : '',
-          breuksterkte: iBreuk >= 0 ? String(row[iBreuk]||'').trim() : '',
-          handleiding:  handVal,
-          link:         linkVal.startsWith('http') ? linkVal : '',
-        });
-      }
-
-      if (nieuweProducten.length === 0) { toast('Geen geldige producten gevonden', 'error'); return; }
-
-      const keuze = confirm(
-        `${nieuweProducten.length} producten gevonden.\n\n` +
-        `VERVANGEN: vervangt de volledige productdatabase (${store.products.length} huidige producten worden overschreven).\n\n` +
-        `Klik OK om te VERVANGEN, of Annuleren om te annuleren.`
-      );
-      if (!keuze) return;
-
-      // Veilige import: eerst upsert naar Supabase met bedrijf_id, pas daarna
-      // oude producten van DIT bedrijf opruimen die niet in de nieuwe set zitten.
-      // NOOIT eerst delete en dan insert — als de insert faalt ben je alles kwijt.
-      if (!_huidigBedrijfId) {
-        toast('Geen bedrijf bekend — opnieuw inloggen', 'error');
-        return;
-      }
-
-      const nieuweMetId = nieuweProducten.map(p => ({ ...p, id: p.id || generateId() }));
-
-      const sbProductRows = nieuweMetId.map(p => ({
-        id:               p.id,
-        omschrijving:     p.omschrijving || '',
-        merk:             p.merk || '',
-        materiaal:        p.materiaal || '',
-        categorie:        p.categorie || '',
-        norm:             p.enNorm || '',
-        handleiding:      p.handleiding || '',
-        max_leeftijd:     p.maxLeeftijd ? String(p.maxLeeftijd) : '',
-        max_leeftijd_use: p.maxLeeftijdUSE || '',
-        max_leeftijd_mfr: p.maxLeeftijdMFR || '',
-        breuksterkte:     p.breuksterkte || '',
-        bijzonderheden:   p.bijzonderheden || '',
-        bedrijf_id:       _huidigBedrijfId,
-      }));
-
-      // Upsert in batches van 200 — voorkomt time-outs en geeft duidelijkere fouten
-      (async () => {
-        try {
-          const BATCH = 200;
-          for (let i = 0; i < sbProductRows.length; i += BATCH) {
-            const batch = sbProductRows.slice(i, i + BATCH);
-            const { error } = await sb.from('producten').upsert(batch, { onConflict: 'id' });
-            if (error) throw error;
-          }
-
-          // Pas NA succesvolle upsert: oude producten van dit bedrijf opruimen
-          // die niet in de nieuwe import voorkomen.
-          const nieuweIds = sbProductRows.map(r => r.id);
-          const teVerwijderen = (store.products || [])
-            .filter(p => !nieuweIds.includes(p.id))
-            .map(p => p.id);
-
-          if (teVerwijderen.length > 0) {
-            const { error: delErr } = await sb.from('producten')
-              .delete()
-              .eq('bedrijf_id', _huidigBedrijfId)
-              .in('id', teVerwijderen);
-            if (delErr) {
-              console.error('Opruimen oude producten mislukt:', delErr);
-              toast('Import gelukt, opruimen oude producten mislukt', 'warning');
-            }
-          }
-
-          // Lokale store pas bijwerken NA succesvolle Supabase-write
-          store.products = nieuweMetId;
-          saveStore(store);
-          toast(`${store.products.length} producten geïmporteerd en opgeslagen`);
-          navigateTo('producten');
-        } catch (err) {
-          console.error('Supabase product import fout:', err);
-          toast('Import mislukt: ' + (err.message || 'onbekende fout') + ' — bestaande producten zijn NIET gewijzigd', 'error', 6000);
-        }
-      })();
+      _verwerkProductenExcelImport(e.target.result, _huidigBedrijfId, store.settings.bedrijfsnaam || 'eigen bedrijf', /*isAdminVoorAnderBedrijf=*/false);
     } catch(err) {
       toast('Fout bij importeren: ' + err.message, 'error');
     }
@@ -934,7 +774,230 @@ function importProductenExcel(input) {
 }
 
 // ============================================================
-// EXCEL EXPORT — Klanten
+// EXCEL IMPORT — Producten voor een specifiek bedrijf (admin)
+// ============================================================
+// Wordt aangeroepen vanuit het bedrijf-modal in bedrijven.js.
+// Schrijft producten naar de opgegeven bedrijf_id i.p.v. de
+// ingelogde gebruiker. Werkt alleen voor platform-admins.
+function importProductenExcelVoorBedrijf(input, bedrijfId, bedrijfNaam) {
+  if (!_isPlatformAdmin) {
+    toast('Alleen platform-beheerders kunnen producten voor andere bedrijven importeren', 'error');
+    return;
+  }
+  if (!bedrijfId) { toast('Geen bedrijf opgegeven', 'error'); return; }
+
+  const file = input.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      _verwerkProductenExcelImport(e.target.result, bedrijfId, bedrijfNaam, /*isAdminVoorAnderBedrijf=*/true);
+    } catch(err) {
+      toast('Fout bij importeren: ' + err.message, 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  input.value = '';
+}
+
+// ============================================================
+// GEDEELDE PRODUCT-IMPORT LOGICA
+// ============================================================
+// Eén functie voor zowel "eigen import" (importProductenExcel)
+// als "admin importeert voor ander bedrijf" (importProductenExcelVoorBedrijf).
+// Het bedrijfId bepaalt waar de producten naartoe gaan.
+async function _verwerkProductenExcelImport(arrayBuffer, bedrijfId, bedrijfNaam, isAdminVoorAnderBedrijf) {
+  if (!bedrijfId) { toast('Geen bedrijf bekend — opnieuw inloggen', 'error'); return; }
+
+  const wb = XLSX.read(arrayBuffer, { type: 'array' });
+
+  // Smart sheet selection: prefer 'Bronlijst', or find sheet with 'Omschrijving' column
+  let sheetName = wb.SheetNames.find(n => n.toLowerCase().includes('bronlijst'));
+  if (!sheetName) {
+    for (const sn of wb.SheetNames) {
+      const testRows = XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, defval: '' });
+      for (let r = 0; r < Math.min(20, testRows.length); r++) {
+        if (testRows[r].some(c => String(c).toLowerCase().trim() === 'omschrijving')) { sheetName = sn; break; }
+      }
+      if (sheetName) break;
+    }
+  }
+  if (!sheetName) sheetName = wb.SheetNames[0];
+  const ws = wb.Sheets[sheetName];
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+  if (rows.length < 2) { toast('Geen producten gevonden in bestand', 'error'); return; }
+
+  // Detect header row
+  let headerIdx = -1;
+  let headerRow = [];
+  for (let tryR = 0; tryR < Math.min(20, rows.length); tryR++) {
+    const tryH = rows[tryR].map(h => String(h).toLowerCase().trim());
+    if (tryH.some(h => h === 'omschrijving')) { headerIdx = tryR; headerRow = tryH; break; }
+  }
+  if (headerIdx < 0) {
+    for (let tryR = 0; tryR < Math.min(20, rows.length); tryR++) {
+      const tryH = rows[tryR].map(h => String(h).toLowerCase().trim());
+      if (tryH.some(h => h.includes('omschrijving'))) { headerIdx = tryR; headerRow = tryH; break; }
+    }
+  }
+  if (headerIdx < 0) { toast('Kolom "Omschrijving" niet gevonden in de eerste 20 rijen.', 'error'); return; }
+
+  const col = name => {
+    const idx = headerRow.findIndex(h => h.includes(name));
+    return idx >= 0 ? idx : -1;
+  };
+
+  const iOmschr  = col('omschrijving');
+  const iMerk    = col('merk');
+  const iMat     = col('materiaal');
+  const iBijz    = col('bijzonderheden');
+  const iAge     = col('max leeftijd') >= 0 ? col('max leeftijd') : col('leeftijd');
+  const iAgeUse  = col('max use') >= 0 ? col('max use') : col('use');
+  const iAgeMfr  = col('max mfr') >= 0 ? col('max mfr') : col('mfr');
+  const iEN      = col('en-norm') >= 0 ? col('en-norm') : (col('en norm') >= 0 ? col('en norm') : col('norm'));
+  const iBreuk   = col('breuksterkte') >= 0 ? col('breuksterkte') : col('breuk');
+  const iHand    = col('handleiding');
+  const iLink    = col('link');
+
+  const PCLOUD_BASE = 'https://filedn.eu/l2g18dcAx9UkaWPxITqj1nH/manual/';
+  const nieuweProducten = [];
+  for (let r = headerIdx + 1; r < rows.length; r++) {
+    const row = rows[r];
+    const omschr = String(row[iOmschr]||'').trim();
+    if (!omschr) continue;
+    const merk = iMerk >= 0 ? String(row[iMerk]||'').trim() : '';
+    if (iMerk >= 0 && !merk && iMat >= 0 && !String(row[iMat]||'').trim()) continue;
+
+    let handVal = iHand >= 0 ? String(row[iHand]||'').trim() : '';
+    let linkVal = iLink >= 0 ? String(row[iLink]||'').trim() : '';
+    if (handVal && !handVal.startsWith('http') && !handVal.startsWith('file:') && handVal.endsWith('.pdf')) {
+      handVal = PCLOUD_BASE + handVal;
+    }
+    if (!handVal && linkVal.startsWith('http')) handVal = linkVal;
+
+    nieuweProducten.push({
+      omschrijving: omschr,
+      merk:         merk,
+      materiaal:    iMat   >= 0 ? String(row[iMat]||'').trim()   : '',
+      bijzonderheden: iBijz >= 0 ? String(row[iBijz]||'').trim() : '',
+      maxLeeftijd:  iAge   >= 0 ? String(row[iAge]||'').trim()   : '',
+      maxLeeftijdUSE: iAgeUse >= 0 ? String(row[iAgeUse]||'').trim() : '',
+      maxLeeftijdMFR: iAgeMfr >= 0 ? String(row[iAgeMfr]||'').trim() : '',
+      enNorm:       iEN    >= 0 ? String(row[iEN]||'').trim()    : '',
+      breuksterkte: iBreuk >= 0 ? String(row[iBreuk]||'').trim() : '',
+      handleiding:  handVal,
+      link:         linkVal.startsWith('http') ? linkVal : '',
+    });
+  }
+
+  if (nieuweProducten.length === 0) { toast('Geen geldige producten gevonden', 'error'); return; }
+
+  // Tel huidige producten van DIT bedrijf in Supabase
+  let huidigAantal = 0;
+  try {
+    const { count, error: countErr } = await sb
+      .from('producten')
+      .select('id', { count: 'exact', head: true })
+      .eq('bedrijf_id', bedrijfId);
+    if (!countErr && typeof count === 'number') huidigAantal = count;
+  } catch (e) {
+    console.warn('Kon huidig aantal niet bepalen:', e);
+  }
+
+  // Veiligheidswaarschuwing als het nieuwe aantal véél kleiner is
+  let extraWaarschuwing = '';
+  if (huidigAantal > 50 && nieuweProducten.length < huidigAantal / 3) {
+    extraWaarschuwing =
+      `\n\n⚠ LET OP: de nieuwe Excel bevat veel minder producten dan de huidige database ` +
+      `(${nieuweProducten.length} vs ${huidigAantal}).\n` +
+      `Controleer of dit klopt — mogelijk is er een fout in het Excel-bestand.`;
+  }
+
+  const bevestigingsTekst =
+    `Productdatabase voor "${bedrijfNaam}" vervangen?\n\n` +
+    `• Huidig: ${huidigAantal} producten\n` +
+    `• Nieuw:  ${nieuweProducten.length} producten (uit Excel)\n\n` +
+    `Alle huidige producten van dit bedrijf worden verwijderd en vervangen door de nieuwe set.\n` +
+    `Dit kan niet ongedaan worden gemaakt.` +
+    extraWaarschuwing;
+
+  if (!confirm(bevestigingsTekst)) return;
+
+  // Bouw rijen voor Supabase
+  const nieuweMetId = nieuweProducten.map(p => ({ ...p, id: p.id || generateId() }));
+  const sbProductRows = nieuweMetId.map(p => ({
+    id:               p.id,
+    omschrijving:     p.omschrijving || '',
+    merk:             p.merk || '',
+    materiaal:        p.materiaal || '',
+    categorie:        p.categorie || '',
+    norm:             p.enNorm || '',
+    handleiding:      p.handleiding || '',
+    max_leeftijd:     p.maxLeeftijd ? String(p.maxLeeftijd) : '',
+    max_leeftijd_use: p.maxLeeftijdUSE || '',
+    max_leeftijd_mfr: p.maxLeeftijdMFR || '',
+    breuksterkte:     p.breuksterkte || '',
+    bijzonderheden:   p.bijzonderheden || '',
+    bedrijf_id:       bedrijfId,   // ← cruciaal: schrijft naar opgegeven bedrijf
+  }));
+
+  try {
+    // Stap 1: nieuwe producten upserten in batches van 200
+    const BATCH = 200;
+    for (let i = 0; i < sbProductRows.length; i += BATCH) {
+      const batch = sbProductRows.slice(i, i + BATCH);
+      const { error } = await sb.from('producten').upsert(batch, { onConflict: 'id' });
+      if (error) throw error;
+    }
+
+    // Stap 2: oude producten van DIT bedrijf opruimen die niet in de
+    // nieuwe import voorkomen. Eerst ophalen welke er nu staan.
+    const nieuweIds = sbProductRows.map(r => r.id);
+
+    const { data: huidigeRows, error: selErr } = await sb
+      .from('producten')
+      .select('id')
+      .eq('bedrijf_id', bedrijfId);
+
+    if (selErr) {
+      console.error('Ophalen huidige producten mislukt:', selErr);
+      toast('Import gelukt, opruimen mislukt — controleer database', 'warning');
+    } else {
+      const teVerwijderen = (huidigeRows || [])
+        .map(r => r.id)
+        .filter(id => !nieuweIds.includes(id));
+
+      if (teVerwijderen.length > 0) {
+        const { error: delErr } = await sb.from('producten')
+          .delete()
+          .eq('bedrijf_id', bedrijfId)
+          .in('id', teVerwijderen);
+        if (delErr) {
+          console.error('Opruimen oude producten mislukt:', delErr);
+          toast('Import gelukt, opruimen oude producten mislukt', 'warning');
+        }
+      }
+    }
+
+    // Stap 3: lokale store alleen bijwerken als we voor het EIGEN bedrijf importeerden
+    if (!isAdminVoorAnderBedrijf) {
+      store.products = nieuweMetId;
+      saveStore(store);
+      toast(`${nieuweMetId.length} producten geïmporteerd en opgeslagen`);
+      navigateTo('producten');
+    } else {
+      toast(`${nieuweMetId.length} producten geïmporteerd voor ${bedrijfNaam}`);
+    }
+
+  } catch (err) {
+    console.error('Supabase product import fout:', err);
+    toast('Import mislukt: ' + (err.message || 'onbekende fout') + ' — bestaande producten zijn NIET gewijzigd', 'error', 6000);
+  }
+}
+
+// ============================================================
+// EXCEL EXPORT — Klanten + Klant App
 // ============================================================
 async function exportKlantApp() {
   const lijst = store.products
@@ -946,7 +1009,6 @@ async function exportKlantApp() {
     }))
     .sort((a, b) => a.omschrijving.localeCompare(b.omschrijving, 'nl'));
 
-  // Klant App template — geladen uit extern bestand KlantKeur_App.html
   const appTemplateResponse = await fetch('KlantKeur_App.html');
   if (!appTemplateResponse.ok) {
     toast('KlantKeur_App.html niet gevonden. Zorg dat dit bestand naast KlimKeur_Pro staat.', 'error');
@@ -973,7 +1035,6 @@ async function exportKlantApp() {
 }
 
 function exportKlantProductlijst() {
-  // Exporteert alleen omschrijving, merk en materiaal — veilig voor klanten
   const lijst = store.products
     .filter(p => p.omschrijving)
     .map(p => ({
