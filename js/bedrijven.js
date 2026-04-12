@@ -111,6 +111,13 @@ function toonBedrijfModal(bedrijf) {
   const isNieuw = !bedrijf;
   const b = bedrijf || {};
 
+  // cert_kolommen parsen (staat als JSON-string in de database)
+  let certCols = { materiaal: false, enNorm: false, breuksterkte: false };
+  if (b.cert_kolommen) {
+    try { certCols = { ...certCols, ...JSON.parse(b.cert_kolommen) }; }
+    catch(e) { console.warn('cert_kolommen kon niet worden geparsed:', e); }
+  }
+
   showModal(isNieuw ? 'Nieuw bedrijf' : `${escB(b.naam)} bewerken`, `
     <div style="display:flex;flex-direction:column;gap:16px;">
 
@@ -173,7 +180,45 @@ function toonBedrijfModal(bedrijf) {
         </div>
       </div>
 
-      <!-- KEURMEESTERS SECTIE -->
+      <!-- ============================================================
+           CERTIFICAAT-INSTELLINGEN
+           ============================================================ -->
+      <div style="border-top:1px solid var(--border);padding-top:16px;">
+        <div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;">Certificaat</div>
+
+        <div class="form-group">
+          <label class="form-label">Certificaat tekst (boven)</label>
+          <textarea class="form-textarea" id="bCertKop" rows="4" placeholder="Tekst die boven de productenlijst op het certificaat verschijnt">${escB(b.cert_koptekst || '')}</textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Certificaat tekst (onder)</label>
+          <textarea class="form-textarea" id="bCertVoet" rows="3" placeholder="Optionele tekst onderaan het certificaat">${escB(b.cert_voettekst || '')}</textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" style="margin-bottom:10px;display:block;">Certificaat kolommen</label>
+          <div style="display:flex;gap:16px;flex-wrap:wrap;">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+              <input type="checkbox" id="bCertColMateriaal" ${certCols.materiaal ? 'checked' : ''}>
+              Materiaal
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+              <input type="checkbox" id="bCertColEnNorm" ${certCols.enNorm ? 'checked' : ''}>
+              EN-norm
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+              <input type="checkbox" id="bCertColBreuksterkte" ${certCols.breuksterkte ? 'checked' : ''}>
+              Breuksterkte
+            </label>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Gebruiker, Opmerking en In gebruik worden automatisch verborgen als ze leeg zijn.</div>
+        </div>
+      </div>
+
+      <!-- ============================================================
+           KEURMEESTERS SECTIE
+           ============================================================ -->
       <div style="border-top:1px solid var(--border);padding-top:16px;">
         <div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;">Keurmeesters</div>
 
@@ -261,6 +306,13 @@ async function slaaBedrijfOp(isNieuw) {
 
   const id = document.getElementById('bId').value || generateId();
 
+  // Certificaat-kolommen samenstellen als JSON-string
+  const certKolommen = JSON.stringify({
+    materiaal:    document.getElementById('bCertColMateriaal').checked,
+    enNorm:       document.getElementById('bCertColEnNorm').checked,
+    breuksterkte: document.getElementById('bCertColBreuksterkte').checked,
+  });
+
   const rij = {
     id,
     naam,
@@ -272,6 +324,9 @@ async function slaaBedrijfOp(isNieuw) {
     kleur_primair_donker: document.getElementById('bKleurDonker').value,
     kleur_accent:         document.getElementById('bKleurAccent').value,
     logo_url:             document.getElementById('bLogoUrl').value.trim(),
+    cert_koptekst:        document.getElementById('bCertKop').value,
+    cert_voettekst:       document.getElementById('bCertVoet').value,
+    cert_kolommen:        certKolommen,
   };
 
   try {
@@ -280,6 +335,12 @@ async function slaaBedrijfOp(isNieuw) {
       .upsert(rij, { onConflict: 'id' });
 
     if (error) { toast('Fout bij opslaan: ' + error.message, 'error'); return; }
+
+    // Als de admin zijn eigen bedrijf bewerkt, meteen lokale store bijwerken
+    // zodat de wijzigingen direct zichtbaar zijn zonder herladen.
+    if (id === _huidigBedrijfId && typeof pasInstellingenToe === 'function') {
+      pasInstellingenToe(rij);
+    }
 
     const kmNaam  = document.getElementById('bKmNaam')?.value.trim();
     const kmEmail = document.getElementById('bKmEmail')?.value.trim();
