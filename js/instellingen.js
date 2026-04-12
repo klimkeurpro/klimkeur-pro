@@ -4,6 +4,10 @@
 // Keurmeesters worden rechtstreeks beheerd in de keurmeesters
 // tabel in Supabase. De oude JSON-blob in de instellingen tabel
 // wordt niet meer gebruikt (sbSaveKeurmeesters is uitgefaseerd).
+//
+// Bedrijfsgegevens en certificaat-instellingen zijn alleen
+// bewerkbaar voor platform-admins. Gewone keurmeesters zien
+// die secties niet.
 // ============================================================
 
 // Lokale HTML escape — voorkomt dat data uit HTML-attributen breekt
@@ -18,18 +22,21 @@ function escI(s) {
 
 function renderInstellingen(el) {
   const s = store.settings;
+  const isAdmin = !!_isPlatformAdmin;
+
   el.innerHTML = `
     <div class="fade-in">
       <div class="tabs">
-        <div class="tab active"  onclick="switchSettingsTab(this,'general')">Algemeen</div>
-        <div class="tab"         onclick="switchSettingsTab(this,'handtekening')">Mijn handtekening</div>
-        <div class="tab"         onclick="switchSettingsTab(this,'certificaat')">Certificaat</div>
-        <div class="tab"         onclick="switchSettingsTab(this,'database')">Database</div>
+        ${isAdmin ? `<div class="tab active" onclick="switchSettingsTab(this,'general')">Algemeen</div>` : ''}
+        <div class="tab ${isAdmin ? '' : 'active'}" onclick="switchSettingsTab(this,'handtekening')">Mijn handtekening</div>
+        ${isAdmin ? `<div class="tab" onclick="switchSettingsTab(this,'certificaat')">Certificaat</div>` : ''}
+        <div class="tab" onclick="switchSettingsTab(this,'database')">Database</div>
       </div>
 
       <!-- ═══════════════════════════════════════════════
-           TAB 1 — ALGEMEEN
+           TAB 1 — ALGEMEEN (alleen admin)
       ═══════════════════════════════════════════════ -->
+      ${isAdmin ? `
       <div id="settingsGeneral" class="card" style="margin-bottom:20px;">
         <div class="card-header"><h3>Bedrijfsgegevens</h3></div>
         <div class="card-body">
@@ -57,12 +64,6 @@ function renderInstellingen(el) {
             <label class="form-label">Email</label>
             <input class="form-input" id="setEmail" value="${escI(s.email||'')}">
           </div>
-          <div class="form-group">
-            <label class="form-label">Standaard keurmeester</label>
-            <select class="form-select" id="setKeurmeester">
-              ${(store.keurmeesters||[]).map(k=>`<option value="${escI(k.naam)}" ${s.keurmeester===k.naam?'selected':''}>${escI(k.naam)}</option>`).join('')}
-            </select>
-          </div>
           <div style="margin-top:16px;">
             <label class="form-label">Bedrijfslogo</label>
             <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);padding:12px;text-align:center;min-width:200px;min-height:60px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:8px;">
@@ -74,11 +75,12 @@ function renderInstellingen(el) {
           <button class="btn btn-primary" style="margin-top:20px;" onclick="saveSettings()">Opslaan</button>
         </div>
       </div>
+      ` : ''}
 
       <!-- ═══════════════════════════════════════════════
            TAB 2 — MIJN HANDTEKENING
       ═══════════════════════════════════════════════ -->
-      <div id="settingsHandtekening" class="card" style="display:none;margin-bottom:20px;">
+      <div id="settingsHandtekening" class="card" style="${isAdmin ? 'display:none;' : ''}margin-bottom:20px;">
         <div class="card-header"><h3>Mijn handtekening</h3></div>
         <div class="card-body">
           <p style="font-size:13px;color:var(--text-secondary);margin-bottom:20px;">
@@ -123,8 +125,9 @@ function renderInstellingen(el) {
       </div>
 
       <!-- ═══════════════════════════════════════════════
-           TAB 3 — CERTIFICAAT
+           TAB 3 — CERTIFICAAT (alleen admin)
       ═══════════════════════════════════════════════ -->
+      ${isAdmin ? `
       <div id="settingsCertificaat" class="card" style="display:none;margin-bottom:20px;">
         <div class="card-header"><h3>Certificaat Instellingen</h3></div>
         <div class="card-body">
@@ -186,6 +189,7 @@ function renderInstellingen(el) {
           </div>
         </div>
       </div>
+      ` : ''}
 
       <!-- ═══════════════════════════════════════════════
            TAB 4 — DATABASE
@@ -194,6 +198,7 @@ function renderInstellingen(el) {
         <div class="card-header"><h3>Database &amp; Backup</h3></div>
         <div class="card-body">
 
+          ${isAdmin ? `
           <div style="margin-bottom:24px;">
             <h4 style="font-size:13px;font-weight:700;color:var(--sg-green);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;">Productendatabase</h4>
             <p style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">
@@ -212,6 +217,7 @@ function renderInstellingen(el) {
           </div>
 
           <div style="border-top:1px solid var(--border);margin-bottom:24px;"></div>
+          ` : ''}
 
           <div style="margin-bottom:24px;">
             <h4 style="font-size:13px;font-weight:700;color:var(--sg-green);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;">Historische certificaten importeren</h4>
@@ -314,7 +320,9 @@ async function slaEigenHandtekeningOp() {
     toast('Handtekening opgeslagen');
     // Tab herladen zodat preview bijgewerkt is
     renderInstellingen(document.getElementById('pageContent'));
-    switchSettingsTab(document.querySelector('.tab:nth-child(2)'), 'handtekening');
+    // Activeer de handtekening-tab opnieuw
+    const handtekeningTab = Array.from(document.querySelectorAll('.tab')).find(t => t.textContent.trim() === 'Mijn handtekening');
+    if (handtekeningTab) switchSettingsTab(handtekeningTab, 'handtekening');
 
   } catch(err) {
     console.error('Handtekening opslaan fout:', err);
@@ -343,7 +351,8 @@ async function verwijderEigenHandtekening() {
 
     toast('Handtekening verwijderd');
     renderInstellingen(document.getElementById('pageContent'));
-    switchSettingsTab(document.querySelector('.tab:nth-child(2)'), 'handtekening');
+    const handtekeningTab = Array.from(document.querySelectorAll('.tab')).find(t => t.textContent.trim() === 'Mijn handtekening');
+    if (handtekeningTab) switchSettingsTab(handtekeningTab, 'handtekening');
 
   } catch(err) {
     console.error('Handtekening verwijderen fout:', err);
@@ -357,14 +366,18 @@ async function verwijderEigenHandtekening() {
 function switchSettingsTab(tab, section) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   tab.classList.add('active');
-  document.getElementById('settingsGeneral').style.display      = section==='general'      ? '' : 'none';
-  document.getElementById('settingsHandtekening').style.display = section==='handtekening' ? '' : 'none';
-  document.getElementById('settingsCertificaat').style.display  = section==='certificaat'  ? '' : 'none';
-  document.getElementById('settingsDatabase').style.display     = section==='database'     ? '' : 'none';
+  const g  = document.getElementById('settingsGeneral');
+  const h  = document.getElementById('settingsHandtekening');
+  const c  = document.getElementById('settingsCertificaat');
+  const d  = document.getElementById('settingsDatabase');
+  if (g) g.style.display = section==='general'      ? '' : 'none';
+  if (h) h.style.display = section==='handtekening' ? '' : 'none';
+  if (c) c.style.display = section==='certificaat'  ? '' : 'none';
+  if (d) d.style.display = section==='database'     ? '' : 'none';
 }
 
 // ============================================================
-// OPSLAAN
+// OPSLAAN — alleen admin (bedrijfsgegevens)
 // ============================================================
 function saveSettings() {
   store.settings.bedrijfsnaam = document.getElementById('setBedrijf').value;
@@ -372,7 +385,6 @@ function saveSettings() {
   store.settings.adres        = document.getElementById('setAdres').value;
   store.settings.telefoon     = document.getElementById('setTel').value;
   store.settings.email        = document.getElementById('setEmail').value;
-  store.settings.keurmeester  = document.getElementById('setKeurmeester').value;
   saveStore(store);
   sbSlaInstellingenOp(store.settings).catch(console.error);
   toast('Instellingen opgeslagen');
@@ -497,10 +509,6 @@ async function bewerkKeurmeester(idx, nieuweNaam) {
 // ============================================================
 // KEURMEESTER UITNODIGEN
 // ============================================================
-// Browser doet niks meer aan de database — de Edge Function
-// 'quick-action' regelt alles: uitnodiging versturen + rij in
-// keurmeesters-tabel + dubbel-detectie. Eén plek, één waarheid.
-// ============================================================
 async function verstuurKeurmeesterUitnodiging(naam, email) {
   const statusEl = document.getElementById('kmUitnodigingStatus');
   if (statusEl) {
@@ -538,7 +546,6 @@ async function verstuurKeurmeesterUitnodiging(naam, email) {
       return;
     }
 
-    // Succes — herlaad de keurmeesters uit Supabase zodat de lijst klopt
     toast(`Uitnodiging verstuurd naar ${email}`, 'success');
     closeModal();
     if (typeof loadFromSupabase === 'function') {
@@ -564,7 +571,6 @@ async function verwijderKeurmeester(idx) {
   if (!km) return;
   if (!confirm(`Keurmeester "${km.naam}" verwijderen?`)) return;
 
-  // Verwijder uit database als we een _id hebben
   if (km._id) {
     try {
       const { error } = await sb
@@ -584,7 +590,6 @@ async function verwijderKeurmeester(idx) {
     }
   }
 
-  // Lokale store bijwerken
   store.keurmeesters.splice(idx, 1);
   if (store.settings.keurmeester === km.naam && store.keurmeesters.length > 0) {
     store.settings.keurmeester = store.keurmeesters[0].naam;
@@ -629,7 +634,8 @@ function openAfkeurcodeModal(idx) {
     closeModal();
     toast(i >= 0 ? 'Afkeurcode bijgewerkt' : 'Afkeurcode toegevoegd');
     renderInstellingen(document.getElementById('pageContent'));
-    switchSettingsTab(document.querySelector('.tab:nth-child(3)'), 'certificaat');
+    const certTab = Array.from(document.querySelectorAll('.tab')).find(t => t.textContent.trim() === 'Certificaat');
+    if (certTab) switchSettingsTab(certTab, 'certificaat');
   });
 }
 
@@ -641,5 +647,6 @@ function deleteAfkeurcode(idx) {
   sbSaveAfkeurcodes(store.afkeurcodes).catch(console.error);
   toast('Afkeurcode verwijderd');
   renderInstellingen(document.getElementById('pageContent'));
-  switchSettingsTab(document.querySelector('.tab:nth-child(3)'), 'certificaat');
+  const certTab = Array.from(document.querySelectorAll('.tab')).find(t => t.textContent.trim() === 'Certificaat');
+  if (certTab) switchSettingsTab(certTab, 'certificaat');
 }
