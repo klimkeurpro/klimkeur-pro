@@ -217,6 +217,38 @@ function toonBedrijfModal(bedrijf) {
       </div>
 
       <!-- ============================================================
+           PRODUCTDATABASE — alleen bij bestaande bedrijven
+           ============================================================ -->
+      ${isNieuw ? '' : `
+      <div style="border-top:1px solid var(--border);padding-top:16px;">
+        <div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;">Productdatabase</div>
+
+        <div id="bProductenInfo" style="background:var(--bg-input);border-radius:var(--radius);padding:12px 14px;margin-bottom:10px;font-size:12px;color:var(--text-secondary);">
+          Aantal producten ophalen…
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <label class="btn btn-sm" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Excel importeren
+            <input type="file" accept=".xlsx,.xls,.csv" style="display:none;"
+              onchange="importProductenExcelVoorBedrijf(this, '${escB(b.id)}', '${escB(b.naam || '')}'); setTimeout(()=>laadProductAantalInModal('${escB(b.id)}'), 1500);">
+          </label>
+
+          <button type="button" class="btn btn-sm"
+            onclick="exportProductenVoorBedrijf('${escB(b.id)}', '${escB(b.naam || '')}')">
+            ↓ Excel exporteren
+          </button>
+        </div>
+
+        <div style="font-size:11px;color:var(--text-muted);margin-top:8px;">
+          Importeren vervangt de volledige productendatabase van dit bedrijf.
+          Eigen toevoegingen door het bedrijf gaan daarbij verloren — exporteer eerst als je ze wilt bewaren.
+        </div>
+      </div>
+      `}
+
+      <!-- ============================================================
            KEURMEESTERS SECTIE
            ============================================================ -->
       <div style="border-top:1px solid var(--border);padding-top:16px;">
@@ -250,9 +282,40 @@ function toonBedrijfModal(bedrijf) {
     </div>
   `, () => slaaBedrijfOp(isNieuw));
 
-  // Keurmeesters laden als bewerken
+  // Bij bewerken: keurmeesters + productaantal laden
   if (!isNieuw && b.id) {
-    setTimeout(() => laadKmLijstInModal(b.id), 100);
+    setTimeout(() => {
+      laadKmLijstInModal(b.id);
+      laadProductAantalInModal(b.id);
+    }, 100);
+  }
+}
+
+// ============================================================
+// PRODUCT AANTAL TONEN IN MODAL
+// ============================================================
+async function laadProductAantalInModal(bedrijfId) {
+  const el = document.getElementById('bProductenInfo');
+  if (!el) return;
+
+  try {
+    const { count, error } = await sb
+      .from('producten')
+      .select('id', { count: 'exact', head: true })
+      .eq('bedrijf_id', bedrijfId);
+
+    if (error) {
+      el.innerHTML = `<span style="color:var(--danger);">Fout bij ophalen aantal: ${escB(error.message)}</span>`;
+      return;
+    }
+
+    const aantal = typeof count === 'number' ? count : 0;
+    el.innerHTML = aantal === 0
+      ? `<strong>0 producten</strong> — dit bedrijf heeft nog geen productdatabase. Importeer een Excel om te beginnen.`
+      : `<strong>${aantal} ${aantal === 1 ? 'product' : 'producten'}</strong> in de database voor dit bedrijf.`;
+
+  } catch (err) {
+    el.innerHTML = `<span style="color:var(--danger);">Fout: ${escB(err.message)}</span>`;
   }
 }
 
@@ -308,7 +371,6 @@ async function slaaBedrijfOp(isNieuw) {
 
   const id = document.getElementById('bId').value || generateId();
 
-  // Certificaat-kolommen samenstellen als JSON-string
   const certKolommen = JSON.stringify({
     materiaal:    document.getElementById('bCertColMateriaal').checked,
     enNorm:       document.getElementById('bCertColEnNorm').checked,
@@ -338,8 +400,6 @@ async function slaaBedrijfOp(isNieuw) {
 
     if (error) { toast('Fout bij opslaan: ' + error.message, 'error'); return; }
 
-    // Als de admin zijn eigen bedrijf bewerkt, meteen lokale store bijwerken
-    // zodat de wijzigingen direct zichtbaar zijn zonder herladen.
     if (id === _huidigBedrijfId && typeof pasInstellingenToe === 'function') {
       pasInstellingenToe(rij);
     }
@@ -408,11 +468,6 @@ async function nodigKeurmeesterUitVoorBedrijf(naam, email, bedrijfId, bedrijfNaa
 
 // ============================================================
 // OPNIEUW UITNODIGEN
-// ============================================================
-// Stuurt opnieuw een activatie- of wachtwoord-reset-mail.
-// De quick-action Edge Function detecteert zelf of het account
-// al bestaat en stuurt dan een password-recovery in plaats van
-// een nieuwe invite.
 // ============================================================
 async function opnieuwUitnodigen(kmId, email, naam, bedrijfId) {
   if (!email) {
