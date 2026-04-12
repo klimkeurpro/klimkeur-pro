@@ -266,7 +266,7 @@ async function laadKmLijstInModal(bedrijfId) {
   try {
     const { data, error } = await sb
       .from('keurmeesters')
-      .select('id, naam, bedrijf_id, auth_user_id')
+      .select('id, naam, email, bedrijf_id, auth_user_id')
       .eq('bedrijf_id', bedrijfId)
       .order('naam', { ascending: true });
 
@@ -281,13 +281,15 @@ async function laadKmLijstInModal(bedrijfId) {
     }
 
     container.innerHTML = data.map(km => `
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg-input);border-radius:var(--radius);margin-bottom:6px;">
-        <div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg-input);border-radius:var(--radius);margin-bottom:6px;gap:10px;">
+        <div style="flex:1;min-width:0;">
           <div style="font-size:13px;font-weight:600;">${escB(km.naam || '—')}</div>
-          <div style="font-size:11px;color:var(--text-muted);">${km.auth_user_id ? '✓ Account actief' : '⚠ Geen account'}</div>
+          <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;word-break:break-all;">${escB(km.email || 'geen e-mail')}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${km.auth_user_id ? '✓ Account actief' : '⚠ Geen account'}</div>
         </div>
-        <div style="display:flex;gap:6px;">
-          <button class="btn btn-sm" onclick="verwijderKmUitBedrijf('${escB(km.id)}')">Verwijder</button>
+        <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
+          <button class="btn btn-sm" onclick="opnieuwUitnodigen('${escB(km.id)}','${escB(km.email || '')}','${escB(km.naam || '')}','${escB(bedrijfId)}')" title="Stuur opnieuw een activatie- of wachtwoord-mail">Opnieuw uitnodigen</button>
+          <button class="btn btn-sm" style="color:var(--danger);border-color:var(--danger);" onclick="verwijderKmUitBedrijf('${escB(km.id)}','${escB(km.naam || '')}')">Verwijder</button>
         </div>
       </div>
     `).join('');
@@ -362,9 +364,6 @@ async function slaaBedrijfOp(isNieuw) {
 // ============================================================
 // KEURMEESTER UITNODIGEN
 // ============================================================
-// Browser doet niks meer aan de database — de Edge Function
-// 'quick-action' regelt alles. Eén plek, één waarheid.
-// ============================================================
 async function nodigKeurmeesterUitVoorBedrijf(naam, email, bedrijfId, bedrijfNaam) {
   const statusEl = document.getElementById('bKmStatus');
   if (statusEl) { statusEl.textContent = 'Uitnodiging versturen...'; statusEl.style.color = 'var(--text-muted)'; }
@@ -383,7 +382,7 @@ async function nodigKeurmeesterUitVoorBedrijf(naam, email, bedrijfId, bedrijfNaa
         email,
         klant_naam: naam || email,
         rol: 'keurmeester',
-        bedrijf_id: bedrijfId, // platform-admin nodigt voor specifiek bedrijf uit
+        bedrijf_id: bedrijfId,
         redirect_to: 'https://klimkeurpro.github.io/klimkeur-pro/',
       }),
     });
@@ -408,10 +407,64 @@ async function nodigKeurmeesterUitVoorBedrijf(naam, email, bedrijfId, bedrijfNaa
 }
 
 // ============================================================
+// OPNIEUW UITNODIGEN
+// ============================================================
+// Stuurt opnieuw een activatie- of wachtwoord-reset-mail.
+// De quick-action Edge Function detecteert zelf of het account
+// al bestaat en stuurt dan een password-recovery in plaats van
+// een nieuwe invite.
+// ============================================================
+async function opnieuwUitnodigen(kmId, email, naam, bedrijfId) {
+  if (!email) {
+    toast('Geen e-mailadres bekend voor deze keurmeester', 'error');
+    return;
+  }
+  if (!confirm(`Opnieuw een activatie- of wachtwoord-mail sturen naar ${email}?`)) return;
+
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) { toast('Niet ingelogd', 'error'); return; }
+
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/quick-action`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        email,
+        klant_naam: naam || email,
+        rol: 'keurmeester',
+        bedrijf_id: bedrijfId,
+        redirect_to: 'https://klimkeurpro.github.io/klimkeur-pro/',
+      }),
+    });
+
+    const result = await res.json();
+
+    if (!res.ok || result.error) {
+      toast('Mail versturen mislukt: ' + (result.error || 'onbekende fout'), 'error', 6000);
+      return;
+    }
+
+    toast(`Mail verstuurd naar ${email}`, 'success');
+
+  } catch (err) {
+    toast('Fout: ' + err.message, 'error');
+  }
+}
+
+// ============================================================
 // KEURMEESTER VERWIJDEREN UIT BEDRIJF
 // ============================================================
-async function verwijderKmUitBedrijf(kmId) {
-  if (!confirm('Keurmeester verwijderen? Het auth-account blijft bestaan.')) return;
+async function verwijderKmUitBedrijf(kmId, kmNaam) {
+  const naam = kmNaam || 'deze keurmeester';
+  if (!confirm(
+    `${naam} verwijderen uit dit bedrijf?\n\n` +
+    `• De koppeling wordt verwijderd — deze persoon kan niet meer inloggen op het keuringssysteem\n` +
+    `• Het Supabase-account zelf blijft bestaan (kan later opnieuw gekoppeld worden)\n` +
+    `• Bestaande keuringen blijven ongewijzigd`
+  )) return;
 
   try {
     const { error } = await sb
@@ -421,7 +474,7 @@ async function verwijderKmUitBedrijf(kmId) {
 
     if (error) { toast('Fout bij verwijderen: ' + error.message, 'error'); return; }
 
-    toast('Keurmeester verwijderd', 'success');
+    toast(`${naam} verwijderd`, 'success');
     const bedrijfId = document.getElementById('bId')?.value;
     if (bedrijfId) laadKmLijstInModal(bedrijfId);
 
