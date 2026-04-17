@@ -34,6 +34,7 @@ function openScanner(doelVeldId) {
   const overlay = document.createElement('div');
   overlay.id = 'scannerOverlay';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;';
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) sluitScanner(); });
 
   overlay.innerHTML = `
     <div style="color:#fff;text-align:center;margin-bottom:16px;">
@@ -78,6 +79,11 @@ function openScanner(doelVeldId) {
     ">Sluiten</button>
   `;
 
+  // Klik op de donkere achtergrond = sluiten
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) sluitScanner();
+  });
+
   document.body.appendChild(overlay);
 
   // Start de scanner
@@ -109,6 +115,9 @@ function openScanner(doelVeldId) {
     _initCameraControls();
   }).catch(err => {
     console.error('Scanner starten mislukt:', err);
+    // Verberg het reader-element zodat het geen clicks blokkeert
+    const readerEl = document.getElementById('scannerReader');
+    if (readerEl) readerEl.style.display = 'none';
     const resultEl = document.getElementById('scannerResultaat');
     if (resultEl) {
       resultEl.style.color = '#E74C3C';
