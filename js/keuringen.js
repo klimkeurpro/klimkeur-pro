@@ -486,29 +486,53 @@ function openKeuringDetail(id) {
         </div></div>` : ''}
       </div>
 
-      <!-- Dag/Week omrekenhulpje -->
+      <!-- Spiekbriefje: Dag/Week + SN Referentie -->
       <details style="margin-bottom:16px;" class="converter-panel">
         <summary style="cursor:pointer;padding:10px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);font-size:13px;color:var(--text-secondary);display:flex;align-items:center;gap:8px;user-select:none;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          Dag / Week omrekenen — spiekbriefje
+          Spiekbriefje — Dag/Week &amp; SN Referentie
         </summary>
-        <div style="padding:14px 16px;background:var(--bg-card);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--radius-lg) var(--radius-lg);display:flex;gap:20px;flex-wrap:wrap;">
-          <div style="flex:1;min-width:200px;">
-            <label class="form-label" style="margin-bottom:6px;">Dag van het jaar → Datum</label>
-            <div style="display:flex;gap:6px;align-items:center;">
-              <input class="form-input" type="number" id="convDag" placeholder="Dag (1-366)" min="1" max="366" style="width:100px;" oninput="convertDag()">
-              <input class="form-input" type="number" id="convDagJaar" placeholder="Jaar" value="${new Date().getFullYear()}" style="width:80px;" oninput="convertDag()">
-              <span style="font-size:13px;color:var(--text-muted);">=</span>
-              <span id="convDagResult" style="font-size:14px;font-weight:600;color:var(--sg-lime);min-width:120px;">—</span>
+        <div style="background:var(--bg-card);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--radius-lg) var(--radius-lg);">
+          <!-- Tabs -->
+          <div style="display:flex;border-bottom:1px solid var(--border);">
+            <button id="spiekTab_dagweek" onclick="switchSpiekTab('dagweek')" style="flex:1;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:none;color:var(--sg-green);border-bottom:2px solid var(--sg-green);">📅 Dag / Week</button>
+            <button id="spiekTab_snref" onclick="switchSpiekTab('snref')" style="flex:1;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:none;color:var(--text-muted);border-bottom:2px solid transparent;">🔢 SN Referentie</button>
+          </div>
+          <!-- Tab: Dag/Week -->
+          <div id="spiekPanel_dagweek" style="padding:14px 16px;display:flex;gap:20px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:200px;">
+              <label class="form-label" style="margin-bottom:6px;">Dag van het jaar → Datum</label>
+              <div style="display:flex;gap:6px;align-items:center;">
+                <input class="form-input" type="number" id="convDag" placeholder="Dag (1-366)" min="1" max="366" style="width:100px;" oninput="convertDag()">
+                <input class="form-input" type="number" id="convDagJaar" placeholder="Jaar" value="${new Date().getFullYear()}" style="width:80px;" oninput="convertDag()">
+                <span style="font-size:13px;color:var(--text-muted);">=</span>
+                <span id="convDagResult" style="font-size:14px;font-weight:600;color:var(--sg-lime);min-width:120px;">—</span>
+              </div>
+            </div>
+            <div style="flex:1;min-width:200px;">
+              <label class="form-label" style="margin-bottom:6px;">Weeknummer → Datumbereik</label>
+              <div style="display:flex;gap:6px;align-items:center;">
+                <input class="form-input" type="number" id="convWeek" placeholder="Week (1-53)" min="1" max="53" style="width:100px;" oninput="convertWeek()">
+                <input class="form-input" type="number" id="convWeekJaar" placeholder="Jaar" value="${new Date().getFullYear()}" style="width:80px;" oninput="convertWeek()">
+                <span style="font-size:13px;color:var(--text-muted);">=</span>
+                <span id="convWeekResult" style="font-size:14px;font-weight:600;color:var(--sg-lime);min-width:180px;">—</span>
+              </div>
             </div>
           </div>
-          <div style="flex:1;min-width:200px;">
-            <label class="form-label" style="margin-bottom:6px;">Weeknummer → Datumbereik</label>
-            <div style="display:flex;gap:6px;align-items:center;">
-              <input class="form-input" type="number" id="convWeek" placeholder="Week (1-53)" min="1" max="53" style="width:100px;" oninput="convertWeek()">
-              <input class="form-input" type="number" id="convWeekJaar" placeholder="Jaar" value="${new Date().getFullYear()}" style="width:80px;" oninput="convertWeek()">
-              <span style="font-size:13px;color:var(--text-muted);">=</span>
-              <span id="convWeekResult" style="font-size:14px;font-weight:600;color:var(--sg-lime);min-width:180px;">—</span>
+          <!-- Tab: SN Referentie -->
+          <div id="spiekPanel_snref" style="padding:14px 16px;display:none;">
+            <div style="margin-bottom:12px;">
+              <input class="form-input" type="text" id="spiekSNZoek" placeholder="Filter op merk..." oninput="filterSpiekSN(this.value)" style="max-width:260px;font-size:13px;">
+            </div>
+            <div id="spiekSNKaarten" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;">
+              ${(store.snData || (typeof SN_DATA !== 'undefined' ? SN_DATA : [])).map(s => `
+                <div class="spiek-sn-kaart" data-merk="${(s.merk||'').toLowerCase()}" style="padding:10px 14px;background:var(--bg-input);border-radius:var(--radius);border:1px solid var(--border);">
+                  <div style="font-weight:700;font-size:14px;color:var(--sg-lime);margin-bottom:4px;">${escKr(s.merk)}</div>
+                  <div style="font-size:12px;color:var(--text-secondary);margin-bottom:2px;">Voorbeeld: <span style="font-family:monospace;color:var(--text-primary);">${escKr(s.voorbeeld)}</span></div>
+                  <div style="font-size:12px;color:var(--text-secondary);">Formaat: <span style="font-family:monospace;color:var(--text-primary);">${escKr(s.formaat)}</span></div>
+                  ${s.opmerking ? `<div style="font-size:11px;color:var(--warning);margin-top:4px;">${escKr(s.opmerking)}</div>` : ''}
+                </div>
+              `).join('')}
             </div>
           </div>
         </div>
@@ -1180,6 +1204,30 @@ function setAfkeurCode(keuringId, idx, code) {
   k.items[idx].afkeurcode = code;
   saveStore(store);
   sbUpsertKeuringItem(k.items[idx], keuringId, k.klantId).catch(console.error);
+}
+
+// ============================================================
+// SPIEKBRIEFJE TABS (Dag/Week + SN Referentie)
+// ============================================================
+function switchSpiekTab(tab) {
+  const tabs = ['dagweek', 'snref'];
+  tabs.forEach(t => {
+    const btn   = document.getElementById('spiekTab_' + t);
+    const panel = document.getElementById('spiekPanel_' + t);
+    if (!btn || !panel) return;
+    const active = (t === tab);
+    panel.style.display    = active ? (t === 'dagweek' ? 'flex' : 'block') : 'none';
+    btn.style.color        = active ? 'var(--sg-green)' : 'var(--text-muted)';
+    btn.style.borderBottom = active ? '2px solid var(--sg-green)' : '2px solid transparent';
+  });
+}
+
+function filterSpiekSN(val) {
+  const q = val.trim().toLowerCase();
+  const kaarten = document.querySelectorAll('#spiekSNKaarten .spiek-sn-kaart');
+  kaarten.forEach(k => {
+    k.style.display = (!q || k.dataset.merk.includes(q)) ? '' : 'none';
+  });
 }
 
 function convertDag() {
