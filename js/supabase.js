@@ -236,11 +236,16 @@ function renderKeurmeesters(el) {
                     ? `<span class="badge badge-green" style="font-size:11px;margin-top:4px;display:inline-block;">Standaard</span>`
                     : `<button class="btn btn-sm" style="margin-top:6px;font-size:11px;" onclick="setStandaardKeurmeester('${km.naam}')">Instellen als standaard</button>`}
                 </div>
-                <div style="display:flex;gap:8px;">
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
                   <button class="btn btn-sm" onclick="openKeurmeesterModal(${i})">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;margin-right:4px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     Bewerken
                   </button>
+                  ${km.email ? `
+                  <button class="btn btn-sm" style="color:var(--sg-green);border-color:var(--sg-green);" onclick="heruitnodigKeurmeester(${i})">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;margin-right:4px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                    Uitnodigen
+                  </button>` : ''}
                   <button class="btn btn-sm" style="color:var(--danger);border-color:var(--danger);" onclick="verwijderKeurmeester(${i})">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;margin-right:4px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
                     Verwijderen
@@ -261,6 +266,32 @@ function setStandaardKeurmeester(naam) {
   sbSaveSettings(store.settings).catch(console.error);
   toast(`${naam} ingesteld als standaard keurmeester`);
   renderKeurmeesters(document.getElementById('pageContent'));
+}
+
+// ============================================================
+// KEURMEESTER OPNIEUW UITNODIGEN
+// ============================================================
+async function heruitnodigKeurmeester(idx) {
+  const km = (store.keurmeesters || [])[idx];
+  if (!km || !km.email) return;
+
+  const actie = km.auth_user_id ? 'een wachtwoord reset mail' : 'een uitnodigingsmail';
+  if (!confirm(`${km.naam} ontvangt ${actie} op ${km.email}. Doorgaan?`)) return;
+
+  try {
+    if (km.auth_user_id) {
+      const { error } = await sb.auth.resetPasswordForEmail(km.email, {
+        redirectTo: 'https://klimkeurpro.github.io/klimkeur-pro/',
+      });
+      if (error) throw error;
+      toast(`Wachtwoord reset mail verstuurd naar ${km.email}`);
+    } else {
+      await verstuurKeurmeesterUitnodiging(km.naam, km.email);
+    }
+  } catch(err) {
+    console.error('Heruitnodiging fout:', err);
+    toast('Fout bij versturen uitnodiging', 'error');
+  }
 }
 
 function filterKlantDropdown() {
