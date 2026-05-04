@@ -157,6 +157,7 @@ async function authNieuwWachtwoord() {
 /**
  * toonResetScherm — toon wachtwoord-instellen overlay
  */
+
 function toonResetScherm() {
   let overlay = document.getElementById('authResetOverlay');
   if (overlay) { overlay.style.display = 'flex'; return; }
@@ -170,6 +171,7 @@ function toonResetScherm() {
     '</div>' +
     '<div class="auth-title">Wachtwoord instellen</div>' +
     '<div class="auth-sub">Kies een wachtwoord om je account te activeren.</div>' +
+    '<div id="authResetEmailInfo" style="display:none;background:var(--bg-secondary);border:1px solid var(--sg-green);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:14px;color:var(--sg-green);font-weight:500;"></div>' +
     '<div class="auth-field"><label>Nieuw wachtwoord</label>' +
     '<input type="password" id="authNieuwWw" placeholder="Minimaal 6 tekens" autocomplete="new-password"></div>' +
     '<div class="auth-field"><label>Herhaal wachtwoord</label>' +
@@ -178,6 +180,17 @@ function toonResetScherm() {
     '<div class="auth-error" id="authResetError"></div>' +
     '</div>';
   document.body.appendChild(overlay);
+
+  // E-mailadres ophalen en tonen
+  sb.auth.getSession().then(({ data }) => {
+    const email = data?.session?.user?.email;
+    const el = document.getElementById('authResetEmailInfo');
+    if (email && el) {
+      el.textContent = email;
+      el.style.display = 'block';
+    }
+  }).catch(() => {});
+
   setTimeout(() => {
     const ww1 = document.getElementById('authNieuwWw');
     if (ww1) ww1.focus();
