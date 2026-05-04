@@ -42,8 +42,9 @@ function renderKlanten(el) {
                   <td>${escK(k.email || '')}</td>
                   <td><span class="badge badge-blue">${store.keuringen.filter(ke => ke.klantId === k.id).length}</span></td>
                   <td id="aangemeld-${escK(k.id)}"><span class="badge badge-gray">—</span></td>
-                  <td>
+                  <td style="white-space:nowrap;">
                     <button class="btn btn-sm" onclick="openKlantModal('${escK(k.id)}')">Bewerk</button>
+                    ${k.email ? `<button class="btn btn-sm" style="color:var(--sg-green);border-color:var(--sg-green);" onclick="heruitnodigKlant('${escK(k.id)}')">Uitnodigen</button>` : ''}
                     <button class="btn btn-sm btn-danger" onclick="deleteKlant('${escK(k.id)}')">Verwijder</button>
                   </td>
                 </tr>
@@ -335,6 +336,42 @@ async function verstuurKlantUitnodiging() {
     console.error('Uitnodiging fout:', e);
     statusEl.textContent = 'Fout bij versturen uitnodiging';
     statusEl.style.color = 'var(--danger)';
+  }
+}
+
+// ============================================================
+// KLANT OPNIEUW UITNODIGEN
+// ============================================================
+async function heruitnodigKlant(id) {
+  const klant = store.klanten.find(k => k.id === id);
+  if (!klant || !klant.email) return;
+
+  const actie = klant.auth_user_id ? 'een wachtwoord reset mail' : 'een uitnodigingsmail';
+  if (!confirm(`${klant.bedrijf || klant.naam} ontvangt ${actie} op ${klant.email}. Doorgaan?`)) return;
+
+  try {
+    if (klant.auth_user_id) {
+      const { error } = await sb.auth.resetPasswordForEmail(klant.email, {
+        redirectTo: 'https://klimkeurpro.github.io/klimkeur-klant/',
+      });
+      if (error) throw error;
+      toast(`Wachtwoord reset mail verstuurd naar ${klant.email}`);
+    } else {
+      // Simuleer klik op uitnodigen via het modal — open modal en roep verstuur aan
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) throw new Error('Niet ingelogd');
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/quick-action`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+        body: JSON.stringify({ email: klant.email, klant_id: id, klant_naam: klant.bedrijf || '', redirect_to: 'https://klimkeurpro.github.io/klimkeur-klant/' }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || 'Onbekende fout');
+      toast(`Uitnodiging verstuurd naar ${klant.email}`);
+    }
+  } catch(err) {
+    console.error('Heruitnodiging klant fout:', err);
+    toast('Fout bij versturen uitnodiging', 'error');
   }
 }
 
