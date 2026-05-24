@@ -53,137 +53,19 @@ function importCertificaatExcel(inputEl) {
       const data = new Uint8Array(e.target.result);
       const wb = XLSX.read(data, {type: 'array', cellDates: true});
 
-      // Try to find the certificate sheet (look for common names)
-      let sheetName = wb.SheetNames.find(n =>
-        n.toLowerCase().includes('keur') || n.toLowerCase().includes('cert')
-      ) || wb.SheetNames[0];
-
-      const ws = wb.Sheets[sheetName];
-      if (!ws) { toast('Kan geen blad vinden in het bestand', 'error'); return; }
-
-      const getVal = (cell) => {
-        if (!ws[cell]) return '';
-        const v = ws[cell].v;
-        if (v instanceof Date) return v.toISOString().split('T')[0];
-        return v != null ? String(v).trim() : '';
-      };
-
-      let keuringsDatum = '';
-      let certificaatNr = '';
-      let eigenaar = '';
-
-      const datumCellA2 = ws['A2'];
-      if (datumCellA2) {
-        if (datumCellA2.t === 'd' || (datumCellA2.t === 'n' && datumCellA2.v > 25000)) {
-          const d = XLSX.SSF.parse_date_code(datumCellA2.v);
-          if (d) keuringsDatum = String(d.d).padStart(2,'0') + '-' + String(d.m).padStart(2,'0') + '-' + d.y;
-        } else {
-          keuringsDatum = String(datumCellA2.v || '').trim();
-        }
-      }
-      const eigenaarCelB4 = ws['B4'];
-      if (eigenaarCelB4) eigenaar = String(eigenaarCelB4.v || '').trim();
-
-      const scanRangeCert = XLSX.utils.decode_range(ws['!ref'] || 'A1:T250');
-      for (let r2 = 0; r2 <= scanRangeCert.e.r && !certificaatNr; r2++) {
-        for (let c2 = 0; c2 <= Math.min(scanRangeCert.e.c, 4); c2++) {
-          const lc = ws[XLSX.utils.encode_cell({r: r2, c: c2})];
-          if (lc && String(lc.v||'').toLowerCase().trim() === 'certificaatnummer:') {
-            const rc = ws[XLSX.utils.encode_cell({r: r2, c: c2+1})];
-            if (rc) { certificaatNr = String(rc.v||'').trim(); }
-            break;
-          }
-        }
-      }
-      if (!keuringsDatum && certificaatNr) {
-        const m = String(certificaatNr).match(/^(\d{4})(\d{2})(\d{2})-/);
-        if (m) keuringsDatum = m[3] + '-' + m[2] + '-' + m[1];
-      }
-
-      let headerRow = 13;
-      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:T200');
-      outerLoop:
-      for (let r = 0; r <= Math.min(range.e.r, 30); r++) {
-        for (let c = 0; c <= Math.min(range.e.c, 15); c++) {
-          const cell = ws[XLSX.utils.encode_cell({r:r, c:c})];
-          if (cell && String(cell.v || '').toLowerCase().includes('omschrijving')) {
-            headerRow = r + 1;
-            break outerLoop;
-          }
-        }
-      }
-
-      const colMap = {};
-      const headerNames = {
-        'omschrijving': 'omschrijving', 'merk': 'merk', 'materiaal': 'materiaal',
-        'serie': 'serienummer', 'serienummer': 'serienummer', 'serie nummer': 'serienummer',
-        'fabr. jaar': 'fabrJaar', 'fabr.jaar': 'fabrJaar', 'fabr': 'fabrJaar',
-        'goed': 'goed', 'afkeur': 'afkeur', 'afgekeurd': 'afkeur',
-        'opmerking': 'opmerking', 'opmerkingen': 'opmerking',
-        'gebruiker': 'gebruiker', 'code': 'afkeurcode'
-      };
-
-      for (let c = 0; c <= range.e.c; c++) {
-        const cell = ws[XLSX.utils.encode_cell({r: headerRow - 1, c: c})];
-        if (cell) {
-          const val = String(cell.v || '').toLowerCase().trim();
-          for (const [key, mapped] of Object.entries(headerNames)) {
-            if (val.includes(key)) {
-              if (colMap[mapped] === undefined) {
-                colMap[mapped] = c;
-              }
-              break;
-            }
-          }
-        }
-      }
-
-      const items = [];
-      for (let r = headerRow; r <= range.e.r; r++) {
-        const omschrCell = ws[XLSX.utils.encode_cell({r: r, c: colMap.omschrijving ?? 0})];
-        if (!omschrCell || !omschrCell.v) continue;
-        const omschr = String(omschrCell.v).trim();
-        if (!omschr || omschr.toLowerCase().includes('afgekeurd wegens')) break;
-
-        const getCellVal = (field) => {
-          if (colMap[field] === undefined) return '';
-          const cell = ws[XLSX.utils.encode_cell({r: r, c: colMap[field]})];
-          return cell ? String(cell.v ?? '').trim() : '';
-        };
-
-        let status = 'goedgekeurd';
-        let afkeurcode = '';
-        const goedVal = getCellVal('goed');
-        const afkeurVal = getCellVal('afkeur');
-        if (afkeurVal && afkeurVal !== '0' && afkeurVal !== '') {
-          status = 'afgekeurd';
-          afkeurcode = afkeurVal;
-        }
-
-        const prod = store.products.find(p => p.omschrijving === omschr);
-
-        items.push({
-          omschrijving: omschr,
-          merk: getCellVal('merk') || prod?.merk || '',
-          materiaal: getCellVal('materiaal') || prod?.materiaal || '',
-          serienummer: getCellVal('serienummer'),
-          fabrJaar: getCellVal('fabrJaar'),
-          fabrMaand: 0,
-          status: status,
-          afkeurcode: afkeurcode,
-          opmerking: getCellVal('opmerking'),
-          gebruiker: getCellVal('gebruiker'),
-          maxLeeftijd: prod?.maxLeeftijd || '',
-          enNorm: prod?.enNorm || '',
-        });
-      }
-
-      if (items.length === 0) {
-        toast('Geen keuringsitems gevonden in het bestand. Controleer het formaat.', 'error');
+      if (wb.SheetNames.length === 0) {
+        toast('Geen bladen gevonden in het bestand', 'error');
         return;
       }
 
-      showImportPreview(eigenaar, keuringsDatum, certificaatNr, items, sheetName);
+      // Bij meerdere bladen: laat de gebruiker kiezen
+      if (wb.SheetNames.length > 1) {
+        _toonBladKeuze(wb);
+        return;
+      }
+
+      // Eén blad: direct verwerken
+      _verwerkCertificaatBlad(wb, wb.SheetNames[0]);
 
     } catch(err) {
       console.error(err);
@@ -191,6 +73,275 @@ function importCertificaatExcel(inputEl) {
     }
   };
   reader.readAsArrayBuffer(file);
+}
+
+// ============================================================
+// BLADKEUZE — toon overzicht van alle bladen met datum + cert.nr
+// ============================================================
+function _toonBladKeuze(wb) {
+  const esc = (s) => String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+  // Verzamel info per blad: naam, datum, certificaatnummer, aantal items
+  const bladInfo = wb.SheetNames.map(naam => {
+    const ws = wb.Sheets[naam];
+    if (!ws || !ws['!ref']) return { naam, datum: '', certNr: '', items: 0, leeg: true };
+
+    // Probeer datum uit A2 te lezen
+    let datum = '';
+    const datumCel = ws['A2'];
+    if (datumCel) {
+      if (datumCel.t === 'd' || (datumCel.t === 'n' && datumCel.v > 25000)) {
+        const d = XLSX.SSF.parse_date_code(datumCel.v);
+        if (d) datum = String(d.d).padStart(2,'0') + '-' + String(d.m).padStart(2,'0') + '-' + d.y;
+      } else {
+        datum = String(datumCel.v || '').trim();
+      }
+    }
+
+    // Probeer certificaatnummer te vinden
+    let certNr = '';
+    const scanRange = XLSX.utils.decode_range(ws['!ref'] || 'A1:T50');
+    for (let r = 0; r <= Math.min(scanRange.e.r, 15) && !certNr; r++) {
+      for (let c = 0; c <= Math.min(scanRange.e.c, 10); c++) {
+        const cel = ws[XLSX.utils.encode_cell({r: r, c: c})];
+        if (cel && String(cel.v||'').toLowerCase().trim() === 'certificaatnummer:') {
+          const rechts = ws[XLSX.utils.encode_cell({r: r, c: c+1})];
+          if (rechts) certNr = String(rechts.v||'').trim();
+          break;
+        }
+      }
+    }
+
+    // Fallback: datum uit certificaatnummer
+    if (!datum && certNr) {
+      const m = String(certNr).match(/^(\d{4})(\d{2})(\d{2})-/);
+      if (m) datum = m[3] + '-' + m[2] + '-' + m[1];
+    }
+
+    // Tel items: zoek headerrij met 'omschrijving' en tel niet-lege rijen daarna
+    let items = 0;
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:T200');
+    let headerRij = -1;
+    for (let r = 0; r <= Math.min(range.e.r, 30); r++) {
+      for (let c = 0; c <= Math.min(range.e.c, 15); c++) {
+        const cel = ws[XLSX.utils.encode_cell({r:r, c:c})];
+        if (cel && String(cel.v || '').toLowerCase().includes('omschrijving')) {
+          headerRij = r;
+          break;
+        }
+      }
+      if (headerRij >= 0) break;
+    }
+    if (headerRij >= 0) {
+      // Zoek de kolom van 'omschrijving' in de headerrij
+      let omschrKolom = 0;
+      for (let c = 0; c <= range.e.c; c++) {
+        const cel = ws[XLSX.utils.encode_cell({r: headerRij, c: c})];
+        if (cel && String(cel.v || '').toLowerCase().includes('omschrijving')) {
+          omschrKolom = c;
+          break;
+        }
+      }
+      for (let r = headerRij + 1; r <= range.e.r; r++) {
+        const cel = ws[XLSX.utils.encode_cell({r: r, c: omschrKolom})];
+        if (!cel || !cel.v) continue;
+        const val = String(cel.v).trim();
+        if (!val || val.toLowerCase().includes('afgekeurd wegens')) break;
+        items++;
+      }
+    }
+
+    return { naam, datum, certNr, items, leeg: (items === 0 && !datum && !certNr) };
+  });
+
+  // Sorteer: nieuwste datum bovenaan (als parseerbaar)
+  const parseSort = (d) => {
+    if (!d) return '0000-00-00';
+    // dd-mm-yyyy → yyyy-mm-dd
+    const m1 = d.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+    if (m1) return m1[3] + '-' + m1[2] + '-' + m1[1];
+    // yyyy-mm-dd al goed
+    if (d.match(/^\d{4}-\d{2}-\d{2}$/)) return d;
+    return d;
+  };
+  const gesorteerd = [...bladInfo].sort((a, b) => parseSort(b.datum).localeCompare(parseSort(a.datum)));
+
+  // Bewaar wb globaal zodat de keuze-callback erbij kan
+  window._importWb = wb;
+
+  showModal('Meerdere bladen gevonden — kies keuring', `
+    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px;">
+      Dit Excel-bestand bevat ${wb.SheetNames.length} bladen. Kies het blad met de keuring die je wilt importeren.
+      <br><span style="font-size:11px;color:var(--text-muted);">De nieuwste staat bovenaan.</span>
+    </div>
+    <div style="max-height:350px;overflow-y:auto;">
+      ${gesorteerd.map((b, i) => `
+        <div style="border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:8px;cursor:pointer;transition:background 0.15s;${i === 0 ? 'border-color:var(--sg-green);background:rgba(34,139,34,0.06);' : ''}"
+          onmouseover="this.style.background='var(--bg-input)'"
+          onmouseout="this.style.background='${i === 0 ? 'rgba(34,139,34,0.06)' : 'transparent'}'"
+          onclick="_kiesBladVoorImport('${esc(b.naam)}')">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <strong style="font-size:14px;">${esc(b.naam)}</strong>
+            ${i === 0 && b.datum ? '<span class="badge badge-green" style="font-size:10px;">nieuwste</span>' : ''}
+            ${b.leeg ? '<span class="badge" style="font-size:10px;background:var(--bg-input);color:var(--text-muted);">leeg / onherkenbaar</span>' : ''}
+          </div>
+          <div style="display:flex;gap:16px;font-size:12px;color:var(--text-muted);">
+            <span>📅 ${b.datum ? esc(b.datum) : '(geen datum)'}</span>
+            <span>📋 ${b.certNr ? esc(b.certNr) : '(geen cert.nr)'}</span>
+            <span>📦 ${b.items} item${b.items !== 1 ? 's' : ''}</span>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `, null); // geen OK-knop, de blokjes zijn klikbaar
+}
+
+function _kiesBladVoorImport(bladNaam) {
+  const wb = window._importWb;
+  if (!wb) { toast('Geen Excel geladen — probeer opnieuw', 'error'); return; }
+  closeModal();
+  window._importWb = null; // opruimen
+  _verwerkCertificaatBlad(wb, bladNaam);
+}
+
+// ============================================================
+// VERWERK ÉÉN BLAD — de originele parse-logica, nu in eigen functie
+// ============================================================
+function _verwerkCertificaatBlad(wb, sheetName) {
+  try {
+    const ws = wb.Sheets[sheetName];
+    if (!ws) { toast('Kan blad "' + sheetName + '" niet vinden', 'error'); return; }
+
+    const getVal = (cell) => {
+      if (!ws[cell]) return '';
+      const v = ws[cell].v;
+      if (v instanceof Date) return v.toISOString().split('T')[0];
+      return v != null ? String(v).trim() : '';
+    };
+
+    let keuringsDatum = '';
+    let certificaatNr = '';
+    let eigenaar = '';
+
+    const datumCellA2 = ws['A2'];
+    if (datumCellA2) {
+      if (datumCellA2.t === 'd' || (datumCellA2.t === 'n' && datumCellA2.v > 25000)) {
+        const d = XLSX.SSF.parse_date_code(datumCellA2.v);
+        if (d) keuringsDatum = String(d.d).padStart(2,'0') + '-' + String(d.m).padStart(2,'0') + '-' + d.y;
+      } else {
+        keuringsDatum = String(datumCellA2.v || '').trim();
+      }
+    }
+    const eigenaarCelB4 = ws['B4'];
+    if (eigenaarCelB4) eigenaar = String(eigenaarCelB4.v || '').trim();
+
+    const scanRangeCert = XLSX.utils.decode_range(ws['!ref'] || 'A1:T250');
+    for (let r2 = 0; r2 <= scanRangeCert.e.r && !certificaatNr; r2++) {
+      for (let c2 = 0; c2 <= Math.min(scanRangeCert.e.c, 4); c2++) {
+        const lc = ws[XLSX.utils.encode_cell({r: r2, c: c2})];
+        if (lc && String(lc.v||'').toLowerCase().trim() === 'certificaatnummer:') {
+          const rc = ws[XLSX.utils.encode_cell({r: r2, c: c2+1})];
+          if (rc) { certificaatNr = String(rc.v||'').trim(); }
+          break;
+        }
+      }
+    }
+    if (!keuringsDatum && certificaatNr) {
+      const m = String(certificaatNr).match(/^(\d{4})(\d{2})(\d{2})-/);
+      if (m) keuringsDatum = m[3] + '-' + m[2] + '-' + m[1];
+    }
+
+    let headerRow = 13;
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:T200');
+    outerLoop:
+    for (let r = 0; r <= Math.min(range.e.r, 30); r++) {
+      for (let c = 0; c <= Math.min(range.e.c, 15); c++) {
+        const cell = ws[XLSX.utils.encode_cell({r:r, c:c})];
+        if (cell && String(cell.v || '').toLowerCase().includes('omschrijving')) {
+          headerRow = r + 1;
+          break outerLoop;
+        }
+      }
+    }
+
+    const colMap = {};
+    const headerNames = {
+      'omschrijving': 'omschrijving', 'merk': 'merk', 'materiaal': 'materiaal',
+      'serie': 'serienummer', 'serienummer': 'serienummer', 'serie nummer': 'serienummer',
+      'fabr. jaar': 'fabrJaar', 'fabr.jaar': 'fabrJaar', 'fabr': 'fabrJaar',
+      'goed': 'goed', 'afkeur': 'afkeur', 'afgekeurd': 'afkeur',
+      'opmerking': 'opmerking', 'opmerkingen': 'opmerking',
+      'gebruiker': 'gebruiker', 'code': 'afkeurcode'
+    };
+
+    for (let c = 0; c <= range.e.c; c++) {
+      const cell = ws[XLSX.utils.encode_cell({r: headerRow - 1, c: c})];
+      if (cell) {
+        const val = String(cell.v || '').toLowerCase().trim();
+        for (const [key, mapped] of Object.entries(headerNames)) {
+          if (val.includes(key)) {
+            if (colMap[mapped] === undefined) {
+              colMap[mapped] = c;
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    const items = [];
+    for (let r = headerRow; r <= range.e.r; r++) {
+      const omschrCell = ws[XLSX.utils.encode_cell({r: r, c: colMap.omschrijving ?? 0})];
+      if (!omschrCell || !omschrCell.v) continue;
+      const omschr = String(omschrCell.v).trim();
+      if (!omschr || omschr.toLowerCase().includes('afgekeurd wegens')) break;
+
+      const getCellVal = (field) => {
+        if (colMap[field] === undefined) return '';
+        const cell = ws[XLSX.utils.encode_cell({r: r, c: colMap[field]})];
+        return cell ? String(cell.v ?? '').trim() : '';
+      };
+
+      let status = 'goedgekeurd';
+      let afkeurcode = '';
+      const goedVal = getCellVal('goed');
+      const afkeurVal = getCellVal('afkeur');
+      if (afkeurVal && afkeurVal !== '0' && afkeurVal !== '') {
+        status = 'afgekeurd';
+        afkeurcode = afkeurVal;
+      }
+
+      const prod = store.products.find(p => p.omschrijving === omschr);
+
+      items.push({
+        omschrijving: omschr,
+        merk: getCellVal('merk') || prod?.merk || '',
+        materiaal: getCellVal('materiaal') || prod?.materiaal || '',
+        serienummer: getCellVal('serienummer'),
+        fabrJaar: getCellVal('fabrJaar'),
+        fabrMaand: 0,
+        status: status,
+        afkeurcode: afkeurcode,
+        opmerking: getCellVal('opmerking'),
+        gebruiker: getCellVal('gebruiker'),
+        maxLeeftijd: prod?.maxLeeftijd || '',
+        enNorm: prod?.enNorm || '',
+      });
+    }
+
+    if (items.length === 0) {
+      toast('Geen keuringsitems gevonden in blad "' + sheetName + '". Controleer het formaat.', 'error');
+      return;
+    }
+
+    showImportPreview(eigenaar, keuringsDatum, certificaatNr, items, sheetName);
+
+  } catch(err) {
+    console.error(err);
+    toast('Fout bij lezen Excel: ' + err.message, 'error');
+  }
 }
 
 function showImportPreview(eigenaar, datum, certNr, items, sheetName) {
@@ -534,8 +685,6 @@ function exportProductenExcel() {
 // ============================================================
 // EXCEL EXPORT — Producten van een specifiek bedrijf (admin)
 // ============================================================
-// Haalt producten direct uit Supabase (niet uit lokale store, want
-// de lokale store bevat alleen producten van het ingelogde bedrijf).
 async function exportProductenVoorBedrijf(bedrijfId, bedrijfNaam) {
   if (!bedrijfId) { toast('Geen bedrijf opgegeven', 'error'); return; }
 
@@ -776,9 +925,6 @@ function importProductenExcel(input) {
 // ============================================================
 // EXCEL IMPORT — Producten voor een specifiek bedrijf (admin)
 // ============================================================
-// Wordt aangeroepen vanuit het bedrijf-modal in bedrijven.js.
-// Schrijft producten naar de opgegeven bedrijf_id i.p.v. de
-// ingelogde gebruiker. Werkt alleen voor platform-admins.
 function importProductenExcelVoorBedrijf(input, bedrijfId, bedrijfNaam) {
   if (!_isPlatformAdmin) {
     toast('Alleen platform-beheerders kunnen producten voor andere bedrijven importeren', 'error');
@@ -804,9 +950,6 @@ function importProductenExcelVoorBedrijf(input, bedrijfId, bedrijfNaam) {
 // ============================================================
 // GEDEELDE PRODUCT-IMPORT LOGICA
 // ============================================================
-// Eén functie voor zowel "eigen import" (importProductenExcel)
-// als "admin importeert voor ander bedrijf" (importProductenExcelVoorBedrijf).
-// Het bedrijfId bepaalt waar de producten naartoe gaan.
 async function _verwerkProductenExcelImport(arrayBuffer, bedrijfId, bedrijfNaam, isAdminVoorAnderBedrijf) {
   if (!bedrijfId) { toast('Geen bedrijf bekend — opnieuw inloggen', 'error'); return; }
 
@@ -939,7 +1082,7 @@ async function _verwerkProductenExcelImport(arrayBuffer, bedrijfId, bedrijfNaam,
     max_leeftijd_mfr: p.maxLeeftijdMFR || '',
     breuksterkte:     p.breuksterkte || '',
     bijzonderheden:   p.bijzonderheden || '',
-    bedrijf_id:       bedrijfId,   // ← cruciaal: schrijft naar opgegeven bedrijf
+    bedrijf_id:       bedrijfId,
   }));
 
   try {
@@ -951,8 +1094,7 @@ async function _verwerkProductenExcelImport(arrayBuffer, bedrijfId, bedrijfNaam,
       if (error) throw error;
     }
 
-    // Stap 2: oude producten van DIT bedrijf opruimen die niet in de
-    // nieuwe import voorkomen. Eerst ophalen welke er nu staan.
+    // Stap 2: oude producten opruimen
     const nieuweIds = sbProductRows.map(r => r.id);
 
     const { data: huidigeRows, error: selErr } = await sb
@@ -980,7 +1122,7 @@ async function _verwerkProductenExcelImport(arrayBuffer, bedrijfId, bedrijfNaam,
       }
     }
 
-    // Stap 3: lokale store alleen bijwerken als we voor het EIGEN bedrijf importeerden
+    // Stap 3: lokale store bijwerken als het eigen bedrijf is
     if (!isAdminVoorAnderBedrijf) {
       store.products = nieuweMetId;
       saveStore(store);
