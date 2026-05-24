@@ -186,10 +186,21 @@ function openKeuringModal() {
       <div class="form-group">
         <label class="form-label">Klant <span style="color:var(--danger);">*</span></label>
         <input class="form-input" id="klantZoek" placeholder="Zoek klant op naam..." oninput="filterKlantDropdown()" autocomplete="off" style="margin-bottom:4px;">
-        <select class="form-select" id="keuringKlant" onchange="checkVorigeKeuring();updateCertNr()">
-          <option value="">-- Selecteer klant --</option>
-          ${klantOptions}
-        </select>
+        <div style="display:flex;gap:6px;align-items:stretch;">
+          <select class="form-select" id="keuringKlant" onchange="checkVorigeKeuring();updateCertNr();_verbergNieuweKlantVeld()" style="flex:1;">
+            <option value="">-- Selecteer klant --</option>
+            ${klantOptions}
+          </select>
+          <button type="button" class="btn btn-sm" onclick="_toonNieuweKlantVeld()" id="btnNieuweKlant" title="Nieuwe klant aanmaken" style="white-space:nowrap;padding:6px 12px;">+ Nieuw</button>
+        </div>
+        <div id="nieuweKlantWrap" style="display:none;margin-top:8px;">
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input class="form-input" id="nieuweKlantNaam" placeholder="Bedrijfsnaam nieuwe klant" style="flex:1;">
+            <button type="button" class="btn btn-sm btn-primary" onclick="_maakNieuweKlantAan()" style="white-space:nowrap;">Aanmaken</button>
+            <button type="button" class="btn btn-sm" onclick="_verbergNieuweKlantVeld()" style="padding:6px 10px;" title="Annuleren">✕</button>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Adres, email en overige gegevens kun je later aanvullen via Klanten.</div>
+        </div>
       </div>
       <div class="form-group">
         <label class="form-label">Keurmeester</label>
@@ -319,6 +330,93 @@ function openKeuringModal() {
       : 'Keuring aangemaakt');
     openKeuringDetail(keuring.id);
   });
+}
+
+// ============================================================
+// NIEUWE KLANT AANMAKEN VANUIT KEURING-MODAL
+// ============================================================
+function _toonNieuweKlantVeld() {
+  const wrap = document.getElementById('nieuweKlantWrap');
+  const btn  = document.getElementById('btnNieuweKlant');
+  if (wrap) wrap.style.display = 'block';
+  if (btn)  btn.style.display = 'none';
+  const input = document.getElementById('nieuweKlantNaam');
+  if (input) input.focus();
+}
+
+function _verbergNieuweKlantVeld() {
+  const wrap = document.getElementById('nieuweKlantWrap');
+  const btn  = document.getElementById('btnNieuweKlant');
+  if (wrap) wrap.style.display = 'none';
+  if (btn)  btn.style.display = '';
+}
+
+async function _maakNieuweKlantAan() {
+  const input = document.getElementById('nieuweKlantNaam');
+  const naam  = (input?.value || '').trim();
+  if (!naam) {
+    toast('Vul een bedrijfsnaam in', 'error');
+    if (input) input.focus();
+    return;
+  }
+
+  // Check of er al een klant met deze naam bestaat
+  const naamLower  = naam.toLowerCase();
+  const duplicaat = (store.klanten || []).find(
+    k => (k.bedrijf || '').toLowerCase().trim() === naamLower
+  );
+  if (duplicaat) {
+    toast(`Klant "${duplicaat.bedrijf}" bestaat al — is nu geselecteerd`, 'warning');
+    // Selecteer de bestaande klant in de dropdown
+    const sel = document.getElementById('keuringKlant');
+    if (sel) { sel.value = duplicaat.id; checkVorigeKeuring(); updateCertNr(); }
+    _verbergNieuweKlantVeld();
+    return;
+  }
+
+  const nieuweKlant = {
+    id: generateId(),
+    bedrijf: naam,
+    contactpersoon: '',
+    klantnummer: '',
+    telefoon: '',
+    email: '',
+    straat: '',
+    huisnummer: '',
+    postcode: '',
+    plaats: '',
+    land: 'Nederland',
+    adres: '',
+    opmerkingen: '',
+    auth_user_id: null,
+  };
+
+  try {
+    await sbUpsertKlant(nieuweKlant);
+  } catch (err) {
+    console.error('Klant aanmaken mislukt:', err);
+    toast('Klant kon niet worden opgeslagen: ' + (err.message || 'onbekende fout'), 'error');
+    return;
+  }
+
+  // Toevoegen aan lokale store
+  store.klanten.push(nieuweKlant);
+  saveStore(store);
+
+  // Nieuwe optie toevoegen aan dropdown en selecteren
+  const sel = document.getElementById('keuringKlant');
+  if (sel) {
+    const optie = document.createElement('option');
+    optie.value = nieuweKlant.id;
+    optie.textContent = nieuweKlant.bedrijf;
+    sel.appendChild(optie);
+    sel.value = nieuweKlant.id;
+  }
+
+  _verbergNieuweKlantVeld();
+  updateCertNr();
+  // Geen checkVorigeKeuring() nodig — nieuwe klant heeft geen historie
+  toast(`Klant "${naam}" aangemaakt — gegevens kun je later aanvullen via Klanten`);
 }
 
 function getAllKlantItems(klantId, inclAfgevoerd = false) {
