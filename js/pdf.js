@@ -182,7 +182,7 @@ function generateCertPDF(k, items, subtitle) {
       if (c.key === '#')        return String(i + 1);
       if (c.key === 'fabrJaar') return fabrStr;
       if (c.key === 'inGebruik') return item.inGebruik ? formatDate(item.inGebruik) : '';
-      if (c.key === 'goed')     return item.status === 'goedgekeurd' ? '✓' : '';
+      if (c.key === 'goed')     return item.status === 'goedgekeurd' ? 'V' : '';
       if (c.key === 'afkeur')   return item.status === 'afgekeurd' ? (item.afkeurcode || 'X') : '';
       return item[c.key] || '';
     });
@@ -240,11 +240,25 @@ function generateCertPDF(k, items, subtitle) {
       if (data.section === 'body') {
         const goodIdx = colDefs.findIndex(c => c.key === 'goed');
         const afkIdx  = colDefs.findIndex(c => c.key === 'afkeur');
-        if (data.column.index === goodIdx && data.cell.raw === '✓') {
+        if (data.column.index === goodIdx && data.cell.raw === 'V') {
           data.cell.styles.fillColor = [230, 245, 220];
+          data.cell.text = [''];
         }
         if (data.column.index === afkIdx && data.cell.raw) {
           data.cell.styles.fillColor = [250, 225, 225];
+        }
+      }
+    },
+    didDrawCell: function(data) {
+      if (data.section === 'body') {
+        const goodIdx = colDefs.findIndex(c => c.key === 'goed');
+        if (data.column.index === goodIdx && data.row.raw[goodIdx] === 'V') {
+          const cx = data.cell.x + data.cell.width / 2;
+          const cy = data.cell.y + data.cell.height / 2 + 0.5;
+          doc.setDrawColor(34, 139, 34);
+          doc.setLineWidth(0.9);
+          doc.line(cx - 2.5, cy - 0.5, cx - 0.8, cy + 1.8);
+          doc.line(cx - 0.8, cy + 1.8, cx + 2.8, cy - 2.8);
         }
       }
     },
