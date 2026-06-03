@@ -24,7 +24,7 @@ function generateCertPDF(k, items, subtitle) {
 
   // ---- HEADER ----
   if (s.logo) {
-    try { doc.addImage(s.logo, 'PNG', margin, y, 30, 15); } catch(e) {}
+    try { doc.addImage(s.logo, 'PNG', margin, y, 32, 16); } catch(e) {}
   }
 
   doc.setFontSize(18);
@@ -106,7 +106,7 @@ function generateCertPDF(k, items, subtitle) {
     doc.setTextColor(...textGray);
     doc.text('Afkeurcodes:', margin, y);
     doc.setFont('helvetica', 'normal');
-    const codeStr   = codes.map(c => c.code + '=' + c.tekst).join('  ·  ');
+    const codeStr   = [...codes].sort((a, b) => Number(a.code) - Number(b.code)).map(c => c.code + '=' + c.tekst).join('  ·  ');
     const codeLines = doc.splitTextToSize(codeStr, contentW - 22);
     doc.text(codeLines, margin + 22, y);
     y += codeLines.length * 2.8 + 3;
@@ -291,15 +291,32 @@ function generateCertPDF(k, items, subtitle) {
 
   doc.setDrawColor(...lineColor);
   doc.setLineWidth(0.3);
-  doc.line(margin,  y + 14, margin + sigW,  y + 14);
-  doc.line(sigX2,   y + 14, sigX2  + sigW,  y + 14);
+  doc.line(margin, y + 14, margin + sigW, y + 14);
 
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...textGray);
   doc.text('Keurmeester: ' + (k.keurmeester || ''), margin, y + 19);
   doc.text('Datum: '       + formatDate(k.datum),   margin, y + 23);
-  doc.text('Eigenaar materialen: ' + (k.klantNaam || ''), sigX2, y + 19);
+
+  // Rechts: logo + contactgegevens keurbedrijf
+  const logoX = sigX2;
+  const textX = sigX2 + (s.logo ? 26 : 0);
+  if (s.logo) {
+    try { doc.addImage(s.logo, 'PNG', logoX, y, 23, 12); } catch(e) {}
+  }
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(...brandColor);
+  doc.text(s.bedrijfsnaam || '', textX, y + 4);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(...textGray);
+  let cy = y + 8.5;
+  if (s.adres)    { doc.text(s.adres,           textX, cy); cy += 3.5; }
+  if (s.telefoon) { doc.text('T: ' + s.telefoon, textX, cy); cy += 3.5; }
+  if (s.email)    { doc.text('E: ' + s.email,    textX, cy); cy += 3.5; }
+  if (s.kvk)      { doc.text('KvK: ' + s.kvk,   textX, cy); }
 
   // ---- FOOTER op alle pagina's ----
   const totalPages = doc.internal.getNumberOfPages();
