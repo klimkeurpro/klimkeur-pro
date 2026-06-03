@@ -22,9 +22,16 @@ function generateCertPDF(k, items, subtitle) {
   const textGray   = [100, 100, 100];
   const lineColor  = [200, 200, 200];
 
+  function imgFormaat(src) {
+    if (!src) return 'PNG';
+    if (src.startsWith('data:image/jpeg') || src.startsWith('data:image/jpg')) return 'JPEG';
+    if (src.startsWith('data:image/webp')) return 'WEBP';
+    return 'PNG';
+  }
+
   // ---- HEADER ----
   if (s.logo) {
-    try { doc.addImage(s.logo, 'PNG', margin, y, 32, 16); } catch(e) {}
+    try { doc.addImage(s.logo, imgFormaat(s.logo), margin, y, 32, 16); } catch(e) {}
   }
 
   doc.setFontSize(18);
@@ -300,7 +307,7 @@ function generateCertPDF(k, items, subtitle) {
   const actieveKm      = (store.keurmeesters||[]).find(km => km.naam === k.keurmeester);
   const handtekeningBron = actieveKm?.handtekening || s.handtekening;
   if (handtekeningBron) {
-    try { doc.addImage(handtekeningBron, 'PNG', margin + 5, y, 30, 12); } catch(e) {}
+    try { doc.addImage(handtekeningBron, imgFormaat(handtekeningBron), margin + 5, y, 30, 12); } catch(e) {}
   }
 
   doc.setDrawColor(...lineColor);
@@ -317,7 +324,7 @@ function generateCertPDF(k, items, subtitle) {
   const logoX = sigX2;
   const textX = sigX2 + (s.logo ? 26 : 0);
   if (s.logo) {
-    try { doc.addImage(s.logo, 'PNG', logoX, y, 23, 12); } catch(e) {}
+    try { doc.addImage(s.logo, imgFormaat(s.logo), logoX, y, 23, 12); } catch(e) {}
   }
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
