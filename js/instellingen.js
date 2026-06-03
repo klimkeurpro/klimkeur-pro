@@ -406,11 +406,25 @@ function uploadLogo(input) {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = (e) => {
-    store.settings.logo = e.target.result;
-    saveStore(store);
-    sbSlaInstellingenOp(store.settings).catch(console.error);
-    toast('Logo bijgewerkt');
-    renderInstellingen(document.getElementById('pageContent'));
+    // Verklein het logo naar max 300px breed/hoog en comprimeer naar JPEG
+    // zodat het altijd in de database past (max ~50KB)
+    const img = new Image();
+    img.onload = () => {
+      const maxPx  = 300;
+      const scale  = Math.min(1, maxPx / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width  = Math.round(img.width  * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      const compressed = canvas.toDataURL('image/png', 0.9);
+      store.settings.logo = compressed;
+      saveStore(store);
+      sbSlaInstellingenOp(store.settings)
+        .then(() => toast('Logo bijgewerkt'))
+        .catch(err => { console.error(err); toast('Logo opslaan mislukt', 'error'); });
+      renderInstellingen(document.getElementById('pageContent'));
+    };
+    img.src = e.target.result;
   };
   reader.readAsDataURL(file);
 }
