@@ -72,6 +72,22 @@ function importCertificaatExcel(inputEl) {
 // ============================================================
 // BLADKEUZE — selecteer het nieuwste blad op basis van datum
 // ============================================================
+
+// Leest een datumcel correct uit, ongeacht of XLSX een Date-object of
+// een Excel-serienummer teruggeeft (afhankelijk van cellDates-instelling).
+function _celNaarDatum(cel) {
+  if (!cel) return '';
+  if (cel.t === 'd') {
+    const d = cel.v; // JavaScript Date object (bij cellDates: true)
+    return String(d.getDate()).padStart(2,'0') + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + d.getFullYear();
+  }
+  if (cel.t === 'n' && cel.v > 25000) {
+    const d = XLSX.SSF.parse_date_code(cel.v);
+    if (d) return String(d.d).padStart(2,'0') + '-' + String(d.m).padStart(2,'0') + '-' + d.y;
+  }
+  return String(cel.v || '').trim();
+}
+
 function _getNieuwsteBladNaam(wb) {
   const parseSort = (d) => {
     if (!d) return '0000-00-00';
@@ -111,14 +127,10 @@ function _getNieuwsteBladNaam(wb) {
     // Datum uit A2 (overschrijft cert.nr-fallback als aanwezig)
     const datumCel = ws['A2'];
     if (datumCel) {
-      if (datumCel.t === 'd' || (datumCel.t === 'n' && datumCel.v > 25000)) {
-        const d = XLSX.SSF.parse_date_code(datumCel.v);
-        if (d) datum = String(d.d).padStart(2,'0') + '-' + String(d.m).padStart(2,'0') + '-' + d.y;
-      } else {
-        const raw = String(datumCel.v || '').trim();
-        // Alleen gebruiken als het op een datum lijkt, niet als het een merknaam is
-        if (raw.match(/\d{2}[-\/]\d{2}[-\/]\d{4}/) || raw.match(/^\d{4}-\d{2}-\d{2}$/)) {
-          datum = raw;
+      const raw = _celNaarDatum(datumCel);
+      // Alleen gebruiken als het op een datum lijkt, niet als het een merknaam is
+      if (raw.match(/\d{1,2}[-\/]\d{1,2}[-\/]\d{4}/) || raw.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        datum = raw;
         }
       }
     }
@@ -145,16 +157,7 @@ function _toonBladKeuze(wb) {
     if (!ws || !ws['!ref']) return { naam, datum: '', certNr: '', items: 0, leeg: true };
 
     // Probeer datum uit A2 te lezen
-    let datum = '';
-    const datumCel = ws['A2'];
-    if (datumCel) {
-      if (datumCel.t === 'd' || (datumCel.t === 'n' && datumCel.v > 25000)) {
-        const d = XLSX.SSF.parse_date_code(datumCel.v);
-        if (d) datum = String(d.d).padStart(2,'0') + '-' + String(d.m).padStart(2,'0') + '-' + d.y;
-      } else {
-        datum = String(datumCel.v || '').trim();
-      }
-    }
+    let datum = _celNaarDatum(ws['A2']);
 
     // Probeer certificaatnummer te vinden
     let certNr = '';
@@ -281,15 +284,7 @@ function _verwerkCertificaatBlad(wb, sheetName) {
     let certificaatNr = '';
     let eigenaar = '';
 
-    const datumCellA2 = ws['A2'];
-    if (datumCellA2) {
-      if (datumCellA2.t === 'd' || (datumCellA2.t === 'n' && datumCellA2.v > 25000)) {
-        const d = XLSX.SSF.parse_date_code(datumCellA2.v);
-        if (d) keuringsDatum = String(d.d).padStart(2,'0') + '-' + String(d.m).padStart(2,'0') + '-' + d.y;
-      } else {
-        keuringsDatum = String(datumCellA2.v || '').trim();
-      }
-    }
+    keuringsDatum = _celNaarDatum(ws['A2']);
     const eigenaarCelB4 = ws['B4'];
     if (eigenaarCelB4) eigenaar = String(eigenaarCelB4.v || '').trim();
 
