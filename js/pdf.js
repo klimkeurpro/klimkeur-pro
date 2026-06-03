@@ -169,7 +169,7 @@ function generateCertPDF(k, items, subtitle) {
   colDefs.push({ key: 'serienummer',  label: 'Serienummer',  fixed: 28, font: 'courier', fontSize: 6.5 });
   colDefs.push({ key: 'fabrJaar',     label: 'Fabr.',        fixed: 14, halign: 'center' });
   if (hasInGebruik) colDefs.push({ key: 'inGebruik', label: 'In gebruik', fixed: 20 });
-  colDefs.push({ key: 'goed',   label: 'Goed',   fixed: 12, halign: 'center', bold: true, color: brandColor });
+  colDefs.push({ key: 'goed',   label: 'Goed',   fixed: 12, halign: 'center', bold: true, color: [34, 139, 34] });
   colDefs.push({ key: 'afkeur', label: 'Afkeur', fixed: 14, halign: 'center', bold: true, color: [200,40,40] });
   if (hasOpmerking) colDefs.push({ key: 'opmerking', label: 'Opmerking', width: 'auto', minW: 18 });
   if (hasGebruiker) colDefs.push({ key: 'gebruiker', label: 'Gebruiker', fixed: 20 });
