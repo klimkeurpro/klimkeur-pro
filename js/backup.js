@@ -83,41 +83,50 @@ function _getNieuwsteBladNaam(wb) {
 
   const bladInfo = wb.SheetNames.map(naam => {
     const ws = wb.Sheets[naam];
-    if (!ws || !ws['!ref']) return { naam, datum: '' };
+    if (!ws || !ws['!ref']) return { naam, datum: '', isCertificaat: false };
 
+    // Bepaal of dit een certificaatblad is door te zoeken naar "certificaatnummer:"
+    let isCertificaat = false;
     let datum = '';
+    const scanRange = XLSX.utils.decode_range(ws['!ref'] || 'A1:T50');
+    for (let r = 0; r <= Math.min(scanRange.e.r, 20) && !isCertificaat; r++) {
+      for (let c = 0; c <= Math.min(scanRange.e.c, 10); c++) {
+        const cel = ws[XLSX.utils.encode_cell({r, c})];
+        if (cel && String(cel.v||'').toLowerCase().trim() === 'certificaatnummer:') {
+          isCertificaat = true;
+          // Probeer datum uit cert.nr te halen als fallback
+          const rechts = ws[XLSX.utils.encode_cell({r, c: c+1})];
+          if (rechts) {
+            const m = String(rechts.v||'').match(/^(\d{4})(\d{2})(\d{2})-/);
+            if (m) datum = m[3] + '-' + m[2] + '-' + m[1];
+          }
+          break;
+        }
+      }
+    }
+
+    // Datum uit A2 (overschrijft cert.nr-fallback als aanwezig)
     const datumCel = ws['A2'];
     if (datumCel) {
       if (datumCel.t === 'd' || (datumCel.t === 'n' && datumCel.v > 25000)) {
         const d = XLSX.SSF.parse_date_code(datumCel.v);
         if (d) datum = String(d.d).padStart(2,'0') + '-' + String(d.m).padStart(2,'0') + '-' + d.y;
       } else {
-        datum = String(datumCel.v || '').trim();
-      }
-    }
-
-    // Fallback: datum uit certificaatnummer
-    if (!datum) {
-      const scanRange = XLSX.utils.decode_range(ws['!ref'] || 'A1:T50');
-      for (let r = 0; r <= Math.min(scanRange.e.r, 15) && !datum; r++) {
-        for (let c = 0; c <= Math.min(scanRange.e.c, 10); c++) {
-          const cel = ws[XLSX.utils.encode_cell({r, c})];
-          if (cel && String(cel.v||'').toLowerCase().trim() === 'certificaatnummer:') {
-            const rechts = ws[XLSX.utils.encode_cell({r, c: c+1})];
-            if (rechts) {
-              const m = String(rechts.v||'').match(/^(\d{4})(\d{2})(\d{2})-/);
-              if (m) datum = m[3] + '-' + m[2] + '-' + m[1];
-            }
-            break;
-          }
+        const raw = String(datumCel.v || '').trim();
+        // Alleen gebruiken als het op een datum lijkt, niet als het een merknaam is
+        if (raw.match(/\d{2}[-\/]\d{2}[-\/]\d{4}/) || raw.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          datum = raw;
         }
       }
     }
 
-    return { naam, datum };
+    return { naam, datum, isCertificaat };
   });
 
-  const gesorteerd = [...bladInfo].sort((a, b) => parseSort(b.datum).localeCompare(parseSort(a.datum)));
+  // Geef voorkeur aan bladen met "certificaatnummer:" — sorteer die op datum
+  const certificaatBladen = bladInfo.filter(b => b.isCertificaat);
+  const kandidaten = certificaatBladen.length > 0 ? certificaatBladen : bladInfo;
+  const gesorteerd = [...kandidaten].sort((a, b) => parseSort(b.datum).localeCompare(parseSort(a.datum)));
   return gesorteerd[0].naam;
 }
 
