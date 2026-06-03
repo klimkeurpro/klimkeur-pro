@@ -58,14 +58,8 @@ function importCertificaatExcel(inputEl) {
         return;
       }
 
-      // Bij meerdere bladen: laat de gebruiker kiezen
-      if (wb.SheetNames.length > 1) {
-        _toonBladKeuze(wb);
-        return;
-      }
-
-      // Eén blad: direct verwerken
-      _verwerkCertificaatBlad(wb, wb.SheetNames[0]);
+      // Selecteer automatisch het nieuwste blad op basis van datum
+      _verwerkCertificaatBlad(wb, _getNieuwsteBladNaam(wb));
 
     } catch(err) {
       console.error(err);
@@ -76,8 +70,58 @@ function importCertificaatExcel(inputEl) {
 }
 
 // ============================================================
-// BLADKEUZE — toon overzicht van alle bladen met datum + cert.nr
+// BLADKEUZE — selecteer het nieuwste blad op basis van datum
 // ============================================================
+function _getNieuwsteBladNaam(wb) {
+  const parseSort = (d) => {
+    if (!d) return '0000-00-00';
+    const m1 = d.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+    if (m1) return m1[3] + '-' + m1[2] + '-' + m1[1];
+    if (d.match(/^\d{4}-\d{2}-\d{2}$/)) return d;
+    return d;
+  };
+
+  const bladInfo = wb.SheetNames.map(naam => {
+    const ws = wb.Sheets[naam];
+    if (!ws || !ws['!ref']) return { naam, datum: '' };
+
+    let datum = '';
+    const datumCel = ws['A2'];
+    if (datumCel) {
+      if (datumCel.t === 'd' || (datumCel.t === 'n' && datumCel.v > 25000)) {
+        const d = XLSX.SSF.parse_date_code(datumCel.v);
+        if (d) datum = String(d.d).padStart(2,'0') + '-' + String(d.m).padStart(2,'0') + '-' + d.y;
+      } else {
+        datum = String(datumCel.v || '').trim();
+      }
+    }
+
+    // Fallback: datum uit certificaatnummer
+    if (!datum) {
+      const scanRange = XLSX.utils.decode_range(ws['!ref'] || 'A1:T50');
+      for (let r = 0; r <= Math.min(scanRange.e.r, 15) && !datum; r++) {
+        for (let c = 0; c <= Math.min(scanRange.e.c, 10); c++) {
+          const cel = ws[XLSX.utils.encode_cell({r, c})];
+          if (cel && String(cel.v||'').toLowerCase().trim() === 'certificaatnummer:') {
+            const rechts = ws[XLSX.utils.encode_cell({r, c: c+1})];
+            if (rechts) {
+              const m = String(rechts.v||'').match(/^(\d{4})(\d{2})(\d{2})-/);
+              if (m) datum = m[3] + '-' + m[2] + '-' + m[1];
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    return { naam, datum };
+  });
+
+  const gesorteerd = [...bladInfo].sort((a, b) => parseSort(b.datum).localeCompare(parseSort(a.datum)));
+  return gesorteerd[0].naam;
+}
+
+// ─── toon overzicht van alle bladen met datum + cert.nr (behouden voor evt. handmatig gebruik)
 function _toonBladKeuze(wb) {
   const esc = (s) => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
