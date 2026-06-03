@@ -22,16 +22,23 @@ function generateCertPDF(k, items, subtitle) {
   const textGray   = [100, 100, 100];
   const lineColor  = [200, 200, 200];
 
-  function imgFormaat(src) {
-    if (!src) return 'PNG';
-    if (src.startsWith('data:image/jpeg') || src.startsWith('data:image/jpg')) return 'JPEG';
-    if (src.startsWith('data:image/webp')) return 'WEBP';
-    return 'PNG';
+  function voegLogoToe(src, x, y, w, h) {
+    if (!src) return;
+    try {
+      // jsPDF detecteert het formaat automatisch uit de data-URL
+      doc.addImage(src, x, y, w, h);
+    } catch(e) {
+      // Fallback: expliciet formaat meegeven
+      try {
+        const fmt = src.includes('data:image/jpeg') || src.includes('data:image/jpg') ? 'JPEG' : 'PNG';
+        doc.addImage(src, fmt, x, y, w, h);
+      } catch(e2) { console.warn('Logo kon niet worden geladen in PDF:', e2); }
+    }
   }
 
   // ---- HEADER ----
   if (s.logo) {
-    try { doc.addImage(s.logo, imgFormaat(s.logo), margin, y, 32, 16); } catch(e) {}
+    voegLogoToe(s.logo, margin, y, 32, 16);
   }
 
   doc.setFontSize(18);
@@ -277,6 +284,9 @@ function generateCertPDF(k, items, subtitle) {
   }
 
   // ---- HANDTEKENING ----
+  // Veranker onderin de pagina zodat er geen grote lege ruimte ontstaat
+  const sigBlokH = 28;
+  y = Math.max(y, pageH - 12 - sigBlokH);
 
   const sigW  = (contentW - 20) / 2;
   const sigX2 = pageW / 2 + 10;
@@ -284,7 +294,7 @@ function generateCertPDF(k, items, subtitle) {
   const actieveKm      = (store.keurmeesters||[]).find(km => km.naam === k.keurmeester);
   const handtekeningBron = actieveKm?.handtekening || s.handtekening;
   if (handtekeningBron) {
-    try { doc.addImage(handtekeningBron, imgFormaat(handtekeningBron), margin + 5, y, 30, 12); } catch(e) {}
+    voegLogoToe(handtekeningBron, margin + 5, y, 30, 12);
   }
 
   doc.setDrawColor(...lineColor);
@@ -301,7 +311,7 @@ function generateCertPDF(k, items, subtitle) {
   const logoX = sigX2;
   const textX = sigX2 + (s.logo ? 26 : 0);
   if (s.logo) {
-    try { doc.addImage(s.logo, imgFormaat(s.logo), logoX, y, 23, 12); } catch(e) {}
+    voegLogoToe(s.logo, logoX, y, 23, 12);
   }
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
