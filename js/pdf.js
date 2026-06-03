@@ -2,7 +2,7 @@
 // pdf.js — PDF certificaat generatie en export
 // ============================================================
 
-function generateCertPDF(k, items, subtitle) {
+function generateCertPDF(k, items, subtitle, logoInfo) {
   const s = store.settings;
   const { jsPDF } = window.jspdf;
 
@@ -22,23 +22,15 @@ function generateCertPDF(k, items, subtitle) {
   const textGray   = [100, 100, 100];
   const lineColor  = [200, 200, 200];
 
-  function voegLogoToe(src, x, y, w, h) {
-    if (!src) return;
-    try {
-      // jsPDF detecteert het formaat automatisch uit de data-URL
-      doc.addImage(src, x, y, w, h);
-    } catch(e) {
-      // Fallback: expliciet formaat meegeven
-      try {
-        const fmt = src.includes('data:image/jpeg') || src.includes('data:image/jpg') ? 'JPEG' : 'PNG';
-        doc.addImage(src, fmt, x, y, w, h);
-      } catch(e2) { console.warn('Logo kon niet worden geladen in PDF:', e2); }
-    }
+  function voegLogoToe(info, x, y, maxH) {
+    if (!info?.data) return;
+    const w = Math.min(60, maxH * info.aspect); // max 60mm breed
+    try { doc.addImage(info.data, 'PNG', x, y, w, maxH); } catch(e) {}
   }
 
   // ---- HEADER ----
-  if (s.logo) {
-    voegLogoToe(s.logo, margin, y, 32, 16);
+  if (logoInfo) {
+    voegLogoToe(logoInfo, margin, y, 16);
   }
 
   doc.setFontSize(18);
@@ -291,7 +283,7 @@ function generateCertPDF(k, items, subtitle) {
   const actieveKm      = (store.keurmeesters||[]).find(km => km.naam === k.keurmeester);
   const handtekeningBron = actieveKm?.handtekening || s.handtekening;
   if (handtekeningBron) {
-    voegLogoToe(handtekeningBron, margin + 5, y, 30, 12);
+    try { doc.addImage(handtekeningBron, margin + 5, y, 30, 12); } catch(e) {}
   }
 
   doc.setDrawColor(...lineColor);
@@ -306,9 +298,10 @@ function generateCertPDF(k, items, subtitle) {
 
   // Rechts: logo + contactgegevens keurbedrijf
   const logoX = sigX2;
-  const textX = sigX2 + (s.logo ? 26 : 0);
-  if (s.logo) {
-    voegLogoToe(s.logo, logoX, y, 23, 12);
+  const logoSlotB = logoInfo ? Math.min(60, 12 * logoInfo.aspect) + 3 : 0;
+  const textX = sigX2 + logoSlotB;
+  if (logoInfo) {
+    voegLogoToe(logoInfo, logoX, y, 12);
   }
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
@@ -475,6 +468,30 @@ function exportKeuringJSONPerGebruiker(id) {
   toast(`${gebruikers.length} JSON bestanden geëxporteerd (per gebruiker)`);
 }
 
+// Laad een logo (URL of data-URL) als base64 én geeft breedte/hoogte terug.
+// Geeft null terug als ophalen mislukt.
+async function laadLogo(src) {
+  if (!src) return null;
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const maxH = 200; // pixels intern
+        const scale = Math.min(1, maxH / img.naturalHeight);
+        const w = Math.round(img.naturalWidth  * scale);
+        const h = Math.round(img.naturalHeight * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve({ data: canvas.toDataURL('image/png'), aspect: img.naturalWidth / img.naturalHeight });
+      } catch(e) { resolve(null); }
+    };
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
 function exportKeuringPDF(id) {
   const k = store.keuringen.find(ke => ke.id === id);
   if (!k) return;
@@ -485,11 +502,12 @@ function exportKeuringPDF(id) {
   previewCertPDF(id);
 }
 
-function previewCertPDF(id) {
+async function previewCertPDF(id) {
   const k = store.keuringen.find(ke => ke.id === id);
   if (!k) return;
-  const doc     = generateCertPDF(k, k.items || []);
-  const dataUri = doc.output('datauristring');
+  const logoInfo = await laadLogo(store.settings.logo);
+  const doc      = generateCertPDF(k, k.items || [], undefined, logoInfo);
+  const dataUri  = doc.output('datauristring');
   const nieuwTabblad = window.open('', '_blank');
   if (nieuwTabblad) {
     nieuwTabblad.document.write(
@@ -504,10 +522,11 @@ function previewCertPDF(id) {
   }
 }
 
-function downloadCertPDF(id) {
+async function downloadCertPDF(id) {
   const k = store.keuringen.find(ke => ke.id === id);
   if (!k) return;
-  const doc      = generateCertPDF(k, k.items || []);
+  const logoInfo = await laadLogo(store.settings.logo);
+  const doc      = generateCertPDF(k, k.items || [], undefined, logoInfo);
   const filename = `Certificaat_${k.certificaatNr || k.klantNaam || 'keuring'}_${k.datum}.pdf`;
   doc.save(filename);
   toast('PDF certificaat geëxporteerd');
@@ -531,15 +550,16 @@ function exportKeuringPDFPerGebruiker(id) {
   const gebruikers = Object.keys(groepen);
   if (gebruikers.length <= 1) { exportKeuringPDF(id); return; }
 
-  let count = 0;
-  gebruikers.forEach(gebr => {
-    const doc      = generateCertPDF(k, groepen[gebr], gebr);
-    const safeName = gebr.replace(/[^a-zA-Z0-9\-]/g, '_');
-    doc.save(`Certificaat_${k.certificaatNr || ''}_${safeName}.pdf`);
-    count++;
+  laadLogo(store.settings.logo).then(logoInfo => {
+    let count = 0;
+    gebruikers.forEach(gebr => {
+      const doc      = generateCertPDF(k, groepen[gebr], gebr, logoInfo);
+      const safeName = gebr.replace(/[^a-zA-Z0-9\-]/g, '_');
+      doc.save(`Certificaat_${k.certificaatNr || ''}_${safeName}.pdf`);
+      count++;
+    });
+    toast(`${count} PDF certificaten geëxporteerd (per gebruiker)`);
   });
-
-  toast(`${count} PDF certificaten geëxporteerd (per gebruiker)`);
 }
 
 function exportSingleKeuringExcel(id) {
