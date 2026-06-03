@@ -28,27 +28,45 @@ function generateCertPDF(k, items, subtitle, logoInfo) {
     try { doc.addImage(info.data, 'PNG', x, y, w, maxH); } catch(e) {}
   }
 
-  // ---- HEADER ----
+  // ---- HEADER: logo links | titel midden | contact rechts ----
+  const headerH = 22;
+
+  // Logo links
   if (logoInfo) {
-    voegLogoToe(logoInfo, margin, y, 16);
+    voegLogoToe(logoInfo, margin, y, headerH);
   }
 
-  doc.setFontSize(18);
+  // Titel gecentreerd
+  doc.setFontSize(17);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...brandColor);
-  doc.text('KEURINGS-CERTIFICAAT', pageW - margin, y + 5, { align: 'right' });
-
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(...textGray);
-  doc.text(s.bedrijfsnaam || 'Safety Green B.V.', pageW - margin, y + 11, { align: 'right' });
+  doc.text('KEURINGS-CERTIFICAAT', pageW / 2, y + 9, { align: 'center' });
   if (subtitle) {
+    doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...brandColor);
-    doc.text('Gebruiker: ' + subtitle, pageW - margin, y + 16, { align: 'right' });
+    doc.text('Gebruiker: ' + subtitle, pageW / 2, y + 15, { align: 'center' });
   }
 
-  y += 20;
+  // Contactgegevens rechts
+  const adresRegels = (s.adres || '').split('\n').map(r => r.trim()).filter(Boolean);
+  const contactRegels = [
+    { t: s.bedrijfsnaam || '', bold: true, color: brandColor },
+    ...adresRegels.map(r => ({ t: r, bold: false, color: textGray })),
+    s.telefoon ? { t: 'T: ' + s.telefoon, bold: false, color: textGray } : null,
+    s.email    ? { t: 'E: ' + s.email,    bold: false, color: textGray } : null,
+    s.kvk      ? { t: 'KvK: ' + s.kvk,   bold: false, color: textGray } : null,
+  ].filter(Boolean);
+  const lineH = Math.min(3.5, headerH / contactRegels.length);
+  const startY = y + (headerH - contactRegels.length * lineH) / 2 + lineH;
+  contactRegels.forEach((r, i) => {
+    doc.setFontSize(7);
+    doc.setFont('helvetica', r.bold ? 'bold' : 'normal');
+    doc.setTextColor(...r.color);
+    doc.text(r.t, pageW - margin, startY + i * lineH, { align: 'right' });
+  });
+
+  y += headerH + 2;
   doc.setDrawColor(...brandColor);
   doc.setLineWidth(0.8);
   doc.line(margin, y, pageW - margin, y);

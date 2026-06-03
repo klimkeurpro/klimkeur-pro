@@ -52,8 +52,8 @@ function renderInstellingen(el) {
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label">Adres</label>
-              <input class="form-input" id="setAdres" value="${escI(s.adres||'')}">
+              <label class="form-label">Adres (straat op regel 1, postcode + plaats op regel 2)</label>
+              <textarea class="form-input" id="setAdres" rows="2" style="resize:vertical;">${escI(s.adres||'')}</textarea>
             </div>
             <div class="form-group">
               <label class="form-label">Telefoon</label>
