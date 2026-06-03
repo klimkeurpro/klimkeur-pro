@@ -284,9 +284,6 @@ function generateCertPDF(k, items, subtitle) {
   }
 
   // ---- HANDTEKENING ----
-  // Veranker onderin de pagina zodat er geen grote lege ruimte ontstaat
-  const sigBlokH = 28;
-  y = Math.max(y, pageH - 12 - sigBlokH);
 
   const sigW  = (contentW - 20) / 2;
   const sigX2 = pageW / 2 + 10;
