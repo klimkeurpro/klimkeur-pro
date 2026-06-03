@@ -182,7 +182,7 @@ function generateCertPDF(k, items, subtitle) {
       if (c.key === '#')        return String(i + 1);
       if (c.key === 'fabrJaar') return fabrStr;
       if (c.key === 'inGebruik') return item.inGebruik ? formatDate(item.inGebruik) : '';
-      if (c.key === 'goed')     return item.status === 'goedgekeurd' ? 'X' : '';
+      if (c.key === 'goed')     return item.status === 'goedgekeurd' ? '✓' : '';
       if (c.key === 'afkeur')   return item.status === 'afgekeurd' ? (item.afkeurcode || 'X') : '';
       return item[c.key] || '';
     });
@@ -240,7 +240,7 @@ function generateCertPDF(k, items, subtitle) {
       if (data.section === 'body') {
         const goodIdx = colDefs.findIndex(c => c.key === 'goed');
         const afkIdx  = colDefs.findIndex(c => c.key === 'afkeur');
-        if (data.column.index === goodIdx && data.cell.raw === 'X') {
+        if (data.column.index === goodIdx && data.cell.raw === '✓') {
           data.cell.styles.fillColor = [230, 245, 220];
         }
         if (data.column.index === afkIdx && data.cell.raw) {
