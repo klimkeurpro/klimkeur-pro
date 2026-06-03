@@ -92,14 +92,17 @@ function _getNieuwsteBladNaam(wb) {
     for (let r = 0; r <= Math.min(scanRange.e.r, 20) && !isCertificaat; r++) {
       for (let c = 0; c <= Math.min(scanRange.e.c, 10); c++) {
         const cel = ws[XLSX.utils.encode_cell({r, c})];
-        if (cel && String(cel.v||'').toLowerCase().trim() === 'certificaatnummer:') {
+        if (cel && String(cel.v||'').toLowerCase().trim().startsWith('certificaatnummer')) {
           isCertificaat = true;
-          // Probeer datum uit cert.nr te halen als fallback
+          // Cert.nr: kijk rechts (c+1) én onder (r+1) — formaat verschilt per template
           const rechts = ws[XLSX.utils.encode_cell({r, c: c+1})];
-          if (rechts) {
-            const m = String(rechts.v||'').match(/^(\d{4})(\d{2})(\d{2})-/);
-            if (m) datum = m[3] + '-' + m[2] + '-' + m[1];
-          }
+          const onder  = ws[XLSX.utils.encode_cell({r: r+1, c})];
+          const certNrRaw = (rechts && rechts.v) ? String(rechts.v).trim()
+                          : (onder  && onder.v)  ? String(onder.v).trim()
+                          : '';
+          // Datum extraheren: YYYYMMDD met of zonder koppelteken (bv. 20260529Tom of 20260529-)
+          const m = certNrRaw.match(/^(\d{4})(\d{2})(\d{2})/);
+          if (m) datum = m[3] + '-' + m[2] + '-' + m[1];
           break;
         }
       }
@@ -292,11 +295,15 @@ function _verwerkCertificaatBlad(wb, sheetName) {
 
     const scanRangeCert = XLSX.utils.decode_range(ws['!ref'] || 'A1:T250');
     for (let r2 = 0; r2 <= scanRangeCert.e.r && !certificaatNr; r2++) {
-      for (let c2 = 0; c2 <= Math.min(scanRangeCert.e.c, 4); c2++) {
+      for (let c2 = 0; c2 <= Math.min(scanRangeCert.e.c, 10); c2++) {
         const lc = ws[XLSX.utils.encode_cell({r: r2, c: c2})];
-        if (lc && String(lc.v||'').toLowerCase().trim() === 'certificaatnummer:') {
-          const rc = ws[XLSX.utils.encode_cell({r: r2, c: c2+1})];
-          if (rc) { certificaatNr = String(rc.v||'').trim(); }
+        if (lc && String(lc.v||'').toLowerCase().trim().startsWith('certificaatnummer')) {
+          // Kijk rechts (c+1) én onder (r+1) — formaat verschilt per template
+          const rechts = ws[XLSX.utils.encode_cell({r: r2, c: c2+1})];
+          const onder  = ws[XLSX.utils.encode_cell({r: r2+1, c: c2})];
+          certificaatNr = (rechts && rechts.v) ? String(rechts.v).trim()
+                        : (onder  && onder.v)  ? String(onder.v).trim()
+                        : '';
           break;
         }
       }
