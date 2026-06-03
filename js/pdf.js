@@ -322,16 +322,17 @@ function generateCertPDF(k, items, subtitle, logoInfo) {
     voegLogoToe(logoInfo, logoX, y, 12);
   }
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
+  doc.setFontSize(8.5);
   doc.setTextColor(...brandColor);
-  doc.text(s.bedrijfsnaam || '', textX, y + 4);
+  doc.text(s.bedrijfsnaam || '', textX, y + 5);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
+  doc.setFontSize(7.5);
   doc.setTextColor(...textGray);
-  let cy = y + 8.5;
-  if (s.adres)    { doc.text(s.adres,           textX, cy); cy += 3.5; }
-  if (s.telefoon) { doc.text('T: ' + s.telefoon, textX, cy); cy += 3.5; }
-  if (s.email)    { doc.text('E: ' + s.email,    textX, cy); cy += 3.5; }
+  let cy = y + 10;
+  const adresRegelsOnder = (s.adres || '').split('\n').map(r => r.trim()).filter(Boolean);
+  adresRegelsOnder.forEach(r => { doc.text(r, textX, cy); cy += 4.2; });
+  if (s.telefoon) { doc.text('T: ' + s.telefoon, textX, cy); cy += 4.2; }
+  if (s.email)    { doc.text('E: ' + s.email,    textX, cy); cy += 4.2; }
   if (s.kvk)      { doc.text('KvK: ' + s.kvk,   textX, cy); }
 
   // ---- FOOTER op alle pagina's ----
