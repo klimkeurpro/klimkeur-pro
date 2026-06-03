@@ -119,34 +119,10 @@ function generateCertPDF(k, items, subtitle) {
     y += codeLines.length * 2.8 + 3;
   }
 
-  // ============================================================
-  // SLIMME HOOGTE-BEREKENING
-  // Bereken vóór de tabel hoeveel ruimte nodig is voor:
-  //   - samenvatting (summary)  ~8mm
-  //   - voettekst               dynamisch op basis van inhoud
-  //   - handtekening            vast ~28mm
-  //   - paginavoet (footer)     ~12mm
-  // Trek dit af van de beschikbare ruimte zodat de tabel
-  // automatisch schaalt en alles op één pagina past.
-  // ============================================================
-  const voettekst = s.certificaatTekstOnder || _bedrijfInfo?.cert_voettekst || '';
-
-  const summaryH     = 8;
-  const handtekeningH = 28;
-  const footerH      = 12;
-
-  // Bereken voettekst hoogte op basis van daadwerkelijke inhoud
-  let voettekstH = 0;
-  if (voettekst) {
-    doc.setFontSize(7.5);
-    const vtLines = doc.splitTextToSize(voettekst, contentW);
-    voettekstH = vtLines.length * 3.2 + 5;
-  }
-
-  const reserveH   = summaryH + voettekstH + handtekeningH + footerH;
-  const availableH = pageH - y - reserveH;
-
   // ---- ITEMS TABLE ----
+  // Tabel loopt door over meerdere pagina's — geen schaling meer.
+  // Samenvatting + handtekening worden na de tabel op de laatste pagina gezet.
+  const voettekst = s.certificaatTekstOnder || _bedrijfInfo?.cert_voettekst || '';
   const certCols   = s.certColumns || { materiaal: false, enNorm: false, breuksterkte: false };
   const ratedItems = items.filter(item => item.status === 'goedgekeurd' || item.status === 'afgekeurd');
 
@@ -195,25 +171,17 @@ function generateCertPDF(k, items, subtitle) {
     });
   });
 
-  // Schaal de tabel zodat alles op één pagina past
-  const rowHeightBase = 6;
-  const headerH      = 8;
-  const estimatedH   = headerH + tableData.length * rowHeightBase;
-
-  let tableFontSize   = 7.5;
-  let tableCellPadding = 2;
-
-  if (estimatedH > availableH && tableData.length > 0) {
-    const scaleFactor  = availableH / estimatedH;
-    tableFontSize      = Math.max(5, 7.5 * scaleFactor);
-    tableCellPadding   = Math.max(0.8, 2 * scaleFactor);
-  }
+  const tableFontSize    = 8;
+  const tableCellPadding = 2;
 
   doc.autoTable({
     startY: y,
+    pageBreak: 'auto',
+    showHead: 'everyPage',
+    margin: { bottom: 14 },
     head: [tableHeaders],
     body: tableData,
-    margin: { left: margin, right: margin },
+    margin: { left: margin, right: margin, bottom: 14 },
     tableWidth: 'auto',
     styles: {
       fontSize: tableFontSize,
@@ -273,6 +241,17 @@ function generateCertPDF(k, items, subtitle) {
 
   y = doc.lastAutoTable.finalY + 6;
 
+  // Bereken hoeveel ruimte samenvatting + voettekst + handtekening nodig hebben
+  // en start een nieuwe pagina als het niet past.
+  let voettekstH = 0;
+  if (voettekst) {
+    doc.setFontSize(7.5);
+    const vtEstimate = doc.splitTextToSize(voettekst, contentW);
+    voettekstH = vtEstimate.length * 3.2 + 5;
+  }
+  const slotH = 8 + voettekstH + 30;
+  if (y + slotH > pageH - 12) { doc.addPage(); y = margin; }
+
   // ---- SUMMARY ----
   const goed = items.filter(i => i.status === 'goedgekeurd').length;
   const afk  = items.filter(i => i.status === 'afgekeurd').length;
@@ -298,8 +277,6 @@ function generateCertPDF(k, items, subtitle) {
   }
 
   // ---- HANDTEKENING ----
-  // Controleer of er nog ruimte is — bij zeer lange voetteksten toch nieuwe pagina
-  if (y > pageH - 26) { doc.addPage(); y = margin; }
 
   const sigW  = (contentW - 20) / 2;
   const sigX2 = pageW / 2 + 10;
