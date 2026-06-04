@@ -33,7 +33,7 @@ function generateCertPDF(k, items, subtitle, logoInfo) {
 
   // Logo links
   if (logoInfo) {
-    voegLogoToe(logoInfo, margin, y, headerH);
+    voegLogoToe(logoInfo, margin, y, 12);
   }
 
   // Titel gecentreerd
