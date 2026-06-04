@@ -328,11 +328,15 @@ function generateCertPDF(k, items, subtitle, logoInfo) {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
   doc.setTextColor(...textGray);
+  const contactBreedte = pageW - margin - textX;
   let cy = y + 10;
-  const adresRegelsOnder = (s.adres || '').split('\n').map(r => r.trim()).filter(Boolean);
-  adresRegelsOnder.forEach(r => { doc.text(r, textX, cy); cy += 4.2; });
-  if (s.telefoon) { doc.text('T: ' + s.telefoon, textX, cy); cy += 4.2; }
-  if (s.email)    { doc.text('E: ' + s.email,    textX, cy); cy += 4.2; }
+  const adresRegelsOnder = (s.adres || '').split(/\r?\n/).map(r => r.trim()).filter(Boolean);
+  adresRegelsOnder.forEach(r => {
+    const wrapped = doc.splitTextToSize(r, contactBreedte);
+    wrapped.forEach(regel => { doc.text(regel, textX, cy); cy += 4; });
+  });
+  if (s.telefoon) { doc.text('T: ' + s.telefoon, textX, cy); cy += 4; }
+  if (s.email)    { doc.text('E: ' + s.email,    textX, cy); cy += 4; }
   if (s.kvk)      { doc.text('KvK: ' + s.kvk,   textX, cy); }
 
   // ---- FOOTER op alle pagina's ----
