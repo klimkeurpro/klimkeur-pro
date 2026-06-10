@@ -92,6 +92,7 @@ function generateCertPDF(k, items, subtitle, logoInfo) {
   const infoRight = [
     ['Certificaatnummer:', k.certificaatNr || ''],
     ['Keuringsdatum:',     formatDate(k.datum)],
+    ['Geldig tot:',        formatDate(geldigTotDatum(k.datum))],
     ['Keurmeester:',       k.keurmeester || ''],
   ].filter(Boolean);
 

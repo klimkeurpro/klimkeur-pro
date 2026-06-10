@@ -21,6 +21,15 @@ function formatDate(d) {
   return dt.toLocaleDateString('nl-NL');
 }
 
+// Een keuring is 1 jaar geldig vanaf de keuringsdatum.
+function geldigTotDatum(keuringsDatum) {
+  if (!keuringsDatum) return '';
+  const dt = new Date(keuringsDatum);
+  if (isNaN(dt)) return '';
+  dt.setFullYear(dt.getFullYear() + 1);
+  return dt.toISOString().split('T')[0];
+}
+
 // ============================================================
 // BEDRIJFSINSTELLINGEN OPSLAAN
 // Schrijft store.settings terug naar de bedrijven tabel.

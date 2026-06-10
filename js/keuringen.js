@@ -55,7 +55,7 @@ function renderKeuringen(el) {
       <div class="table-container" style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
         <table style="min-width:650px;">
           <thead><tr>
-            <th>Datum</th><th>Klant</th><th>Certificaat Nr.</th><th>Items</th><th>Goed</th><th>Afgekeurd</th><th>Status</th><th></th>
+            <th>Datum</th><th>Geldig tot</th><th>Klant</th><th>Certificaat Nr.</th><th>Items</th><th>Goed</th><th>Afgekeurd</th><th>Status</th><th></th>
           </tr></thead>
           <tbody id="keuringenTableBody">
             ${renderKeuringenRows(store.keuringen)}
@@ -67,7 +67,7 @@ function renderKeuringen(el) {
 }
 
 function renderKeuringenRows(keuringen) {
-  if (keuringen.length === 0) return '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:40px;">Nog geen keuringen. Start een nieuwe keuring of importeer een Excel.</td></tr>';
+  if (keuringen.length === 0) return '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:40px;">Nog geen keuringen. Start een nieuwe keuring of importeer een Excel.</td></tr>';
   return keuringen.map(k => {
     const goed = (k.items||[]).filter(i=>i.status==='goedgekeurd').length;
     const afk  = (k.items||[]).filter(i=>i.status==='afgekeurd').length;
@@ -75,6 +75,7 @@ function renderKeuringenRows(keuringen) {
     const open = (k.items||[]).filter(i=>!i.status && !i.afgevoerd).length;
     return `<tr class="clickable" onclick="openKeuringDetail('${k.id}')" style="cursor:pointer;">
       <td>${formatDate(k.datum)}</td>
+      <td>${formatDate(geldigTotDatum(k.datum))}</td>
       <td><strong>${escKr(k.klantNaam||'')}</strong></td>
       <td>${escKr(k.certificaatNr||'')}</td>
       <td>${(k.items||[]).length}${open > 0 ? ` <span style="color:var(--warning);font-size:11px;">(${open} open)</span>` : ''}</td>
@@ -561,6 +562,10 @@ function openKeuringDetail(id) {
         <div class="card"><div class="card-body" style="padding:14px 20px;">
           <div style="font-size:12px;color:var(--text-secondary);text-transform:uppercase;">Datum</div>
           <div style="font-size:16px;font-weight:600;">${formatDate(k.datum)}</div>
+        </div></div>
+        <div class="card"><div class="card-body" style="padding:14px 20px;">
+          <div style="font-size:12px;color:var(--text-secondary);text-transform:uppercase;">Geldig tot</div>
+          <div style="font-size:16px;font-weight:600;">${formatDate(geldigTotDatum(k.datum))}</div>
         </div></div>
         <div class="card"><div class="card-body" style="padding:14px 20px;">
           <div style="font-size:12px;color:var(--text-secondary);text-transform:uppercase;">Keurmeester</div>
