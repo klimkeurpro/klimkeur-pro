@@ -131,7 +131,6 @@ function _getNieuwsteBladNaam(wb) {
       // Alleen gebruiken als het op een datum lijkt, niet als het een merknaam is
       if (raw.match(/\d{1,2}[-\/]\d{1,2}[-\/]\d{4}/) || raw.match(/^\d{4}-\d{2}-\d{2}$/)) {
         datum = raw;
-        }
       }
     }
 
