@@ -331,11 +331,16 @@ function _verwerkCertificaatBlad(wb, sheetName) {
       'gebruiker': 'gebruiker', 'code': 'afkeurcode'
     };
 
+    // Langste (meest specifieke) trefwoorden eerst checken, anders matcht
+    // bv. "opmerking" per ongeluk op "merk" (substring) en wordt de
+    // Opmerking-kolom nooit herkend.
+    const headerNameEntries = Object.entries(headerNames).sort((a, b) => b[0].length - a[0].length);
+
     for (let c = 0; c <= range.e.c; c++) {
       const cell = ws[XLSX.utils.encode_cell({r: headerRow - 1, c: c})];
       if (cell) {
         const val = String(cell.v || '').toLowerCase().trim();
-        for (const [key, mapped] of Object.entries(headerNames)) {
+        for (const [key, mapped] of headerNameEntries) {
           if (val.includes(key)) {
             if (colMap[mapped] === undefined) {
               colMap[mapped] = c;
