@@ -363,13 +363,15 @@ function _verwerkCertificaatBlad(wb, sheetName) {
         return cell ? String(cell.v ?? '').trim() : '';
       };
 
-      let status = 'goedgekeurd';
+      let status = '';
       let afkeurcode = '';
       const goedVal = getCellVal('goed');
       const afkeurVal = getCellVal('afkeur');
       if (afkeurVal && afkeurVal !== '0' && afkeurVal !== '') {
         status = 'afgekeurd';
         afkeurcode = afkeurVal;
+      } else if (goedVal && goedVal !== '0' && goedVal !== '') {
+        status = 'goedgekeurd';
       }
 
       const prod = store.products.find(p => p.omschrijving === omschr);
