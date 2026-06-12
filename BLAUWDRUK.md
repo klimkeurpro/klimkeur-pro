@@ -4,7 +4,9 @@ Levend document. Hier denken we de herbouw van KlimKeur Pro + KlimKeur Klant doo
 voordat er gebouwd wordt. Per onderwerp staat de huidige stand: **besloten**,
 **voorstel** (wacht op akkoord) of **open vraag**.
 
-Laatst bijgewerkt: 2026-06-12 (v2: databezit, prijsmodel, twee apps besloten)
+Laatst bijgewerkt: 2026-06-12 (v3: gratis open klant-app als leadmotor,
+abonnement per keurmeester + staffel, overstap via in-app aanvraag,
+code/schema in het Engels)
 
 ---
 
@@ -32,7 +34,8 @@ De keuringsplanner valt buiten scope en komt eventueel later als optie/module.
 | Keurbedrijf-admin | keurbedrijf | abonnement | keurmeesters beheren, klantbedrijven aanmaken, eigen branding |
 | Keurmeester | keurbedrijf | via keurbedrijf | keuringen uitvoeren, certificaten afgeven |
 | Klantbedrijf-admin | klantbedrijf | (zie open vraag 9.3) | eigen personeel beheren, eigen artikelen toevoegen |
-| Medewerker (eindgebruiker) | klantbedrijf | app store / gratis | eigen materiaal inzien, keuringsstatus, PDF's downloaden |
+| Medewerker (eindgebruiker) | klantbedrijf | gratis | eigen materiaal inzien, keuringsstatus, PDF's downloaden |
+| Zelfstandige gebruiker | — (nog geen keurbedrijf) | gratis | eigen materiaal invoeren, keuring aanvragen bij een keurbedrijf |
 
 Hiërarchie: platform → keurbedrijven (tenants) → klantbedrijven → medewerkers.
 
@@ -57,6 +60,17 @@ Kern-entiteiten (namen nog te bepalen, zie 9.6):
   invulwerk"). Gevolg voor het schema: artikelen en historie hangen aan het
   klantbedrijf; het keurbedrijf is een wisselbare koppeling, geen eigenaar.
   Certificaten blijven altijd zichtbaar voor de klant, ook na overstap.
+
+- **Keuring aanvragen & overstappen (besloten 2026-06-12):** de huidige
+  mailknop "keuring aanvragen" in KlimKeur Klant wordt een in-app aanvraag:
+  de gebruiker kiest het gewenste keurbedrijf uit een openbare lijst van
+  deelnemende bedrijven (per regio/land) en de artikeldata gaat meteen mee.
+  Hetzelfde mechanisme dient voor nieuwe (zelfstandige) gebruikers én voor
+  overstappen naar een ander keurbedrijf.
+
+- **Naamgeving (besloten 2026-06-12):** databaseschema en code in het Engels
+  (`customers`, `inspections`, `items`, …); Nederlands bestaat alleen nog in
+  de UI-taalbestanden. Onderstaande Nederlandse namen zijn dus werknamen.
 
 - `keurbedrijven` (tenant) — branding, abonnement, land/markt
 - `keurmeesters` — gekoppeld aan keurbedrijf; vlag `is_catalogusbeheerder`
@@ -113,24 +127,25 @@ keurmeester, verwijzing naar bestand).
   artikel, orde van grootte €0,05–0,10 per artikel per keuring, en berekent
   dat door aan de eigen klant.
 
-**Voorstel (nog bevestigen):**
-
-- **Basisabonnement + tikken:** naast de prijs per artikel een laag vast
-  bedrag (bijv. per keurmeester per maand) als bodem, zodat ook kleine
-  keurbedrijven de vaste kosten dekken. Facturatie via Stripe metered billing
+- **Abonnement per keurmeester + tikken met staffelkorting:** vast bedrag per
+  keurmeester per maand als bodem, daarbovenop de prijs per gekeurd artikel
+  met korting bij groter volume. Facturatie via Stripe metered billing
   (gekeurde items per maand tellen).
-- **Klant-app gratis** voor medewerkers die via een keurbedrijf zijn
-  uitgenodigd (indirect al betaald via de tikken). Betaalde adoptiedrempel bij
-  medewerkers zou de waarde voor het keurbedrijf ondergraven.
-- **B2C-variant à ±€10/jaar via in-app purchase:** individuen zónder
-  keurbedrijf (zzp'er, arborist, sportklimmer) houden eigen materiaal bij.
-  Apple/Google-commissie (15% onder $1M omzet) is bij dat bedrag acceptabel.
+- **Klant-app gratis en vrij te downloaden — de leadmotor.** Geen betaalde
+  B2C-variant en geen uitnodigingsplicht: iedereen kan de app installeren en
+  eigen materiaal invoeren, en klopt daarna via de app aan bij een keurbedrijf
+  om alles te laten keuren (zie aanvraagmechanisme in §3). Zo brengt de app
+  keurbedrijven nieuwe klanten aan, en verdient het platform pas zodra er
+  gekeurd wordt.
+- **UX-afspraak hierbij:** materiaal dat nog nooit gekeurd is toont geen rood
+  alarm maar "nog niet gekeurd — vraag een keuring aan". Rood is alleen voor
+  verlópen keuringen, zodat de gratis app uitnodigt in plaats van afschrikt.
 
 **Technisch:**
 
 - PWA verpakt met Capacitor voor App Store/Play Store.
-- B2B-abonnementen via de website (Stripe, geen storecommissie); in de app
-  alleen inloggen. Alleen de B2C-variant loopt via in-app purchase.
+- Abonnementen via de website (Stripe, geen storecommissie); in de apps wordt
+  alleen ingelogd. Geen in-app purchases nodig.
 
 ## 8. Techniek (open, voorkeur nog bepalen)
 
@@ -144,25 +159,29 @@ keurmeester, verwijzing naar bestand).
 
 ## 9. Open vragen
 
-1. Akkoord op het prijsvoorstel in §7 (basisabonnement + tikken, klant-app
-   gratis, B2C-variant ±€10/jaar)? En welk bedrag wordt het: €0,05 of €0,10
-   per artikel?
+1. Concrete bedragen: abonnement per keurmeester per maand = €? Prijs per
+   gekeurd artikel = €0,05 of €0,10? Hoe ziet de staffel eruit?
 2. Mag een klantbedrijf-admin producten toevoegen aan de globale catalogus, of
    alleen eigen artikelen aanmaken (voorstel: alleen artikelen; catalogus is
    aan catalogusbeheerders)?
-3. Naamgeving database/code: Nederlands houden of Engels (voorstel bij
-   internationale ambitie: Engels in code en schema, vertaling alleen in UI)?
-4. Migratie: huidige klanten, artikelen en keuringshistorie meenemen naar het
+3. Migratie: huidige klanten, artikelen en keuringshistorie meenemen naar het
    nieuwe schema — wanneer en hoe testen we dat?
-5. Hoe werkt een overstap praktisch: vraagt het nieuwe keurbedrijf toegang aan
-   en bevestigt de klantbedrijf-admin (voorstel), of regelt het platform dit?
+4. De openbare lijst van keurbedrijven (voor de aanvraagknop): mag elk
+   betalend keurbedrijf daar automatisch in, en op welke gegevens filtert de
+   gebruiker (regio, land, specialisatie)?
 
 ### Beantwoord
 
 - ~~Wie bezit de data bij overstap?~~ → De klant (zie §3, databezit).
 - ~~Eén of twee apps?~~ → Twee (zie §7).
-- ~~Wie betaalt wat?~~ → Richting bepaald: keurbedrijf betaalt per gekeurd
-  artikel en berekent door; details in §7.
+- ~~Wie betaalt wat?~~ → Abonnement per keurmeester + tikken met staffel;
+  klant-app gratis (§7).
+- ~~Zelfregistratie zonder keurbedrijf?~~ → Ja, gratis; de app is de
+  leadmotor richting keurbedrijven (§7).
+- ~~Betaalde B2C-variant?~~ → Nee, vervallen (§7).
+- ~~Hoe werkt overstappen?~~ → In-app aanvraag met bedrijfskeuze, data gaat
+  mee (§3).
+- ~~Naamgeving code/schema?~~ → Engels (§3).
 
 ## 10. Bronmateriaal
 
