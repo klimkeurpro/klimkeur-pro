@@ -1,7 +1,23 @@
-# Datamodel KlimKeur 2.0 — voorstel v1
+# Datamodel KlimKeur 2.0 — voorstel v2
 
 Hoort bij `BLAUWDRUK.md`. Schema- en kolomnamen in het **Engels** (besloten),
 uitleg in het Nederlands. Status: **voorstel, ter bespreking**.
+(v2, 2026-06-12: eigendomsgrenzen verduidelijkt, meerdere keurbedrijven per
+klant + deel-scope, foto's, machines als producttype, poolmateriaal.)
+
+## Eigendomsgrenzen (de kern, besloten)
+
+Twee werelden die nooit door elkaar lopen:
+
+1. **`products` — "de winkel".** De bron-database met alle producttypes.
+   Eigendom van het platform; alléén platformbeheer en god-keurmeesters
+   kunnen erin schrijven. Klanten en keurbedrijven kiezen eruit; wat zij
+   aandragen komt hooguit als `pending` in de wachtrij en wordt pas
+   winkelproduct als een god-keurmeester het promoveert.
+2. **`articles` — de fysieke exemplaren van de klant.** Eigendom van de
+   klant. De klant bepaalt via `customer_links` met welk(e)
+   keurbedrijf/keurbedrijven hij ze deelt, en desgewenst welk déél
+   (scope per producttype).
 
 Leeswijzer: `PK` = primary key, `FK →` = verwijzing, `?` = mag leeg zijn.
 Elke tabel krijgt standaard `id uuid PK`, `created_at timestamptz` — die
@@ -101,13 +117,17 @@ Eigenaar van artikelen en historie (besloten: de klant bezit de data).
 | active | boolean | uit dienst ⇒ inactief, historie blijft |
 
 ### `customer_links` (koppeling klant ↔ keurbedrijf)
-De wisselbare relatie; historie blijft bewaard bij overstap.
+De wisselbare relatie; historie blijft bewaard bij overstap. **Meerdere
+actieve links tegelijk zijn toegestaan** (besloten 2026-06-12): bijv. PPE
+bij keurbedrijf A, machines (kettingzagen, accuboren, versnipperaars) bij
+keurbedrijf B.
 
 | kolom | type | uitleg |
 |---|---|---|
 | customer_id | FK → customers | |
 | company_id | FK → inspection_companies | |
 | customer_number | text? | het eigen klantnummer van het keurbedrijf |
+| scope_product_types | text[]? | leeg = alle artikelen zichtbaar; gevuld = alleen artikelen van deze producttypes (de klant bepaalt wat hij deelt) |
 | status | text | `pending` / `active` / `ended` |
 | started_at, ended_at | timestamptz? | |
 
@@ -120,7 +140,7 @@ De wisselbare relatie; historie blijft bewaard bij overstap.
 |---|---|---|
 | brand | text | merk |
 | name | text | omschrijving |
-| product_type | text | `ppe` / `rigging` / `aerial_platform` / … — bepaalt standaardregime |
+| product_type | text | `ppe` / `rigging` / `aerial_platform` / `machine` (kettingzaag, accuboor, versnipperaar) / … — bepaalt standaardregime |
 | category | text? | huidige `categorie` |
 | material | text? | |
 | standard | text? | EN-norm (huidige `norm`) |
@@ -152,8 +172,8 @@ productdata van de keuringsdatum toont.
 |---|---|---|
 | product_type | text | |
 | country_code | text | |
-| interval_months | int | NL/ppe → 12; GB/ppe → 6; nieuw land = rijen toevoegen |
-| legal_reference | text? | "Arbobesluit" / "LOLER 1998" — op certificaat |
+| interval_months | int | NL/ppe → 12; GB/ppe → 6; NL/machine → 12 (NEN 3140); nieuw land of type = rijen toevoegen |
+| legal_reference | text? | "Arbobesluit" / "LOLER 1998" / "NEN 3140" — op certificaat |
 
 Intervalresolutie: artikel-override → product-override → regime(type × land).
 
@@ -190,6 +210,12 @@ Status (groen/oranje/"nog niet gekeurd"/rood) wordt **berekend**, nooit
 opgeslagen: laatste afgeronde keuring + geldend interval. Nooit gekeurd ⇒
 "vraag een keuring aan" (geen rood alarm, zie blauwdruk §7).
 
+Poolmateriaal (besloten 2026-06-12): `assigned_member_id` leeg is normaal
+gebruik — voorraad en niet-PPE hebben zelden een vaste gebruiker, en gedeelde
+PPE komt in de praktijk voor. De app straft dit niet af; bij PPE zonder vaste
+gebruiker toont de UI alleen een vriendelijke hint dat PPE persoonlijk is en
+bij één persoon hoort.
+
 ---
 
 ## 4. Keuringen en certificaten
@@ -216,6 +242,21 @@ opgeslagen: laatste afgeronde keuring + geldend interval. Nooit gekeurd ⇒
 | result | text | `passed` / `rejected` / `not_assessed` |
 | rejection_code_id | FK? → rejection_codes | |
 | comment | text? | |
+
+### `photos` (besloten 2026-06-12: ja, met maat-discipline)
+Foto's bij keuringsitems (bewijs bij afkeur) en optioneel bij artikelen.
+
+| kolom | type | uitleg |
+|---|---|---|
+| inspection_item_id | FK? → inspection_items | óf dit |
+| article_id | FK? → articles | óf dit |
+| storage_path | text | Supabase Storage |
+| taken_by | FK → users | |
+
+Spelregels tegen traagheid en kosten: foto's worden **op het apparaat
+verkleind vóór upload** (max ~1600 px, ±250 KB), maximum aantal per
+keuringsitem (bijv. 3), thumbnails + lazy loading in de UI. Rekenvoorbeeld:
+100.000 foto's ≈ 25 GB ≈ < €1/maand opslag bij Supabase — beheersbaar.
 
 ### `certificates`
 | kolom | type | uitleg |
@@ -272,7 +313,8 @@ maand, ook naar Stripe. Geen verdere eigen boekhouding in de database.
 | Lijst-schakelaar, branding, instellingen | alles | — | beheer | — | — | — |
 
 Kernregels: toegang van een keurbedrijf tot klantdata loopt áltijd via een
-`customer_link` met status `active`; na overstap vervalt de inzage in nieuwe
+`customer_link` met status `active`, en alleen binnen de eventuele
+deel-scope (producttypes) van die link; na overstap vervalt de inzage in nieuwe
 data, maar de eigen uitgevoerde keuringen/certificaten blijven leesbaar
 (eigen administratie). Afgeronde keuringen en certificaten zijn voor
 niemand muteerbaar.
@@ -299,17 +341,19 @@ elk keuringsitem draagt de artikelgegevens. Het script moet dus artikelen
 
 ---
 
-## 9. Vragen aan Jos
+## 9. Vragen aan Jos — beantwoord 2026-06-12
 
-1. **Eén actieve `customer_link` per klant, of meerdere tegelijk?** (Groot
-   klantbedrijf dat PPE door bedrijf A en hoogwerkers door bedrijf B laat
-   keuren?) Voorstel: starten met één — simpeler, en overstappen dekt 95%.
-2. **Foto's bij keuringsitems** (bewijs van schade bij afkeur)? Nu niet in
-   Pro; kost storage maar is sterk dossier. Ja/nee in versie één?
-3. **Welke velden zijn verplicht op het certificaat** in NL, en weet jij wat
-   het VK (LOLER thorough examination report) extra eist? Dit bepaalt of
-   `inspection_items.article_snapshot` genoeg draagt.
-4. **Afkeurcodes:** volstaan de huidige 8 platformbreed (vertaald), met
-   daarnaast eigen codes per keurbedrijf?
-5. **Poolmateriaal** (artikel zonder vaste gebruiker) — klopt het dat dat
-   gewoon moet kunnen (assigned_member leeg)?
+1. ~~Eén of meerdere keurbedrijven per klant?~~ → **Meerdere actieve links
+   toegestaan** (bijv. PPE bij A, machines bij B), met optionele deel-scope
+   per producttype op de link (§1, `customer_links`).
+2. ~~Foto's?~~ → **Ja**, met maat-discipline: client-side verkleinen, max
+   per item, thumbnails/lazy loading (§4, `photos`).
+3. ~~Certificaatvelden?~~ → NL: **herleidbaarheid** is de kern — het
+   snapshot-model (productversie + artikel-snapshot) dekt dat. Eisen
+   VK (LOLER-rapport) en eventueel Duitsland: **onderzoekspunt**, kan als
+   los onderzoek worden uitgevoerd vóór de bouw van de PDF-module.
+4. ~~Afkeurcodes platformbreed?~~ → Waarschijnlijk ja; **Jos overlegt met
+   andere keurmeesters.** Schema ondersteunt beide (standaard + eigen codes
+   per keurbedrijf), dus dit blokkeert niets.
+5. ~~Poolmateriaal?~~ → **Ja**, leeg `assigned_member_id` is normaal; geen
+   afstraffing, alleen een vriendelijke PPE-hint (§3).
