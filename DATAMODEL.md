@@ -167,8 +167,8 @@ keurbedrijf B.
 | breaking_strength | text? | breuksterkte |
 | manual_url | text? | link naar PDF-handleiding |
 | product_page_url | text? | link naar productpagina van de fabrikant |
-| recall_url | text? | link naar recall-bericht; gevuld ⇒ app kan eigenaren van gekoppelde artikelen waarschuwen |
-| inspection_notice_url | text? | link naar inspection notice / veiligheidsbulletin van de fabrikant |
+| recall_url | text? | link naar recall-bericht. Bewust géén automatische waarschuwing aan eigenaren (besloten 2026-06-12): recalls gelden vrijwel altijd voor déélreeksen (serienummers van–tot, productiejaar, vóór/na datum) die een systeem niet betrouwbaar kan interpreteren — vals alarm of schijnveiligheid. In plaats daarvan: de app toont de recall als vlag aan de **keurmeester tijdens de keuring** van een gekoppeld artikel ("controleer of dit serienummer eronder valt"); beoordeling blijft mensenwerk. De recall-zoekfunctie uit KlimKeur Pro blijft als feature |
+| inspection_notice_url | text? | link naar inspection notice / veiligheidsbulletin van de fabrikant; zelfde vlag-gedrag als recall_url |
 | notes | text? | bijzonderheden |
 | interval_override_months | int? | wijkt af van het regime voor dit product |
 | status | text | `approved` / `pending` (wachtrij) / `rejected` / `archived` |
