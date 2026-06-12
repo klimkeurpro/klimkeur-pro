@@ -226,21 +226,18 @@ Bouwstenen en motivatie:
    uitdelen die kunnen botsen); de certificaat-PDF wordt bij synchronisatie
    server-side gegenereerd; foto's wachten in de upload-wachtrij. De klant-app
    blijft online-first (lezen met cache volstaat daar).
-2. **Internationale merknaam (besloten van richting).** "KlimKeur" blijft
-   niet de internationale naam. Shortlist (snelle botscheck gedaan: GearCert
-   en CertaGear vrij in deze markt; concurrenten heten Scannable, Papertrail,
-   Certado, Petzl EXAM):
-   - **GearCert** — gear + certificaat, direct duidelijk (aanbeveling)
-   - **GearProof** — dubbele betekenis: bewijs én bestand tegen
-   - ~~GearCheck~~ — ingeburgerde wedstrijdterm en daarom onderzocht (idee
-     Jos), maar **bezet**: gearcheck.io is een bestaande PPE-inspectie-app in
-     exact deze markt (QR/NFC, keuringen boeken via keurmeester-netwerk) —
-     tevens concurrent om te bestuderen
-   - **CertaGear** — brandbaar; let op klankgelijkenis met concurrent Certado
-   - **NextCheck** — vriendelijk, verwijst naar "volgende keuring"
-   - **Inspecta** — internationaal uitspreekbaar, wel generieker
-   - **VeriTag** — verwijst naar de verificatie-QR op het certificaat
-   Vóór de definitieve keuze: merkenregister-, domein- en store-namencheck.
+2. **Internationale merknaam: GearCert (voorkeursbesluit 2026-06-12,
+   reservering loopt).** Domeincheck: gearcert.com/.io/.app/.eu/.nl alle
+   vrij; gearcheck.com bezet, gearcheck.io was een gelijknamige
+   PPE-inspectie-app (site inmiddels dood — naam blijft merkrisico en is
+   als wedstrijdterm te generiek om te beschermen); gearproof.com bezet.
+   Actiepunten Jos: domeinen registreren (gearcert.com eerst; optioneel
+   defensief gearcheck.net), gratis merkcheck via EUIPO eSearch (klasse 9 +
+   42), naam checken in App Store/Play Store. EU-merkregistratie (~€850)
+   bij lancering. Tot die tijd is "GearCert" de werknaam in alle documenten.
+   Verworpen alternatieven: GearCheck (bezet/generiek), GearProof (.com
+   bezet; "check" had toch de voorkeur), CertaGear, NextCheck, Inspecta,
+   VeriTag.
 
 ## 9. Migratie en onboarding (besloten van richting, 2026-06-12)
 

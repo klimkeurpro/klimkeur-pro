@@ -122,11 +122,20 @@ vooral op de zaak; een collega vooral op locatie.
    werkplaats-specifiek en raakt aan de keuringsplanner (buiten scope,
    later koppelbaar).
 
-## 5. Open punten volgende sparringronde
+## 5. Aanvullingen (2026-06-12, tweede ronde)
 
-1. Het Vandaag-scherm voor de werkplaats: waar komt de wachtrij vandaan
-   zolang de keuringsplanner los staat — handmatig lijstje in de app, of
-   simpelweg "recent geopende klanten"?
-2. Hoe ziet de ideale keuring-afrondpagina eruit (wat wil Jos controleren
-   vóór de handtekening)?
-3. Klant-app flows doornemen zodra de keurmeester-flow staat.
+1. **Vandaag-scherm: recente keuringen blijven** — praktijkreden: als een
+   klant na een keuring vervangend materiaal wil bestellen, moeten de
+   afgekeurde items van recente keuringen snel terug te vinden zijn.
+   Ontwerp: recente keuringen tonen met direct zichtbaar aantal afgekeurd,
+   één tik → de afgekeurde items op een rij (bestelklaar).
+2. **Afrondscherm (besloten):** aantallen op een rij — beoordeeld, goed,
+   afgekeurd, overgeslagen — met de afkeuringen zichtbaar; daarna één knop
+   "OK – opslaan". Geen afronding zolang er onbeoordeelde items zijn zonder
+   expliciete bevestiging.
+
+## 6. Open punten volgende sparringronde
+
+1. Klant-app flows doornemen zodra de keurmeester-flow staat.
+2. Schermschetsen/wireframes maken van Vandaag, Klantpagina, Keuring-wizard
+   en Afrondscherm zodra het bouwplan er is.
