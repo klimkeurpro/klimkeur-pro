@@ -165,7 +165,10 @@ keurbedrijf B.
 | max_age_use_years | int? | vanaf ingebruikname (`max_leeftijd_use`) |
 | max_age_mfr_years | int? | fabrikantstermijn (`max_leeftijd_mfr`) |
 | breaking_strength | text? | breuksterkte |
-| manual_url | text? | handleiding |
+| manual_url | text? | link naar PDF-handleiding |
+| product_page_url | text? | link naar productpagina van de fabrikant |
+| recall_url | text? | link naar recall-bericht; gevuld ⇒ app kan eigenaren van gekoppelde artikelen waarschuwen |
+| inspection_notice_url | text? | link naar inspection notice / veiligheidsbulletin van de fabrikant |
 | notes | text? | bijzonderheden |
 | interval_override_months | int? | wijkt af van het regime voor dit product |
 | status | text | `approved` / `pending` (wachtrij) / `rejected` / `archived` |
@@ -227,11 +230,13 @@ Intervalresolutie: artikel-override → product-override → regime(type × land
 | retired_at | timestamptz? | |
 
 Status (groen/oranje/"nog niet gekeurd"/rood) wordt **berekend**, nooit
-opgeslagen: het "goed tot" (`valid_until`) van de laatste afgeronde keuring —
-de vroegste van keuringsdatum + interval én einde levensduur, eventueel
-handmatig aangepast door de keurmeester. Einde levensduur kan dus eerder rood
-geven dan het keuringsinterval. Nooit gekeurd ⇒ "vraag een keuring aan"
-(geen rood alarm, zie blauwdruk §7).
+opgeslagen: de "volgende keuring uiterlijk"-datum (`next_due`) van de laatste
+afgeronde keuring — de vroegste van keuringsdatum + interval én einde
+levensduur, eventueel handmatig aangepast door de keurmeester. Einde
+levensduur kan dus eerder rood geven dan het keuringsinterval. Nooit gekeurd ⇒
+"vraag een keuring aan" (geen rood alarm, zie blauwdruk §7).
+Terminologie bewust: nergens "goed tot" — een keuring is een momentopname,
+geen garantie tot een datum.
 
 Poolmateriaal (besloten 2026-06-12): `assigned_member_id` leeg is normaal
 gebruik — voorraad en niet-PPE hebben zelden een vaste gebruiker, en gedeelde
@@ -265,7 +270,7 @@ bij één persoon hoort.
 | product_version_id | FK? → product_versions | productdata zoals op keuringsdatum |
 | article_snapshot | jsonb | kopie van artikelvelden op keuringsdatum (serienummer, gebruiker, …) — volledig onveranderlijk dossier |
 | result | text | `passed` / `rejected` / `not_assessed` |
-| valid_until | date? | "goed tot" (maandprecisie, idee Jos 2026-06-12): soms verloopt de levensduur vóór de volgende keuring. Systeem stelt automatisch de vroegste voor van (keuringsdatum + interval) en (einde levensduur uit productdata: bouwjaar + max. leeftijd, of eerste gebruik + max. gebruiksduur); keurmeester kan handmatig aanpassen |
+| next_due | date? | "volgende keuring uiterlijk" (maandprecisie) — bewust níet "goed tot": een keuring is een momentopname, geen garantie. Soms verloopt de levensduur vóór het interval; systeem stelt automatisch de vroegste voor van (keuringsdatum + interval) en (einde levensduur uit productdata: bouwjaar + max. leeftijd, of eerste gebruik + max. gebruiksduur); keurmeester kan handmatig aanpassen |
 | rejection_code_id | FK? → rejection_codes | |
 | comment | text? | |
 
@@ -295,9 +300,9 @@ keuringsitem (bijv. 3), thumbnails + lazy loading in de UI. Rekenvoorbeeld:
 | pdf_hash | text | hash van het bestand (audit-trail: bewijs dat de PDF onveranderd is) |
 | verify_token | text, uniek | voor de verificatie-QR op het certificaat: scan → publieke pagina toont het echte record |
 
-Op de PDF staan verplicht: uiterste datum volgende keuring (LOLER-eis; per
-item het "goed tot" — begrensd door einde levensduur), naam + kwalificatie
-van de keurmeester, wettelijke basis
+Op de PDF staan verplicht: "volgende keuring uiterlijk" (LOLER-eis; per item
+`next_due`, begrensd door einde levensduur — bewust niet "goed tot"), naam +
+kwalificatie van de keurmeester, wettelijke basis
 (`legal_reference`), handtekening (PNG) en de verificatie-QR. Voor de Duitse
 markt later uitbreidbaar met een automatisch cryptografisch zegel
 (eIDAS-niveau "geavanceerd", server-side, geen handeling voor de keurmeester).
