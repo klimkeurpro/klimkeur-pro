@@ -227,8 +227,11 @@ Intervalresolutie: artikel-override → product-override → regime(type × land
 | retired_at | timestamptz? | |
 
 Status (groen/oranje/"nog niet gekeurd"/rood) wordt **berekend**, nooit
-opgeslagen: laatste afgeronde keuring + geldend interval. Nooit gekeurd ⇒
-"vraag een keuring aan" (geen rood alarm, zie blauwdruk §7).
+opgeslagen: het "goed tot" (`valid_until`) van de laatste afgeronde keuring —
+de vroegste van keuringsdatum + interval én einde levensduur, eventueel
+handmatig aangepast door de keurmeester. Einde levensduur kan dus eerder rood
+geven dan het keuringsinterval. Nooit gekeurd ⇒ "vraag een keuring aan"
+(geen rood alarm, zie blauwdruk §7).
 
 Poolmateriaal (besloten 2026-06-12): `assigned_member_id` leeg is normaal
 gebruik — voorraad en niet-PPE hebben zelden een vaste gebruiker, en gedeelde
@@ -262,6 +265,7 @@ bij één persoon hoort.
 | product_version_id | FK? → product_versions | productdata zoals op keuringsdatum |
 | article_snapshot | jsonb | kopie van artikelvelden op keuringsdatum (serienummer, gebruiker, …) — volledig onveranderlijk dossier |
 | result | text | `passed` / `rejected` / `not_assessed` |
+| valid_until | date? | "goed tot" (maandprecisie, idee Jos 2026-06-12): soms verloopt de levensduur vóór de volgende keuring. Systeem stelt automatisch de vroegste voor van (keuringsdatum + interval) en (einde levensduur uit productdata: bouwjaar + max. leeftijd, of eerste gebruik + max. gebruiksduur); keurmeester kan handmatig aanpassen |
 | rejection_code_id | FK? → rejection_codes | |
 | comment | text? | |
 
@@ -291,8 +295,9 @@ keuringsitem (bijv. 3), thumbnails + lazy loading in de UI. Rekenvoorbeeld:
 | pdf_hash | text | hash van het bestand (audit-trail: bewijs dat de PDF onveranderd is) |
 | verify_token | text, uniek | voor de verificatie-QR op het certificaat: scan → publieke pagina toont het echte record |
 
-Op de PDF staan verplicht: uiterste datum volgende keuring (LOLER-eis, berekend
-uit het regime), naam + kwalificatie van de keurmeester, wettelijke basis
+Op de PDF staan verplicht: uiterste datum volgende keuring (LOLER-eis; per
+item het "goed tot" — begrensd door einde levensduur), naam + kwalificatie
+van de keurmeester, wettelijke basis
 (`legal_reference`), handtekening (PNG) en de verificatie-QR. Voor de Duitse
 markt later uitbreidbaar met een automatisch cryptografisch zegel
 (eIDAS-niveau "geavanceerd", server-side, geen handeling voor de keurmeester).
