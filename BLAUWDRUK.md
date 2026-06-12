@@ -4,9 +4,8 @@ Levend document. Hier denken we de herbouw van KlimKeur Pro + KlimKeur Klant doo
 voordat er gebouwd wordt. Per onderwerp staat de huidige stand: **besloten**,
 **voorstel** (wacht op akkoord) of **open vraag**.
 
-Laatst bijgewerkt: 2026-06-12 (v3: gratis open klant-app als leadmotor,
-abonnement per keurmeester + staffel, overstap via in-app aanvraag,
-code/schema in het Engels)
+Laatst bijgewerkt: 2026-06-12 (v4: spelregels openbare lijst, concrete
+prijzen, catalogus-wachtrij, migratie-aanpak)
 
 ---
 
@@ -41,10 +40,14 @@ Hiërarchie: platform → keurbedrijven (tenants) → klantbedrijven → medewer
 
 Aandachtspunten bij dit model:
 
-- **"God"-versie en kwaliteitsbewaking.** Wijzigingen in de globale catalogus
-  raken álle gebruikers. Voorstel: bijdragen van catalogusbeheerders komen in
-  een wachtrij of worden gelogd met versiegeschiedenis, zodat een fout
-  teruggedraaid kan worden en zichtbaar is wie wat wijzigde.
+- **"God"-versie en kwaliteitsbewaking (besloten 2026-06-12).** Alleen
+  catalogusbeheerders ("god-keurmeesters") mogen de globale catalogus
+  aanpassen. Voert een klant(bedrijf) een product in dat niet in de catalogus
+  staat, dan ontstaat een "vrij artikel" dat in een **wachtrij** voor de
+  catalogusbeheerders komt; zij kunnen het opschonen en promoveren tot
+  catalogusproduct, waarna het artikel eraan gekoppeld wordt. Zo groeit de
+  database zelfvoedend uit echt gebruik. Wijzigingen worden gelogd met
+  versiegeschiedenis (wie, wat, wanneer) zodat fouten terug te draaien zijn.
 - **Catalogus-versionering is ook juridisch nodig:** een certificaat moet de
   productgegevens tonen zoals ze waren op de keuringsdatum. Keuringsitems
   verwijzen daarom naar een snapshot/versie van het product, niet naar de
@@ -127,10 +130,13 @@ keurmeester, verwijzing naar bestand).
   artikel, orde van grootte €0,05–0,10 per artikel per keuring, en berekent
   dat door aan de eigen klant.
 
-- **Abonnement per keurmeester + tikken met staffelkorting:** vast bedrag per
-  keurmeester per maand als bodem, daarbovenop de prijs per gekeurd artikel
-  met korting bij groter volume. Facturatie via Stripe metered billing
-  (gekeurde items per maand tellen).
+- **Abonnement per keurmeester + tikken met staffelkorting.** Werkgetallen
+  (besloten van richting, 2026-06-12): **€5 per keurmeester per maand**;
+  per gekeurd artikel **€0,10 voor de eerste 1.000** en **€0,05 daarboven**
+  (staffel per keurbedrijf per kalenderjaar). Rekenvoorbeeld: 2 keurmeesters,
+  8.000 keuringen/jaar → €120 + €100 + €350 = €570/jaar. Facturatie via
+  Stripe metered billing; let op vaste transactiekosten bij kleine
+  maandbedragen → jaarlijks of per kwartaal incasseren.
 - **Klant-app gratis en vrij te downloaden — de leadmotor.** Geen betaalde
   B2C-variant en geen uitnodigingsplicht: iedereen kan de app installeren en
   eigen materiaal invoeren, en klopt daarna via de app aan bij een keurbedrijf
@@ -140,6 +146,19 @@ keurmeester, verwijzing naar bestand).
 - **UX-afspraak hierbij:** materiaal dat nog nooit gekeurd is toont geen rood
   alarm maar "nog niet gekeurd — vraag een keuring aan". Rood is alleen voor
   verlópen keuringen, zodat de gratis app uitnodigt in plaats van afschrikt.
+
+**Spelregels openbare keurbedrijven-lijst** (voorstel 2026-06-12, om de zorg
+"help ik de concurrent?" te ondervangen):
+
+1. Bestaande klanten zien de lijst nooit spontaan: wie gekoppeld is aan een
+   keurbedrijf ziet overal diens branding, geen suggesties of vergelijkingen.
+   De lijst verschijnt alleen bij een actieve keuze ("keuring aanvragen" als
+   nieuwe gebruiker, of bewust "ander keurbedrijf kiezen").
+2. De lijst is primair de etalage voor nieuwe, nog ongebonden gebruikers —
+   netto nieuwe leads voor alle deelnemende keurbedrijven.
+3. Geen rankings of reviews (zeker initieel); sorteren op afstand/regio.
+4. Elk betalend keurbedrijf staat erin; eventueel opt-out, maar wie er niet
+   in staat krijgt ook geen leads.
 
 **Technisch:**
 
@@ -157,18 +176,27 @@ keurmeester, verwijzing naar bestand).
   eigen project — voorkeur: één project, anders wordt de catalogus dubbel
   beheerd.
 
-## 9. Open vragen
+## 9. Migratie en onboarding (besloten van richting, 2026-06-12)
 
-1. Concrete bedragen: abonnement per keurmeester per maand = €? Prijs per
-   gekeurd artikel = €0,05 of €0,10? Hoe ziet de staffel eruit?
-2. Mag een klantbedrijf-admin producten toevoegen aan de globale catalogus, of
-   alleen eigen artikelen aanmaken (voorstel: alleen artikelen; catalogus is
-   aan catalogusbeheerders)?
-3. Migratie: huidige klanten, artikelen en keuringshistorie meenemen naar het
-   nieuwe schema — wanneer en hoe testen we dat?
-4. De openbare lijst van keurbedrijven (voor de aanvraagknop): mag elk
-   betalend keurbedrijf daar automatisch in, en op welke gegevens filtert de
-   gebruiker (regio, land, specialisatie)?
+- **Safety Green (eigen data):** eenmalig migratiescript dat de huidige
+  Supabase-tabellen (klanten, producten, keuringen, keuring_items, bedrijven,
+  afkeurcodes) rechtstreeks omzet naar het nieuwe schema. Volledige historie
+  gaat mee; geen handmatig invoerwerk en geen "achterdeur" nodig.
+- **Andere keurbedrijven (later):** generieke CSV-import met
+  kolom-koppelscherm — het bedrijf wijst zelf aan welke kolom uit de eigen
+  Excel bij welk veld hoort. Niet nodig in versie één.
+- **Gratis gebruikers:** voeren zelf in, geholpen door autocomplete op de
+  globale catalogus (zo min mogelijk typwerk).
+
+## 10. Open vragen
+
+1. Akkoord op de spelregels van de openbare lijst (§7)? En opt-out toestaan,
+   ja/nee?
+2. Prijzen zijn werkgetallen — definitief bevestigen vóór lancering (en
+   doorrekenen tegen verwachte kosten: hosting, stores, support, tijd
+   god-keurmeesters).
+3. Volgende uitwerkthema: het datamodel in detail (tabellen, kolommen,
+   rechten per rol).
 
 ### Beantwoord
 
@@ -182,8 +210,14 @@ keurmeester, verwijzing naar bestand).
 - ~~Hoe werkt overstappen?~~ → In-app aanvraag met bedrijfskeuze, data gaat
   mee (§3).
 - ~~Naamgeving code/schema?~~ → Engels (§3).
+- ~~Concrete bedragen?~~ → Werkgetallen: €5/keurmeester/maand; €0,10 per
+  artikel t/m 1.000 per jaar, daarna €0,05 (§7).
+- ~~Catalogusrechten klantbedrijf-admin?~~ → Alleen eigen artikelen;
+  onbekende producten gaan via de wachtrij naar catalogusbeheerders (§2).
+- ~~Migratie?~~ → Script voor Safety Green, later CSV-import met
+  kolomkoppeling voor anderen (§9).
 
-## 10. Bronmateriaal
+## 11. Bronmateriaal
 
 - Huidige apps als functionele specificatie: `klimkeur-pro`, `klimkeur-klant`.
 - Analyse vertaalomvang (2026-06-12): ±400–500 strings in Pro, ±100–120 in
