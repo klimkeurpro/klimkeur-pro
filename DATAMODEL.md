@@ -1,9 +1,12 @@
-# Datamodel KlimKeur 2.0 — voorstel v2
+# Datamodel KlimKeur 2.0 — voorstel v3
 
 Hoort bij `BLAUWDRUK.md`. Schema- en kolomnamen in het **Engels** (besloten),
 uitleg in het Nederlands. Status: **voorstel, ter bespreking**.
-(v2, 2026-06-12: eigendomsgrenzen verduidelijkt, meerdere keurbedrijven per
-klant + deel-scope, foto's, machines als producttype, poolmateriaal.)
+(v3, 2026-06-12: verfijningen uit het bronnenonderzoek
+`ONDERZOEK-CERTIFICAATEISEN.md` — keuringslocatie en -soort, aankoopdatum,
+kwalificaties van keurmeesters mét upload, verkort interval bij zwaar
+gebruik, certificaat-verificatie (QR + audit-trail), bewaarbeleid.
+Resultaat blijft goed/afgekeurd.)
 
 ## Eigendomsgrenzen (de kern, besloten)
 
@@ -95,6 +98,20 @@ de koppeltabellen (`inspectors`, `customer_members`, `platform_admins`).
 | is_catalog_curator | boolean | de "god"-rol: mag globale catalogus bewerken |
 | active | boolean | telt alleen actief mee voor het abonnement |
 
+### `inspector_qualifications` (kwalificatiebewijzen, idee Jos 2026-06-12)
+Upload van certificaten per keurmeester (Sachkundenachweis, IPAF,
+fabrikantencertificaten). Klanten kunnen ze inzien (vertrouwen), het
+certificaat vermeldt de juiste kwalificatie (VK-eis, DE-eis), en het systeem
+waarschuwt bij verlopen.
+
+| kolom | type | uitleg |
+|---|---|---|
+| inspector_id | FK → inspectors | |
+| name | text | bijv. "Sachkunde PSAgA (DGUV 312-906)", "IPAF CAP" |
+| number | text? | certificaat-/pasnummer |
+| valid_until | date? | herinnering vóór verlopen |
+| storage_path | text? | PDF/foto in Supabase Storage |
+
 ### `customers` (klantbedrijven én zelfstandige gebruikers)
 Eigenaar van artikelen en historie (besloten: de klant bezit de data).
 
@@ -173,7 +190,8 @@ productdata van de keuringsdatum toont.
 | product_type | text | |
 | country_code | text | |
 | interval_months | int | NL/ppe → 12; GB/ppe → 6; NL/machine → 12 (NEN 3140); nieuw land of type = rijen toevoegen |
-| legal_reference | text? | "Arbobesluit" / "LOLER 1998" / "NEN 3140" — op certificaat |
+| severe_use_interval_months | int? | verkort interval bij zwaar gebruik (VK/INDG367: 3 mnd bij bijv. scherpe randen); artikel krijgt vlag `severe_use` |
+| legal_reference | text? | "Arbobesluit" / "LOLER 1998" / "NEN 3140" / "DGUV Regel 112-198" — op certificaat |
 
 Intervalresolutie: artikel-override → product-override → regime(type × land).
 
@@ -199,9 +217,11 @@ Intervalresolutie: artikel-override → product-override → regime(type × land
 | serial_number | text? | |
 | manufacture_year | int? | |
 | manufacture_month | int? | |
+| purchase_date | date? | aankoopdatum (EN 365-registratieveld) |
 | first_use_date | date? | huidige `in_gebruik` |
 | assigned_member_id | FK? → customer_members | de "gebruiker"; leeg = poolmateriaal |
 | interval_override_months | int? | per artikel afwijken |
+| severe_use | boolean | zwaar gebruik → verkort interval uit het regime (VK) |
 | notes | text? | |
 | retired | boolean | afgevoerd |
 | retired_at | timestamptz? | |
@@ -228,6 +248,8 @@ bij één persoon hoort.
 | inspector_id | FK → inspectors | |
 | certificate_number | text | |
 | inspection_date | date | |
+| location | text? | locatie van de keuring (LOLER/WAHR-rapportveld) |
+| examination_type | text | `periodic` / `interim` / `after_event` / `pre_first_use` (BetrSichV §14, INDG367) |
 | status | text | `draft` / `completed` — na completed onveranderlijk |
 | completed_at | timestamptz? | |
 | notes | text? | |
@@ -266,6 +288,14 @@ keuringsitem (bijv. 3), thumbnails + lazy loading in de UI. Rekenvoorbeeld:
 | storage_path | text | de vastgelegde PDF in Supabase Storage — wordt nooit opnieuw gegenereerd |
 | language | text | taal van het document |
 | issued_at | timestamptz | |
+| pdf_hash | text | hash van het bestand (audit-trail: bewijs dat de PDF onveranderd is) |
+| verify_token | text, uniek | voor de verificatie-QR op het certificaat: scan → publieke pagina toont het echte record |
+
+Op de PDF staan verplicht: uiterste datum volgende keuring (LOLER-eis, berekend
+uit het regime), naam + kwalificatie van de keurmeester, wettelijke basis
+(`legal_reference`), handtekening (PNG) en de verificatie-QR. Voor de Duitse
+markt later uitbreidbaar met een automatisch cryptografisch zegel
+(eIDAS-niveau "geavanceerd", server-side, geen handeling voor de keurmeester).
 
 ---
 
@@ -357,3 +387,13 @@ elk keuringsitem draagt de artikelgegevens. Het script moet dus artikelen
    per keurbedrijf), dus dit blokkeert niets.
 5. ~~Poolmateriaal?~~ → **Ja**, leeg `assigned_member_id` is normaal; geen
    afstraffing, alleen een vriendelijke PPE-hint (§3).
+6. ~~Derde keuringsuitkomst "monitoren"?~~ → **Nee** (besloten 2026-06-12):
+   geen EN 365-eis maar Petzl-formulierpraktijk; goed/afgekeurd +
+   opmerkingenveld volstaat.
+
+## 10. Bewaarbeleid
+
+**Nooit verwijderen.** NL kent geen wettelijke termijn (praktijk 5–10 jaar),
+VK eist 2 jaar/tot volgend rapport, DE tot de volgende keuring — alles ruim
+gedekt doordat de klant zijn data levenslang bezit en certificaten
+onveranderlijk gearchiveerd blijven (zie `ONDERZOEK-CERTIFICAATEISEN.md`).

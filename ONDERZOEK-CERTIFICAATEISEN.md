@@ -27,9 +27,10 @@ schrijft voor:
   einde-levensduurdatum), aankoopdatum, datum eerste ingebruikname, en de
   volledige historie van periodieke inspecties en reparaties (datum, details,
   resultaat, naam van de competent person).
-- Fabrikantformulieren (Petzl) volgen dit met als uitkomstcategorieën:
-  **goed / monitoren / repareren / afkeuren**, plus opmerkingenveld en
-  keurmeester + datum.
+- Fabrikantformulieren (Petzl) gebruiken als uitkomstcategorieën:
+  **goed / monitoren / repareren / afkeuren** — let op: dit is
+  Petzl-formulierpraktijk, **géén EN 365-eis**; de norm eist alleen dát
+  resultaat en details geregistreerd worden.
 
 → Wie EN 365-conform registreert, voldoet aan de gemeenschappelijke kern van
 NL, VK en DE. De landen verschillen vooral in **interval, ondertekening en
@@ -138,7 +139,7 @@ op de **elektronische handtekening** bij digitale rapporten.
 | Aankoopdatum + datum eerste gebruik | EN 365 | `articles.first_use_date` ✓; **aankoopdatum toevoegen** (`purchase_date`) |
 | Datum (laatste én huidige) keuring | LOLER, EN 365 | `inspections.inspection_date` + historie ✓ |
 | Soort/omvang keuring (periodiek/na gebeurtenis/interim) | BetrSichV §14, INDG367 | **ontbreekt** → `inspections.examination_type` toevoegen |
-| Resultaat per item | alle | `inspection_items.result` ✓ — overwegen: categorie "monitoren" toevoegen (EN 365/Petzl) |
+| Resultaat per item | alle | `inspection_items.result` ✓ — blijft goed/afgekeurd (besloten 2026-06-12; "monitoren" is Petzl-praktijk, geen normeis — opmerkingenveld volstaat) |
 | Defecten + beschrijving + vereiste actie | LOLER, WAHR, BetrSichV | afkeurcode + opmerking ✓; "vereiste actie" zit in afkeurbeleid/opmerking |
 | **Uiterste datum volgende keuring** | LOLER (verplicht), EN 365, NEN 3140-sticker | berekend ✓ — moet óók op de PDF |
 | Keurmeester: naam + **kwalificaties** + werkgever | LOLER, DGUV (Sachkundennachweis) | naam/bedrijf ✓; **kwalificaties toevoegen** (`inspectors.qualifications`, bijv. "DGUV 312-906", "IPAF CAP") |
@@ -156,8 +157,9 @@ op de **elektronische handtekening** bij digitale rapporten.
 4. `inspection_regimes` krijgt naast `interval_months` een optioneel
    `severe_use_interval_months` (VK: 3 mnd bij zwaar gebruik); per artikel
    aan te zetten met een vlag `severe_use`.
-5. Resultaatcategorie **"monitoren"** overwegen naast goed/afgekeurd
-   (EN 365/Petzl-praktijk: "to monitor").
+5. ~~Resultaatcategorie "monitoren"~~ — vervalt (besloten 2026-06-12):
+   geen EN 365-eis maar Petzl-formulierpraktijk; goed/afgekeurd +
+   opmerkingenveld volstaat.
 6. **Certificaat-ondertekening**: PDF afsluiten met naam + kwalificatie van de
    keurmeester en een digitale authenticatie. Minimaal: audit-trail
    (ingelogde keurmeester + tijdstip + hash van de PDF) en een
