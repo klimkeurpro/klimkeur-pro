@@ -54,7 +54,10 @@ Aandachtspunten bij dit model:
   verwijzen daarom naar een snapshot/versie van het product, niet naar de
   live catalogusrij.
 
-## 3. Datamodel (voorstel, hoofdlijnen)
+## 3. Datamodel (uitgewerkt voorstel in `DATAMODEL.md`)
+
+Het detailontwerp (tabellen, kolommen, rechten per rol, migratie) staat in
+**`DATAMODEL.md`** (voorstel v1, 2026-06-12). Hieronder de hoofdlijnen.
 
 Kern-entiteiten (namen nog te bepalen, zie 9.6):
 
