@@ -4,8 +4,9 @@ Levend document. Hier denken we de herbouw van KlimKeur Pro + KlimKeur Klant doo
 voordat er gebouwd wordt. Per onderwerp staat de huidige stand: **besloten**,
 **voorstel** (wacht op akkoord) of **open vraag**.
 
-Laatst bijgewerkt: 2026-06-12 (v4: spelregels openbare lijst, concrete
-prijzen, catalogus-wachtrij, migratie-aanpak)
+Laatst bijgewerkt: 2026-06-12 (v5: lijst-spelregels definitief —
+uitnodigingscode + "open voor nieuwe klanten"-schakelaar; CSV-import met
+AI-matching uitgewerkt)
 
 ---
 
@@ -147,18 +148,28 @@ keurmeester, verwijzing naar bestand).
   alarm maar "nog niet gekeurd — vraag een keuring aan". Rood is alleen voor
   verlópen keuringen, zodat de gratis app uitnodigt in plaats van afschrikt.
 
-**Spelregels openbare keurbedrijven-lijst** (voorstel 2026-06-12, om de zorg
-"help ik de concurrent?" te ondervangen):
+**Spelregels openbare keurbedrijven-lijst** (besloten 2026-06-12).
+Kernprincipe: *vindbaarheid* (op de lijst staan) en *bereikbaarheid* (eigen
+klanten kunnen koppelen) zijn losgekoppeld:
 
-1. Bestaande klanten zien de lijst nooit spontaan: wie gekoppeld is aan een
-   keurbedrijf ziet overal diens branding, geen suggesties of vergelijkingen.
-   De lijst verschijnt alleen bij een actieve keuze ("keuring aanvragen" als
-   nieuwe gebruiker, of bewust "ander keurbedrijf kiezen").
-2. De lijst is primair de etalage voor nieuwe, nog ongebonden gebruikers —
-   netto nieuwe leads voor alle deelnemende keurbedrijven.
-3. Geen rankings of reviews (zeker initieel); sorteren op afstand/regio.
-4. Elk betalend keurbedrijf staat erin; eventueel opt-out, maar wie er niet
-   in staat krijgt ook geen leads.
+1. **Uitnodigingscode/QR/link per keurbedrijf** — het normale kanaal voor de
+   eigen klanten (keurmeester geeft hem bij de keuring, op de factuur, per
+   mail). Koppelen via code werkt altijd, ook als het bedrijf niet op de
+   lijst staat.
+2. **De lijst is opt-in via een schakelaar "Open voor nieuwe klanten:
+   aan/uit"** in de instellingen van het keurbedrijf. Te druk → uit, geen
+   nieuwe leads; weer ruimte → aan. Zelf te bedienen, op elk moment.
+3. **Zoeken op (exacte) bedrijfsnaam vindt ook niet-gelijste bedrijven**,
+   zodat een bestaande klant die de code kwijt is zijn keurbedrijf altijd
+   kan vinden. Wie een bedrijf bij naam kent is geen lead van een ander.
+4. **Betaalachterstand → automatisch van de lijst** en nieuwe koppelingen
+   geblokkeerd tot er betaald is; bestaande klanten houden inzage in hun
+   eigen data (die bezitten zij).
+5. Bestaande klanten zien de lijst nooit spontaan: wie gekoppeld is ziet
+   overal de branding van het eigen keurbedrijf. De lijst verschijnt alleen
+   bij een actieve keuze ("keuring aanvragen" als nieuwe gebruiker, of
+   bewust "ander keurbedrijf kiezen").
+6. Geen rankings of reviews (zeker initieel); sorteren op afstand/regio.
 
 **Technisch:**
 
@@ -182,20 +193,26 @@ keurmeester, verwijzing naar bestand).
   Supabase-tabellen (klanten, producten, keuringen, keuring_items, bedrijven,
   afkeurcodes) rechtstreeks omzet naar het nieuwe schema. Volledige historie
   gaat mee; geen handmatig invoerwerk en geen "achterdeur" nodig.
-- **Andere keurbedrijven (later):** generieke CSV-import met
-  kolom-koppelscherm — het bedrijf wijst zelf aan welke kolom uit de eigen
-  Excel bij welk veld hoort. Niet nodig in versie één.
+- **Andere keurbedrijven (later): CSV-import met AI-ondersteuning.** Iedereen
+  heeft een eigen schrijfwijze ("Petzl I'D S" / "PETZL ID small"), dus een
+  starre import volstaat niet. Opzet in drie stappen:
+  1. kolommen koppelen — automatische herkenning ("dit lijkt de
+     serienummer-kolom"), gebruiker bevestigt;
+  2. rijen fuzzy matchen tegen de globale catalogus (merk + omschrijving)
+     met zekerheidsscore;
+  3. alleen twijfelgevallen ter controle voorleggen; onbekende producten
+     gaan de catalogus-wachtrij in (§2).
+  Hoe voller de catalogus, hoe beter het matchen — zelfversterkend. Niet
+  nodig in versie één.
 - **Gratis gebruikers:** voeren zelf in, geholpen door autocomplete op de
   globale catalogus (zo min mogelijk typwerk).
 
 ## 10. Open vragen
 
-1. Akkoord op de spelregels van de openbare lijst (§7)? En opt-out toestaan,
-   ja/nee?
-2. Prijzen zijn werkgetallen — definitief bevestigen vóór lancering (en
+1. Prijzen zijn werkgetallen — definitief bevestigen vóór lancering (en
    doorrekenen tegen verwachte kosten: hosting, stores, support, tijd
    god-keurmeesters).
-3. Volgende uitwerkthema: het datamodel in detail (tabellen, kolommen,
+2. Volgende uitwerkthema: het datamodel in detail (tabellen, kolommen,
    rechten per rol).
 
 ### Beantwoord
@@ -216,6 +233,9 @@ keurmeester, verwijzing naar bestand).
   onbekende producten gaan via de wachtrij naar catalogusbeheerders (§2).
 - ~~Migratie?~~ → Script voor Safety Green, later CSV-import met
   kolomkoppeling voor anderen (§9).
+- ~~Moet een betalend bedrijf op de lijst?~~ → Nee: lijst is een eigen
+  schakelaar ("open voor nieuwe klanten"); eigen klanten koppelen altijd via
+  uitnodigingscode of naam-zoeken (§7).
 
 ## 11. Bronmateriaal
 
