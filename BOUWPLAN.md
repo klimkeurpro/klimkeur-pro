@@ -1,4 +1,4 @@
-# Bouwplan GearCert (werknaam)
+# Bouwplan Gearonimo
 
 Hoort bij `BLAUWDRUK.md`, `DATAMODEL.md`, `UX-FLOW.md` en
 `ONDERZOEK-CERTIFICAATEISEN.md`. Status: vastgesteld 2026-06-12.
@@ -20,17 +20,18 @@ Uitgangspunten:
 
 Privé en zakelijk gescheiden vanaf dag één (besluit Jos 2026-06-12):
 
-1. **gearcert.com registreren** (+ .io/.app/.eu/.nl; optioneel defensief
-   gearcheck.net) — zie blauwdruk §8.
-2. **Zakelijk e-mailadres** op het domein (bijv. jos@gearcert.com); kan bij
-   de registrar of via een mailpakket.
-3. **GitHub-organisatie "gearcert"** aanmaken met het zakelijke adres —
+1. **Domeinen registreren: gearonimo.io/.app/.nl/.eu** (gearonimo.com is
+   geparkeerd — aankoop via broker later verkennen) — zie blauwdruk §8.
+2. **Zakelijk e-mailadres** op het domein (bijv. jos@gearonimo.app of
+   @gearonimo.nl); kan bij de registrar of via een mailpakket.
+3. **GitHub-organisatie "gearonimo"** aanmaken met het zakelijke adres —
    nieuwe repo's los van klimkeurpro.
 4. **Supabase-account op het zakelijke adres**, nieuw project in EU-regio.
-5. Gratis **EUIPO-merkcheck** op "gearcert" (klasse 9 + 42).
+5. ~~Merkcheck~~ gedaan (TMview: alleen beëindigd Mattel-merk klasse 28 —
+   geen blokkade). Nog doen: **naam checken in App Store en Play Store**.
 6. *Pas later nodig:* Stripe-account (fase 5), Apple Developer $99/jaar en
-   Google Play $25 eenmalig (fase 5), EU-merkregistratie ~€850 (bij
-   lancering).
+   Google Play $25 eenmalig (fase 5), EU-merkregistratie ~€850, klasse 9 +
+   42 (bij lancering).
 
 ## Fase 1 — Skelet en kern (±2–3 bouwsessies)
 

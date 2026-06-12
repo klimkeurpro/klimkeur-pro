@@ -236,18 +236,21 @@ Bouwstenen en motivatie:
    uitdelen die kunnen botsen); de certificaat-PDF wordt bij synchronisatie
    server-side gegenereerd; foto's wachten in de upload-wachtrij. De klant-app
    blijft online-first (lezen met cache volstaat daar).
-2. **Internationale merknaam: GearCert (voorkeursbesluit 2026-06-12,
-   reservering loopt).** Domeincheck: gearcert.com/.io/.app/.eu/.nl alle
-   vrij; gearcheck.com bezet, gearcheck.io was een gelijknamige
-   PPE-inspectie-app (site inmiddels dood — naam blijft merkrisico en is
-   als wedstrijdterm te generiek om te beschermen); gearproof.com bezet.
-   Actiepunten Jos: domeinen registreren (gearcert.com eerst; optioneel
-   defensief gearcheck.net), gratis merkcheck via EUIPO eSearch (klasse 9 +
-   42), naam checken in App Store/Play Store. EU-merkregistratie (~€850)
-   bij lancering. Tot die tijd is "GearCert" de werknaam in alle documenten.
-   Verworpen alternatieven: GearCheck (bezet/generiek), GearProof (.com
-   bezet; "check" had toch de voorkeur), CertaGear, NextCheck, Inspecta,
-   VeriTag.
+2. **Internationale merknaam: Gearonimo (besloten 2026-06-12).**
+   Memorabel, internationaal uitspreekbaar, met humor — en het bezwaar
+   "gezag op het certificaat" vervalt omdat het certificaat de naam en
+   huisstijl van het kéurbedrijf draagt (branding per tenant, DATAMODEL);
+   het platform staat hooguit klein als "powered by Gearonimo" in de voet.
+   Merkcheck (TMview, door Jos): enige treffer is een **beëindigd**
+   Mattel-merk in klasse 28 (speelgoed) — blokkeert niet (dood + andere
+   klasse). Domeinen: gearonimo.io/.app/.nl/.eu vrij; gearonimo.com bezet
+   maar geparkeerd (eventueel later via broker aankopen).
+   Actiepunten Jos: domeinen registreren (.io/.app/.nl/.eu; .com-aankoop
+   verkennen), naam checken in App Store/Play Store, zakelijk e-mailadres.
+   EU-merkregistratie (~€850, klasse 9 + 42) bij lancering.
+   Eerder overwogen: GearCert (serieuze nummer twee, domeinfamilie vrij),
+   GearCheck (bezet/generiek), GearProof, CertaGear, NextCheck, Inspecta,
+   VeriTag, Knot Bad, MurphyProof, GravityCheck.
 
 ## 9. Migratie en onboarding (besloten van richting, 2026-06-12)
 
