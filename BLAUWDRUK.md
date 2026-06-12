@@ -180,15 +180,51 @@ klanten kunnen koppelen) zijn losgekoppeld:
 - Abonnementen via de website (Stripe, geen storecommissie); in de apps wordt
   alleen ingelogd. Geen in-app purchases nodig.
 
-## 8. Techniek (open, voorkeur nog bepalen)
+## 8. Techniek (voorstel 2026-06-12, ter bespreking)
 
-- Backend: Supabase (auth, database met RLS, storage) — bewezen in huidige apps.
-- Frontend: nader te bepalen. Afweging: bewust simpel (huidige vanilla-aanpak,
-  maar dan gestructureerd) versus een licht framework. Capacitor-verpakking en
-  i18n wegen mee in de keuze.
-- Eén Supabase-project voor alle markten (met markt-kolom) of per markt een
-  eigen project — voorkeur: één project, anders wordt de catalogus dubbel
-  beheerd.
+**Opzet: monorepo — één codebasis, twee apps, gedeelde kern.**
+
+```
+packages/core   → domeinlogica (statusberekening, next_due, regimes),
+                  Supabase-client, vertalingen (nl, en-GB), types
+packages/ui     → gedeelde componenten en huisstijl
+apps/inspector  → keurmeester-app
+apps/customer   → klant-app
+```
+
+Bouwstenen en motivatie:
+
+- **Backend: Supabase, één project voor alle markten** (anders dubbel
+  catalogusbeheer). Auth, Postgres + RLS per rol (zie DATAMODEL §7), Storage
+  (certificaten, foto's, kwalificatiebewijzen), Edge Functions.
+- **Frontend: Vue 3 + TypeScript + Vite.** Overzichtelijk, breed gangbaar,
+  volwassen i18n (vue-i18n). TypeScript vangt fouten tijdens het bouwen —
+  passend bij een veiligheidsproduct. (Alternatief met grootste
+  ontwikkelaarspool: React; functioneel gelijkwaardig.)
+- **Capacitor** verpakt beide apps voor App Store/Play Store; zelfde code
+  draait als website/PWA. Eén codebase, drie kanalen.
+- **PDF-generatie server-side** (Edge Function) bij het afronden van een
+  keuring: identieke opbouw ongeacht apparaat, hash + verificatie-QR direct
+  erbij, archivering rechtstreeks in Storage. Duits cryptografisch zegel
+  later op dezelfde plek toe te voegen.
+- **Stripe** voor abonnementen + metered billing (tikken), afgehandeld via
+  Edge Functions (webhooks).
+- **Testen:** unit-tests op de domeinlogica (statusberekening, next_due,
+  regimes — de veiligheidskritische rekenregels), end-to-end-tests op de
+  kernflows (keuring afronden, certificaat genereren).
+- **Hosting web/PWA:** statische hosting met eigen domein (bijv. Cloudflare
+  Pages); Supabase doet de rest.
+
+**Openstaande architectuurvragen (antwoord Jos nodig):**
+
+1. **Offline keuren?** Moet de keurmeester-app volledig zonder internet
+   kunnen keuren (kelders, buitengebied) met synchronisatie achteraf, of
+   volstaat "online met tolerantie voor haperende verbinding"? Volledig
+   offline-first is een fundamenteel zwaardere opzet — vóór de bouw beslissen,
+   achteraf inbouwen is een verbouwing.
+2. **Merknaam internationaal:** "KlimKeur" in de Britse/Amerikaanse stores,
+   of een internationale naam (of naam per land op hetzelfde platform)?
+   Nodig vóór store-registraties, domeinnamen en certificaatontwerp.
 
 ## 9. Migratie en onboarding (besloten van richting, 2026-06-12)
 
