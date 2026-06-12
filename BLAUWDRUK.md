@@ -227,6 +227,10 @@ Bouwstenen en motivatie:
    internet: klant + artikelen worden vooraf gesynchroniseerd, keuren kan
    offline, en zodra er verbinding is wordt **automatisch** geüpload (met
    daarnaast een zichtbare "nu synchroniseren"-knop voor 's avonds thuis).
+   **Sync-aanpak (akkoord Jos 2026-06-12):** pragmatische eigen sync-laag
+   in de app (dataset per keurbedrijf is klein); PowerSync als vluchtweg
+   als dat tegenvalt. Geaccepteerde consequentie: na een offline keurdag
+   staat de certificaat-PDF pas ná synchronisatie klaar.
    Gevolgen: lokale opslag + sync-engine in `packages/core`;
    certificaatnummers worden gereserveerd vóór vertrek (offline geen nummers
    uitdelen die kunnen botsen); de certificaat-PDF wordt bij synchronisatie
