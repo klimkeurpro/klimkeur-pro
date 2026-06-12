@@ -197,6 +197,12 @@ Bouwstenen en motivatie:
 - **Backend: Supabase, één project voor alle markten** (anders dubbel
   catalogusbeheer). Auth, Postgres + RLS per rol (zie DATAMODEL §7), Storage
   (certificaten, foto's, kwalificatiebewijzen), Edge Functions.
+  **Bewust géén zelf-hosting** (NAS/eigen server besproken en verworpen
+  2026-06-12: uptime-, beveiligings- en AVG-verantwoordelijkheid staat niet
+  in verhouding tot ~€25/mnd cloudkosten). Vluchtroute bestaat: Supabase is
+  open source op PostgreSQL — desnoods later zelf te hosten met volledige
+  data-overname. **Eigen-databezit geregeld via automatische periodieke
+  back-up (database-dump + certificaten) naar de NAS van Jos.**
 - **Frontend: Vue 3 + TypeScript + Vite.** Overzichtelijk, breed gangbaar,
   volwassen i18n (vue-i18n). TypeScript vangt fouten tijdens het bouwen —
   passend bij een veiligheidsproduct. (Alternatief met grootste
