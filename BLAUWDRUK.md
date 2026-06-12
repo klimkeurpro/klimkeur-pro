@@ -215,16 +215,28 @@ Bouwstenen en motivatie:
 - **Hosting web/PWA:** statische hosting met eigen domein (bijv. Cloudflare
   Pages); Supabase doet de rest.
 
-**Openstaande architectuurvragen (antwoord Jos nodig):**
+**Architectuurbesluiten (2026-06-12):**
 
-1. **Offline keuren?** Moet de keurmeester-app volledig zonder internet
-   kunnen keuren (kelders, buitengebied) met synchronisatie achteraf, of
-   volstaat "online met tolerantie voor haperende verbinding"? Volledig
-   offline-first is een fundamenteel zwaardere opzet — vóór de bouw beslissen,
-   achteraf inbouwen is een verbouwing.
-2. **Merknaam internationaal:** "KlimKeur" in de Britse/Amerikaanse stores,
-   of een internationale naam (of naam per land op hetzelfde platform)?
-   Nodig vóór store-registraties, domeinnamen en certificaatontwerp.
+1. **Offline-first (besloten).** De keurmeester-app werkt volledig zonder
+   internet: klant + artikelen worden vooraf gesynchroniseerd, keuren kan
+   offline, en zodra er verbinding is wordt **automatisch** geüpload (met
+   daarnaast een zichtbare "nu synchroniseren"-knop voor 's avonds thuis).
+   Gevolgen: lokale opslag + sync-engine in `packages/core`;
+   certificaatnummers worden gereserveerd vóór vertrek (offline geen nummers
+   uitdelen die kunnen botsen); de certificaat-PDF wordt bij synchronisatie
+   server-side gegenereerd; foto's wachten in de upload-wachtrij. De klant-app
+   blijft online-first (lezen met cache volstaat daar).
+2. **Internationale merknaam (besloten van richting).** "KlimKeur" blijft
+   niet de internationale naam. Shortlist (snelle botscheck gedaan: GearCert
+   en CertaGear vrij in deze markt; concurrenten heten Scannable, Papertrail,
+   Certado, Petzl EXAM):
+   - **GearCert** — gear + certificaat, direct duidelijk (aanbeveling)
+   - **GearProof** — dubbele betekenis: bewijs én bestand tegen
+   - **CertaGear** — brandbaar; let op klankgelijkenis met concurrent Certado
+   - **NextCheck** — vriendelijk, verwijst naar "volgende keuring"
+   - **Inspecta** — internationaal uitspreekbaar, wel generieker
+   - **VeriTag** — verwijst naar de verificatie-QR op het certificaat
+   Vóór de definitieve keuze: merkenregister-, domein- en store-namencheck.
 
 ## 9. Migratie en onboarding (besloten van richting, 2026-06-12)
 
