@@ -4,7 +4,7 @@ Levend document. Hier denken we de herbouw van KlimKeur Pro + KlimKeur Klant doo
 voordat er gebouwd wordt. Per onderwerp staat de huidige stand: **besloten**,
 **voorstel** (wacht op akkoord) of **open vraag**.
 
-Laatst bijgewerkt: 2026-06-12
+Laatst bijgewerkt: 2026-06-12 (v2: databezit, prijsmodel, twee apps besloten)
 
 ---
 
@@ -51,6 +51,13 @@ Aandachtspunten bij dit model:
 
 Kern-entiteiten (namen nog te bepalen, zie 9.6):
 
+- **Databezit (besloten 2026-06-12):** het klantbedrijf/de eindgebruiker bezit
+  de eigen artikelen en keuringshistorie. Stapt een klant over naar een ander
+  keurbedrijf, dan gaan data en historie mee ("dat bedrijf heeft geluk, minder
+  invulwerk"). Gevolg voor het schema: artikelen en historie hangen aan het
+  klantbedrijf; het keurbedrijf is een wisselbare koppeling, geen eigenaar.
+  Certificaten blijven altijd zichtbaar voor de klant, ook na overstap.
+
 - `keurbedrijven` (tenant) — branding, abonnement, land/markt
 - `keurmeesters` — gekoppeld aan keurbedrijf; vlag `is_catalogusbeheerder`
 - `klantbedrijven` — gekoppeld aan keurbedrijf; eigen admin(s)
@@ -95,17 +102,35 @@ keurmeester, verwijzing naar bestand).
   Registration Number), standaardland, placeholders voor postcode/telefoon.
 - Certificaat-PDF in de taal van de markt van het keurbedrijf.
 
-## 7. Distributie en betalen (voorstel, nog doorspreken)
+## 7. Distributie en betalen
 
-- Waarschijnlijk twee apps in de stores: een keurmeester-app en een
-  eindgebruiker-app (zoals nu pro/klant), op één gedeelde backend.
-- Technisch: PWA verpakt met Capacitor voor App Store/Play Store.
-- **Let op Apple/Google-commissie (15–30%):** digitale abonnementen die ín de
-  app worden afgesloten moeten via in-app purchase. B2B-abonnementen
-  (keurbedrijven) kunnen zoals gangbaar via de website (Stripe) worden verkocht;
-  in de app log je alleen in. De eindgebruikers-app kan gratis zijn (toegang
-  via klantbedrijf). Een eventuele losse B2C-variant (individu beheert eigen
-  materiaal) zou wél via in-app purchase moeten.
+**Besloten (2026-06-12):**
+
+- **Twee apps** in de stores: een keurmeester-app en een eindgebruiker-app
+  (zoals nu pro/klant), op één gedeelde backend. De klant-app stáát in de
+  stores — dat oogt betrouwbaar.
+- **Prijsrichting B2B:** het keurbedrijf betaalt het platform per gekeurd
+  artikel, orde van grootte €0,05–0,10 per artikel per keuring, en berekent
+  dat door aan de eigen klant.
+
+**Voorstel (nog bevestigen):**
+
+- **Basisabonnement + tikken:** naast de prijs per artikel een laag vast
+  bedrag (bijv. per keurmeester per maand) als bodem, zodat ook kleine
+  keurbedrijven de vaste kosten dekken. Facturatie via Stripe metered billing
+  (gekeurde items per maand tellen).
+- **Klant-app gratis** voor medewerkers die via een keurbedrijf zijn
+  uitgenodigd (indirect al betaald via de tikken). Betaalde adoptiedrempel bij
+  medewerkers zou de waarde voor het keurbedrijf ondergraven.
+- **B2C-variant à ±€10/jaar via in-app purchase:** individuen zónder
+  keurbedrijf (zzp'er, arborist, sportklimmer) houden eigen materiaal bij.
+  Apple/Google-commissie (15% onder $1M omzet) is bij dat bedrag acceptabel.
+
+**Technisch:**
+
+- PWA verpakt met Capacitor voor App Store/Play Store.
+- B2B-abonnementen via de website (Stripe, geen storecommissie); in de app
+  alleen inloggen. Alleen de B2C-variant loopt via in-app purchase.
 
 ## 8. Techniek (open, voorkeur nog bepalen)
 
@@ -119,23 +144,25 @@ keurmeester, verwijzing naar bestand).
 
 ## 9. Open vragen
 
-1. Kunnen eindgebruikers/klantbedrijven zich zelfstandig aanmelden (B2C, eigen
-   materiaal bijhouden zonder keurbedrijf), of bestaat een account alleen via
-   een keurbedrijf?
-2. Eén app of twee apps in de stores? (Voorstel: twee, zie 7.)
-3. Wie betaalt wat precies? Keurbedrijf-abonnement per keurmeester? Betaalt een
-   klantbedrijf ook, of zit dat in het abonnement van het keurbedrijf? Wat
-   kost de eindgebruikers-app in de store?
-4. Kan een klantbedrijf overstappen naar een ander keurbedrijf, en wie "bezit"
-   dan de keuringshistorie en certificaten?
-5. Mag een klantbedrijf-admin producten toevoegen aan de globale catalogus, of
+1. Akkoord op het prijsvoorstel in §7 (basisabonnement + tikken, klant-app
+   gratis, B2C-variant ±€10/jaar)? En welk bedrag wordt het: €0,05 of €0,10
+   per artikel?
+2. Mag een klantbedrijf-admin producten toevoegen aan de globale catalogus, of
    alleen eigen artikelen aanmaken (voorstel: alleen artikelen; catalogus is
    aan catalogusbeheerders)?
-6. Naamgeving database/code: Nederlands houden of Engels (voorstel bij
+3. Naamgeving database/code: Nederlands houden of Engels (voorstel bij
    internationale ambitie: Engels in code en schema, vertaling alleen in UI)?
-7. Migratie: huidige klanten, artikelen en keuringshistorie meenemen naar het
+4. Migratie: huidige klanten, artikelen en keuringshistorie meenemen naar het
    nieuwe schema — wanneer en hoe testen we dat?
-8. Wat wilde je nog noemen na "pdf opslaan, …" in het gesprek? (zin brak af)
+5. Hoe werkt een overstap praktisch: vraagt het nieuwe keurbedrijf toegang aan
+   en bevestigt de klantbedrijf-admin (voorstel), of regelt het platform dit?
+
+### Beantwoord
+
+- ~~Wie bezit de data bij overstap?~~ → De klant (zie §3, databezit).
+- ~~Eén of twee apps?~~ → Twee (zie §7).
+- ~~Wie betaalt wat?~~ → Richting bepaald: keurbedrijf betaalt per gekeurd
+  artikel en berekent door; details in §7.
 
 ## 10. Bronmateriaal
 
