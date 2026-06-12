@@ -76,14 +76,57 @@ PRIMAIRE ACTIE op het dashboard wanneer relevant: [ KEURING AANVRAGEN ]
   · Meer**.
 - Nooit gekeurde artikelen: uitnodigende tekst, geen rood alarm (blauwdruk §7).
 
-## 4. Vragen aan Jos (volgende sparringronde)
+## 4. Praktijkinput Jos (2026-06-12) en wat we ermee doen
 
-1. Beschrijf je typische keuringsdag stap voor stap — van vertrek tot
-   's avonds. Waar zitten de momenten die nu onhandig zijn?
-2. Welke 5 handelingen doe je het állervaakst in de huidige app? (Die
-   verdienen de minste tikken.)
-3. Scan je nu serienummers of typ je ze meestal? Hebben de artikelen van
-   klanten vaak een leesbare/scanbare code?
-4. Keur je meestal per klant op locatie, of komen spullen ook naar jouw
-   werkplaats (zoals de keuringsplanner suggereert met binnenkomst/retour)?
-5. Wat staat er nu dubbel in de app dat jou het meest irriteert?
+**De huidige werkdag (op de zaak):** koffie en e-mail → kijken wat er in de
+rij staat om gekeurd te worden → certificaat van vorig jaar openen,
+kopiëren, goedgekeurd-markeringen weghalen, afkeurcodes naar een
+niet-afgedrukte tabel → opslaan als JJJJMMDD-klantnaam → spullen
+controleren: goed = sticker + vinkje, door naar het volgende → product
+opzoeken via de **laatste 3 cijfers van het serienummer**. Op locatie
+hetzelfde, minus het bureau met waslijn. Serienummers worden meestal
+**getypt**, af en toe gescand (nieuwe verkoop, schone barcode). Jos keurt
+vooral op de zaak; een collega vooral op locatie.
+
+**Ontwerpgevolgen (vastgesteld):**
+
+1. **Het kopieer-ritueel vervalt.** Artikelen van een klant bestaan als
+   entiteit; "Start keuring" zet automatisch alle actieve artikelen klaar —
+   onbeoordeeld, met per artikel de uitslag/afkeurcode van de vórige keuring
+   als context in beeld (de "niet-afgedrukte tabel", maar dan vanzelf).
+   Certificaatnummer/datum genereert het systeem.
+2. **Serienummer-zoeken op de laatste cijfers** (suffix/bevat-match) is het
+   primaire zoekgedrag in het keurscherm; typen is de norm, scannen de
+   optie (camera voor schone barcodes/nieuwe verkoop).
+3. **De tik-flow is heilig:** artikel vinden → één tik "goed" → volgende.
+   De handeling die honderden keren per dag gebeurt krijgt het minste
+   aantal tikken. (Sticker blijft fysiek werk.)
+4. **Dashboard wordt actiegericht, geen statistiek-etalage.** Citaat Jos:
+   "hoe vol de database zit maakt in de praktijk niet uit, als het maar
+   werkt." Het Vandaag-scherm toont: wachtrij van vandaag (op de zaak),
+   openstaande concepten, binnenkort verlopende keuringen bij klanten.
+   Database-tellers verdwijnen of verhuizen naar "Meer".
+5. **Klantzoeken over álle velden:** naam, klantnummer, adres, telefoon,
+   e-mail.
+6. **Het klik-instinct krijgt gelijk:** op een klantnaam tikken (waar dan
+   ook) opent de klantpagina met de grote contextknop Start/Hervat keuring.
+   Geen aparte "Nieuwe keuring"-knop rechtsboven die over het hoofd wordt
+   gezien.
+7. **Geen destructieve knoppen naast archief:** de huidige rode
+   "Verwijder"-knop direct naast afgeronde keuringen verdwijnt — afgerond =
+   onveranderlijk (DATAMODEL §4); alleen concepten kunnen weg.
+8. **Merkenoverzicht met fabrikantlogo's** als visuele polish (nominatief
+   merkgebruik: herkenning, geen gesuggereerde sponsoring).
+9. Werkplaats- vs locatiemodus verschillen niet in flow, wel in context:
+   de wachtrij ("wat staat er vandaag voor aan de rij") is
+   werkplaats-specifiek en raakt aan de keuringsplanner (buiten scope,
+   later koppelbaar).
+
+## 5. Open punten volgende sparringronde
+
+1. Het Vandaag-scherm voor de werkplaats: waar komt de wachtrij vandaan
+   zolang de keuringsplanner los staat — handmatig lijstje in de app, of
+   simpelweg "recent geopende klanten"?
+2. Hoe ziet de ideale keuring-afrondpagina eruit (wat wil Jos controleren
+   vóór de handtekening)?
+3. Klant-app flows doornemen zodra de keurmeester-flow staat.

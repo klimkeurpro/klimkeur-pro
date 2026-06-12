@@ -232,6 +232,10 @@ Bouwstenen en motivatie:
    Certado, Petzl EXAM):
    - **GearCert** — gear + certificaat, direct duidelijk (aanbeveling)
    - **GearProof** — dubbele betekenis: bewijs én bestand tegen
+   - ~~GearCheck~~ — ingeburgerde wedstrijdterm en daarom onderzocht (idee
+     Jos), maar **bezet**: gearcheck.io is een bestaande PPE-inspectie-app in
+     exact deze markt (QR/NFC, keuringen boeken via keurmeester-netwerk) —
+     tevens concurrent om te bestuderen
    - **CertaGear** — brandbaar; let op klankgelijkenis met concurrent Certado
    - **NextCheck** — vriendelijk, verwijst naar "volgende keuring"
    - **Inspecta** — internationaal uitspreekbaar, wel generieker
