@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Klant-app — Hoofdmenu</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="crumbs"><a href="index.html">← Overzicht mockups</a></div>
+  <h1 class="page-title">Klant-app — Hoofdmenu (§8 / §9.2)</h1>
+  <p class="page-sub">Eerste scherm voor de klant na inloggen.</p>
+
+  <div class="phone">
+    <div class="statusbar"><span>9:41</span><span>●●●●</span></div>
+    <div class="topbar">
+      <span>🏢 Bedrijf Jansen BV</span>
+      <span>KlimKeur</span>
+    </div>
+    <div class="content">
+      <a class="banner warn" href="#">
+        <span>⚠️ 3 artikelen hebben aandacht</span>
+        <span>→</span>
+      </a>
+      <p class="muted" style="margin-top:-8px; margin-bottom:16px;">
+        (alternatief als alles goed is: <b>✅ Alles in orde</b>)
+      </p>
+
+      <div class="tile-grid">
+        <a class="tile" href="#">
+          <span class="icon">🧰</span>
+          Mijn materiaal
+        </a>
+        <a class="tile" href="#">
+          <span class="icon">📅</span>
+          Keuring aanvragen
+        </a>
+        <a class="tile" href="#">
+          <span class="icon">📄</span>
+          Certificaten
+        </a>
+        <a class="tile" href="#">
+          <span class="icon">⚙️</span>
+          Beheer (admin)
+        </a>
+      </div>
+    </div>
+    <div class="bottom-nav">
+      <a class="active" href="#">🏠<br>Overzicht</a>
+      <a href="#">🧰<br>Mijn materiaal</a>
+      <a href="#">📄<br>Certificaten</a>
+      <a href="#">⋯<br>Meer</a>
+    </div>
+  </div>
+
+  <table class="field-table">
+    <tr><th>Element</th><th>Bron / velden (DATAMODEL)</th></tr>
+    <tr>
+      <td>"Alles in orde" / "N artikelen hebben aandacht"</td>
+      <td>berekend: <code>articles</code> van <code>customer_id</code> =
+        huidig, status afgeleid uit
+        <code>inspection_items.next_due</code> van laatste keuring t.o.v.
+        vandaag (oranje/rood), zie DATAMODEL §3</td>
+    </tr>
+    <tr>
+      <td>Tik door → lijst aandachtspunten</td>
+      <td>dezelfde <code>articles</code>, gesorteerd op
+        <code>next_due</code> oplopend</td>
+    </tr>
+    <tr>
+      <td>Mijn materiaal</td>
+      <td><code>articles</code> (incl. <code>free_description</code> /
+        <code>free_brand</code> bij vrij artikel); rol <code>member</code>
+        ziet primair eigen <code>assigned_member_id</code>, kan wisselen
+        naar alles</td>
+    </tr>
+    <tr>
+      <td>Keuring aanvragen</td>
+      <td><code>inspection_requests</code> (insert) — gekoppeld: direct
+        naar actieve <code>customer_link.company_id</code>; niet
+        gekoppeld: keuze uit <code>inspection_companies</code> waar
+        <code>listed = true</code>, of <code>invite_code</code></td>
+    </tr>
+    <tr>
+      <td>Certificaten</td>
+      <td><code>certificates</code> via <code>inspections.customer_id</code>
+        = huidig, met <code>verify_token</code> voor QR</td>
+    </tr>
+    <tr>
+      <td>Beheer (alleen <code>customer_members.role = 'admin'</code>)</td>
+      <td>medewerkers (<code>customer_members</code> CRUD), artikelen
+        toevoegen (<code>products</code> autocomplete of vrij artikel →
+        <code>articles</code>, <code>status='pending'</code> bij onbekend
+        product), <code>customer_links</code> (overstappen/koppelen)</td>
+    </tr>
+    <tr>
+      <td>Bottom-nav "Meer"</td>
+      <td>bundelt Aanvragen + Beheer (rolafhankelijk zichtbaar)</td>
+    </tr>
+  </table>
+</body>
+</html>
