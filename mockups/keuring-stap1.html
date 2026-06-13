@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Keuring — Stap 1</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="crumbs"><a href="index.html">← Overzicht mockups</a></div>
+  <h1 class="page-title">Keuring-wizard — Stap 1: artikelen toevoegen (§9.4)</h1>
+  <p class="page-sub">Gestart vanaf de klantpagina via "Start keuring".</p>
+
+  <div class="phone">
+    <div class="statusbar"><span>9:41</span><span>●●●●</span></div>
+    <div class="topbar">
+      <a href="klantpagina.html">← Keuring Jansen BV</a>
+      <span class="step-indicator">Stap 1/4</span>
+    </div>
+    <div class="content">
+      <a class="btn-secondary" href="#">📷 Scan serienummer</a>
+      <p class="muted" style="margin:8px 0 4px;">of typ:</p>
+      <input type="text" placeholder="laatste cijfers…">
+
+      <div class="section-title">Klaargezet uit vorige keuring</div>
+      <label class="toggle-check">
+        <input type="checkbox" checked> Petzl Avao Bod &nbsp;
+        <span class="muted">SN …1234</span>
+      </label>
+      <label class="toggle-check">
+        <input type="checkbox" checked> Petzl Vertex &nbsp;
+        <span class="muted">SN …5678</span>
+      </label>
+      <label class="toggle-check">
+        <input type="checkbox" checked> Stihl MS261 &nbsp;
+        <span class="muted">SN …9012</span>
+      </label>
+
+      <div class="section-title">Filter</div>
+      <div class="filter-pills">
+        <span class="pill active">Alles</span>
+        <span class="pill">PBM</span>
+        <span class="pill">Machines</span>
+      </div>
+
+      <a class="btn-secondary" href="#">+ Onbekend artikel toevoegen</a>
+    </div>
+    <div style="padding:12px 16px; border-top:1px solid var(--border); background:#fff;">
+      <a class="btn-primary" href="keuring-stap2.html">Volgende →</a>
+    </div>
+  </div>
+
+  <table class="field-table">
+    <tr><th>Element</th><th>Bron / velden (DATAMODEL)</th></tr>
+    <tr>
+      <td>Start</td>
+      <td>nieuwe rij <code>inspections</code> (<code>customer_id</code>,
+        <code>company_id</code>, <code>inspector_id</code>,
+        <code>inspection_date</code>, <code>location</code>,
+        <code>examination_type</code>, <code>status='draft'</code>)</td>
+    </tr>
+    <tr>
+      <td>Vooraf ingevuld</td>
+      <td><code>inspection_items</code> aangemaakt per actief
+        <code>article</code> van de klant
+        (<code>result='not_assessed'</code>), met de uitslag van de
+        vórige keuring als context (laatste
+        <code>inspection_items.result</code> / <code>comment</code> per
+        <code>article_id</code>)</td>
+    </tr>
+    <tr>
+      <td>SN-zoeken</td>
+      <td><code>articles.serial_number</code> suffix/bevat-match binnen
+        <code>customer_id</code>=X</td>
+    </tr>
+    <tr>
+      <td>Type-filter PBM/machines</td>
+      <td>filtert op <code>products.product_type</code> (<code>ppe</code>
+        vs <code>machine</code> / <code>aerial_platform</code> / …)</td>
+    </tr>
+    <tr>
+      <td>Onbekend artikel</td>
+      <td>nieuwe <code>articles</code>-rij zonder <code>product_id</code>
+        (<code>free_description</code> / <code>free_brand</code> /
+        <code>free_material</code>), of nieuw <code>products</code>-voorstel
+        met <code>status='pending'</code></td>
+    </tr>
+  </table>
+</body>
+</html>
