@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Keurmeester — Hoofdmenu</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="crumbs"><a href="index.html">← Overzicht mockups</a></div>
+  <h1 class="page-title">Keurmeester-app — Hoofdmenu (§7 / §9.1)</h1>
+  <p class="page-sub">Eerste scherm na inloggen voor de keurmeester.</p>
+
+  <div class="phone">
+    <div class="statusbar"><span>9:41</span><span>●●●●</span></div>
+    <div class="topbar">
+      <span>KlimKeur Pro</span>
+      <a href="#">☰</a>
+    </div>
+    <div class="content">
+      <div class="banner">
+        <span>✅ 14 items goed gekeurd vandaag</span>
+      </div>
+
+      <div class="search">🔍 Zoek klant / serienummer…</div>
+
+      <div class="tile-grid">
+        <a class="tile" href="klantpagina.html">
+          <span class="icon">🆕</span>
+          Nieuwe keuring
+        </a>
+        <a class="tile" href="#">
+          <span class="icon">📋</span>
+          Bestaande keuringen
+        </a>
+        <a class="tile" href="#">
+          <span class="icon">👥</span>
+          Klanten
+        </a>
+        <a class="tile" href="#">
+          <span class="icon">🔎</span>
+          SN zoeken / Recall
+        </a>
+        <a class="tile" href="#">
+          <span class="icon">⚙️</span>
+          Instellingen
+        </a>
+        <div class="tile empty">
+          <span class="icon">➕</span>
+          (gereserveerd)
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <table class="field-table">
+    <tr><th>Element</th><th>Bron / velden (DATAMODEL)</th></tr>
+    <tr>
+      <td>Statusregel "X items goed gekeurd vandaag"</td>
+      <td><code>inspection_items.result = 'passed'</code> waar
+        <code>inspections.completed_at</code> = vandaag en
+        <code>inspections.company_id</code> = huidig bedrijf</td>
+    </tr>
+    <tr>
+      <td>Zoekbalk</td>
+      <td><code>customers</code> (naam, adres, telefoon, e-mail) +
+        <code>customer_links.customer_number</code>, gefilterd op actieve
+        links van dit bedrijf; en <code>articles.serial_number</code>
+        (bevat-match, zie §4.2)</td>
+    </tr>
+    <tr>
+      <td>Nieuwe keuring</td>
+      <td>opent klantzoekscherm → Klantpagina (§9.3)</td>
+    </tr>
+    <tr>
+      <td>Bestaande keuringen</td>
+      <td><code>inspections</code> waar <code>company_id</code> = huidig,
+        <code>draft</code> + <code>completed</code> naast elkaar</td>
+    </tr>
+    <tr>
+      <td>Klanten</td>
+      <td><code>customers</code> via <code>customer_links</code> waar
+        <code>company_id</code> = huidig en <code>status = 'active'</code></td>
+    </tr>
+    <tr>
+      <td>SN zoeken / Recall</td>
+      <td><code>articles.serial_number</code> (suffix/bevat) → toont
+        gekoppeld <code>products.recall_url</code> /
+        <code>inspection_notice_url</code> als vlag</td>
+    </tr>
+    <tr>
+      <td>Instellingen</td>
+      <td><code>inspection_companies</code> (settings, cert_header/footer,
+        branding, listed) + <code>inspectors</code> /
+        <code>inspector_qualifications</code> beheer</td>
+    </tr>
+    <tr>
+      <td>(gereserveerd)</td>
+      <td>leeg — later: catalogus-wachtrij (god-rol), rapportages</td>
+    </tr>
+  </table>
+</body>
+</html>
