@@ -171,26 +171,57 @@ op de **elektronische handtekening** bij digitale rapporten.
    volgend rapport, DE tot volgende keuring — alles ruimschoots gedekt door
    "alles bewaren", en de klant bezit de data toch al levenslang).
 
-## 7. Openstaande verificatiepunten (vóór lancering per markt)
+## 7. Openstaande verificatiepunten — bijgewerkt (2026-06-13)
 
-1. **LOLER Schedule 1**: exacte formulering van de 11 punten ophalen van
-   legislation.gov.uk (geblokkeerd vanuit deze omgeving) — de reconstructie
-   hierboven dekt er ~9 met zekerheid.
-2. **EN 365 / NEN-EN 365**: officiële normtekst (clausule 4.4 + Figure 1
-   voorbeeldrecord) aanschaffen bij NEN/BSI vóór het ontwerp van het
-   PDF-sjabloon.
-3. **DGUV Grundsatz 312-906**: geldt een hercertificeringstermijn voor
-   Sachkundige (bijv. 5 jaar)? Niet gevonden in primaire bron.
-4. **NL**: bevestigen dat periodieke PPE-keuring juridisch via EN 365/
-   CE-kader loopt en niet via een eigen Arbobesluit-artikel in Hoofdstuk 8.
-5. **VS ANSI A92.22**: bewaartermijn (4 vs 5 jaar in bronnen tegenstrijdig).
-6. **VK**: HSE-positie op elektronische hándtekening (elektronisch bewaren is
-   zeker toegestaan; de ondertekeningseis "signed or otherwise authenticated"
-   verifiëren in de wettekst).
+Vier van de zes punten zijn nu opgelost/bevestigd via aanvullend onderzoek;
+twee blijven niet-blokkerend openstaan.
+
+1. **LOLER Schedule 1 — bevestigd.** De reconstructie in §2 (11 punten) klopt:
+   werkgever naam+adres, locatie, identificatie + bouwjaar van het materieel,
+   datum laatste/huidige onderzoek, safe working load, gevonden defecten,
+   vereiste reparaties, testgegevens, uiterste datum volgende keuring, en
+   naam/adres/kwalificaties van zowel de rapporteur (+ diens werkgever) als
+   degene die het rapport ondertekent/authenticeert (kunnen dezelfde persoon
+   zijn). Geen wijziging in datamodel nodig.
+   ([legislation.gov.uk](https://www.legislation.gov.uk/uksi/1998/2307/schedules/made))
+2. **EN 365 / NEN-EN 365 — nog open.** Officiële normtekst (clausule 4.4 +
+   Figure 1) staat nog achter de betaalmuur van NEN/BSI en is niet op te
+   halen vanuit deze omgeving. **Niet blokkerend**: de kernfeiten (12
+   maanden-interval, registratie-inhoud) zijn via meerdere onafhankelijke
+   bronnen bevestigd (§1, §3). Actie: aanschaffen vóór het PDF-sjabloon wordt
+   vormgegeven.
+3. **DGUV Grundsatz 312-906 — opgelost.** Het Sachkunde-certificaat zelf
+   heeft **geen geldigheidsduur/hercertificeringstermijn**; de wettelijke
+   eis is de jaarlijkse PPE-keuring dóór zo'n Sachkundiger, niet een
+   periodieke herscholing van de Sachkundige zelf. Gevolg: in
+   `inspector_qualifications` mag `valid_until` voor dit certificaattype
+   leeg blijven — kolom blijft optioneel zoals al ontworpen, geen
+   schemawijziging nodig.
+4. **NL Arbobesluit vs EN 365 — bevestigd.** De wettelijke basis is
+   Arbobesluit art. 7.4a (algemeen: keuringsplicht arbeidsmiddelen) en art.
+   8.3 (PBM-specifiek: "deugdelijkheid in stand houden"); EN 365 vult de
+   12-maanden-norm en de registratie-inhoud in als geharmoniseerde norm,
+   niet als losse wetseis op zichzelf. Gevolg voor `inspection_regimes.legal_reference`
+   bij NL/PPE: **"Arbobesluit art. 8.3 jo. NEN-EN 365"** in plaats van alleen
+   "EN 365".
+5. **VS ANSI A92.22 bewaartermijn — blijft licht tegenstrijdig** (bronnen
+   noemen zowel 4 als 5 jaar voor periodieke/jaarlijkse inspecties). **Niet
+   blokkerend**: het bewaarbeleid "nooit verwijderen" (§6 punt 7) overtreft
+   beide cijfers ruimschoots. Geen actie nodig.
+6. **VK elektronische handtekening — bevestigd.** HSE-praktijk (o.a.
+   CFTS-richtlijnen) staat elektronische rapporten toe, mits reproduceerbaar
+   in schrift en beschermd tegen ongeautoriseerde wijziging — dit is precies
+   het al ontworpen `pdf_hash` + `verify_token` audit-trail-model (DATAMODEL
+   §4). Geen aanpassing nodig.
 
 Conclusie: **het besloten datamodel staat overeind** — snapshot-model,
 regime-tabel per type × land, onveranderlijk PDF-archief en berekende
 vervaldatums dekken precies wat deze vier landen vragen. De zeven
-schema-aanpassingen hierboven zijn verfijningen, geen verbouwing. En ja: wie
-aan deze vier landen voldoet, zit voor de meeste andere westerse markten goed —
+schema-aanpassingen in §6 zijn verfijningen, geen verbouwing. Eén kleine
+toevoeging volgt uit punt 4: NL-`legal_reference` voor PPE wordt "Arbobesluit
+art. 8.3 jo. NEN-EN 365" (tekstwaarde, geen schemawijziging). En ja: wie aan
+deze vier landen voldoet, zit voor de meeste andere westerse markten goed —
 de EU-landen hangen allemaal aan dezelfde EN 365-kapstok.
+
+**Resterend vóór lancering per markt:** alleen punt 2 (EN 365-volledige tekst
+aanschaffen vóór het PDF-sjabloon-ontwerp).
