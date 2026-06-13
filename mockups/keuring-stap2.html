@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Keuring — Stap 2</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="crumbs"><a href="index.html">← Overzicht mockups</a></div>
+  <h1 class="page-title">Keuring-wizard — Stap 2: per artikel beoordelen (§9.4)</h1>
+  <p class="page-sub">Wordt herhaald voor elk artikel uit stap 1.</p>
+
+  <div class="phone">
+    <div class="statusbar"><span>9:41</span><span>●●●●</span></div>
+    <div class="topbar">
+      <a href="keuring-stap1.html">← Keuring Jansen BV</a>
+      <span class="step-indicator">Stap 2/4</span>
+    </div>
+    <div class="content">
+      <p class="muted" style="margin-top:0;">Artikel 3 van 12</p>
+
+      <div class="card">
+        <b>Petzl Avao Bod</b><br>
+        <span class="muted">SN …1234</span>
+        <p class="muted" style="margin:8px 0 0;">
+          Vorige keuring: goed (12 jun 2025)
+        </p>
+        <div class="flag warn" style="margin-top:10px;">
+          ⚠️ Levensduur: nog 8 mnd
+        </div>
+        <div class="flag danger">
+          🚩 Recall: controleer dit SN-bereik
+        </div>
+      </div>
+
+      <div class="btn-row" style="margin-bottom:16px;">
+        <a class="btn-primary" href="keuring-stap3.html">✅ Goed</a>
+        <a class="btn-secondary btn-danger" href="#">❌ Afkeuren</a>
+      </div>
+
+      <div class="section-title">Bij afkeuren</div>
+      <div class="card">
+        <label class="muted" style="font-size:12px;">Code</label>
+        <select style="width:100%; margin-bottom:10px;">
+          <option>1 — Scheur in band</option>
+          <option>2 — Beschadigde naad</option>
+          <option>3 — Versleten harnasband</option>
+        </select>
+        <label class="muted" style="font-size:12px;">Opmerking</label>
+        <textarea rows="2" placeholder="…"></textarea>
+        <a class="btn-secondary" href="#">📷 Foto toevoegen (max 3)</a>
+      </div>
+    </div>
+    <div style="padding:12px 16px; border-top:1px solid var(--border); background:#fff;">
+      <a class="btn-primary" href="keuring-stap3.html">Volgende →</a>
+    </div>
+  </div>
+
+  <table class="field-table">
+    <tr><th>Element</th><th>Bron / velden (DATAMODEL)</th></tr>
+    <tr>
+      <td>Beoordeling</td>
+      <td><code>inspection_items.result</code> (<code>passed</code> /
+        <code>rejected</code>), <code>rejection_code_id</code> (uit
+        <code>rejection_codes</code>, bedrijfseigen of
+        platformstandaard), <code>comment</code></td>
+    </tr>
+    <tr>
+      <td>Productsnapshot</td>
+      <td><code>inspection_items.product_version_id</code> (huidige
+        <code>product_versions</code> van het product) +
+        <code>article_snapshot</code> (jsonb kopie van het artikel op dat
+        moment)</td>
+    </tr>
+    <tr>
+      <td>Vlaggen</td>
+      <td><code>products.recall_url</code> /
+        <code>inspection_notice_url</code> (recall/inspection notice),
+        <code>articles.severe_use</code> + naderende
+        <code>next_due</code> (levensduur)</td>
+    </tr>
+    <tr>
+      <td>Foto</td>
+      <td><code>photos</code> (<code>inspection_item_id</code>,
+        <code>storage_path</code>, <code>taken_by</code>), client-side
+        verkleind, max 3</td>
+    </tr>
+  </table>
+</body>
+</html>
