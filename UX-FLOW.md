@@ -190,6 +190,21 @@ er niet twee concurrerende startpunten zijn.
    uitwijst (bijv. catalogus-wachtrij voor god-rol, rapportages). Niet nu al
    invullen — kiss.
 
+**Visuele stijl (Jos, 2026-06-13, zie meegestuurde schets):** grote
+gekleurde icoon-tegels in een grid op een kaart, bovenin een statusregel
+("X items goed gekeurd") en een zoekbalk, onderin max. 4 navigatie-items —
+dit beeld past op de hoofdmenu-opzet hierboven (de exacte knop-labels in de
+schets zijn illustratief, niet 1-op-1 de lijst hierboven).
+
+- **Achtergrondfoto van klimmers/gebruikers** als sfeerbeeld achter het
+  menu — community-gevoel, "merk met een glimlach" (blauwdruk).
+- **Crowdsourced en roulerend:** klanten mogen foto's insturen om erop te
+  staan; de foto met de meeste likes op Instagram wordt gekozen, en elk
+  halfjaar (of zo) wisselt de foto. Praktisch: een simpel veld/tabel voor
+  "huidige hero-foto" dat een platform-/god-rol kan bijwerken — geen
+  geautomatiseerde Instagram-koppeling nodig, gewoon handmatig wisselen op
+  basis van wat Jos ziet.
+
 **Belangrijke koerswijziging (Jos, 2026-06-13):** "we houden nu niks meer
 simpel" — dit hoofdmenu is geen MVP-schets maar het startpunt van de
 **professionele app die in één keer goed en sterk gebouwd wordt**. Dat
