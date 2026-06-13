@@ -134,8 +134,80 @@ vooral op de zaak; een collega vooral op locatie.
    "OK – opslaan". Geen afronding zolang er onbeoordeelde items zijn zonder
    expliciete bevestiging.
 
-## 6. Open punten volgende sparringronde
+## 7. Hoofdmenu keurmeester-app (besloten, 2026-06-13)
 
-1. Klant-app flows doornemen zodra de keurmeester-flow staat.
-2. Schermschetsen/wireframes maken van Vandaag, Klantpagina, Keuring-wizard
-   en Afrondscherm zodra het bouwplan er is.
+Aanleiding: Jos wil een kaal hoofdmenu met grote, KISS-knoppen — werkt goed
+op pc, telefoon én tablet. Dit vervangt het "Vandaag"-overzicht uit §2 als
+startscherm: de functies van Vandaag (concepten hervatten, recent
+afgekeurde items terugvinden) zijn verdeeld over de knoppen hieronder, zodat
+er niet twee concurrerende startpunten zijn.
+
+**De knoppen (4–6, uitbreidbaar):**
+
+1. **Nieuwe keuring**
+   - Klant kiezen via slim zoekveld (alle velden: naam, klantnummer, adres,
+     telefoon, e-mail — zie §4 punt 5).
+   - Daarna: overzicht van bestaande artikelen van die klant (incl. door de
+     klant zelf toegevoegde artikelen), elk met een vinkje — overnemen in
+     deze keuring of niet (zoals nu).
+   - **Nieuw — type-filter PBM/machines:** een extra schakelaar/vinkje per
+     artikel-categorie waarmee je in één keer alleen PBM's of alleen
+     machines (kettingzagen e.d.) selecteert/deselecteert. Praktijknut:
+     keurmeester en monteur werken dezelfde dag bij dezelfde klant, ieder
+     met het complementaire deel van de artikelen — geen tijd verspillen
+     aan losse vinkjes voor elk artikel.
+   - Hierna de normale wizard (scan/SN-zoeken, tik-flow, afronden — §2).
+
+2. **Bestaande keuringen**
+   - Eén lijst, afgerond én concept naast elkaar (visueel onderscheiden,
+     archiefprincipe uit §1.3 blijft gelden voor afgeronde keuringen — geen
+     bewerken, wel inzien).
+   - Per keuring: aantallen goed/afgekeurd direct zichtbaar (dit vervangt de
+     "recente keuringen"-functie uit §5.1 — zelfde praktijkdoel: afgekeurde
+     items snel teruvinden voor nabestelling, nu via deze lijst).
+   - Concepten zijn hier te hervatten en af te ronden.
+
+3. **Klanten** — aanmaken en bewerken (bestaand gedrag, klik-op-naam-opent-
+   klantpagina-principe uit §4 punt 6 blijft staan).
+
+4. **Serienummer zoeken / Recall** — eigen knop (was eerder een
+   subfunctie); blijft een opzoekfunctie, geen wijziging in het
+   recall-ontwerp uit DATAMODEL (vlag, geen automatische melding).
+
+5. **Instellingen** — uitgebreid vanuit "alleen certificaat + keurmeesters"
+   naar volledige keurbedrijf-admin:
+   - **Keurmeesters beheren**: keurbedrijf-admin voegt eigen keurmeesters
+     toe/verwijdert ze, en **uploadt zelf hun kwalificatiecertificaten**
+     (koppelt aan `inspector_qualifications` uit DATAMODEL §... — naam,
+     nummer, geldig-tot, bestand).
+   - **Certificaat-template**: kop- en voettekst zelf instelbaar door het
+     keurbedrijf; **standaard staat er een juridisch correcte standaardtekst**
+     klaar (per land/regime), die het keurbedrijf kan overnemen of aanpassen.
+
+6. *(gereserveerd)* — extra knop(pen) toevoegen zodra de praktijk dat
+   uitwijst (bijv. catalogus-wachtrij voor god-rol, rapportages). Niet nu al
+   invullen — kiss.
+
+**Belangrijke koerswijziging (Jos, 2026-06-13):** "we houden nu niks meer
+simpel" — dit hoofdmenu is geen MVP-schets maar het startpunt van de
+**professionele app die in één keer goed en sterk gebouwd wordt**. Dat
+betekent: de keurbedrijf-admin-functies (eigen keurmeesters + hun
+certificaten beheren, eigen kop/voettekst met juridische standaardtekst)
+horen vanaf fase 1/2 in het datamodel en de rollen, niet als latere
+toevoeging.
+
+## 8. Klant-app — makeover (te bevestigen)
+
+Jos vroeg of het document met de klant-app-makeover al gelezen is. In deze
+sessie is alleen `UX-FLOW.md` (incl. §3, de bestaande klant-app-kernflow),
+`BLAUWDRUK.md`, `DATAMODEL.md` en `BOUWPLAN.md` beschikbaar — een apart
+"makeover"-document voor de klant-app is hier niet aangetroffen. Mogelijk
+is dat in een andere chat/sessie voorbereid en nog niet in deze repo
+beland. **Open vraag aan Jos:** kun je dat document delen of hierheen
+kopiëren, zodat §3 ermee aangevuld kan worden?
+
+## 9. Open punten volgende sparringronde
+
+1. Klant-app-makeover verwerken zodra het document (zie §8) beschikbaar is.
+2. Schermschetsen/wireframes maken van het hoofdmenu (§7), Klantpagina,
+   Keuring-wizard en Afrondscherm zodra het bouwplan er is.
