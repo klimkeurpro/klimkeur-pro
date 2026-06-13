@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Klantpagina</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="crumbs"><a href="index.html">← Overzicht mockups</a></div>
+  <h1 class="page-title">Klantpagina (keurmeester-app) — §9.3</h1>
+  <p class="page-sub">Geopend vanuit "Nieuwe keuring", "Klanten" of een
+  zoekresultaat.</p>
+
+  <div class="phone">
+    <div class="statusbar"><span>9:41</span><span>●●●●</span></div>
+    <div class="topbar">
+      <a href="keurmeester-hoofdmenu.html">← Terug</a>
+      <span>Bedrijf Jansen BV</span>
+    </div>
+    <div class="content">
+      <p class="muted" style="margin-top:0;">
+        📍 Dorpsstraat 1, Hilversum<br>
+        📞 06-12345678 &nbsp; ✉️ info@jansen.nl
+      </p>
+
+      <a class="btn-primary" href="keuring-stap2.html">
+        ▶ Hervat keuring — concept van 12 juni
+      </a>
+      <a class="btn-secondary" href="keuring-stap1.html">
+        of start een nieuwe keuring →
+      </a>
+      <p class="muted">(geen concept → primaire knop is "Start keuring")</p>
+
+      <div class="section-title">Artikelen (12)</div>
+      <div class="list-item">
+        <span>9 ok · 2 bijna · 1 verlopen</span>
+        <span>
+          <span class="badge ok">9</span>
+          <span class="badge warn">2</span>
+          <span class="badge danger">1</span>
+        </span>
+      </div>
+
+      <div class="section-title">Historie (archief)</div>
+      <div class="list-item">
+        <span>12 jun 2025</span>
+        <span class="muted">11 ok, 1 afgekeurd</span>
+      </div>
+      <div class="list-item">
+        <span>15 jun 2024</span>
+        <span class="muted">12 ok</span>
+      </div>
+
+      <div class="section-title">Gegevens</div>
+      <div class="list-item">
+        <span>Klantnummer / koppeling</span>
+        <span class="muted">JAN-0042 · actief</span>
+      </div>
+    </div>
+  </div>
+
+  <table class="field-table">
+    <tr><th>Element</th><th>Bron / velden (DATAMODEL)</th></tr>
+    <tr>
+      <td>Header (naam, adres, contact)</td>
+      <td><code>customers</code> (name, address, postal_code, city,
+        email, phone), via <code>customer_links</code> (actief)</td>
+    </tr>
+    <tr>
+      <td>Primaire knop</td>
+      <td>check <code>inspections</code> waar
+        <code>customer_id</code>=X, <code>company_id</code>=huidig,
+        <code>status='draft'</code> → "Hervat keuring (concept van
+        <code>inspection_date</code>)"; anders "Start keuring" (maakt
+        nieuwe <code>inspections</code>-rij met
+        <code>status='draft'</code>)</td>
+    </tr>
+    <tr>
+      <td>Artikelen-tab</td>
+      <td><code>articles</code> waar <code>customer_id</code>=X,
+        optioneel beperkt door
+        <code>customer_links.scope_product_types</code>; statusbadge =
+        afgeleid van <code>next_due</code> van laatste
+        <code>inspection_items</code></td>
+    </tr>
+    <tr>
+      <td>Historie-tab</td>
+      <td><code>inspections</code> waar <code>status='completed'</code>,
+        <code>customer_id</code>=X, desc gesorteerd; telling per
+        <code>inspection_items.result</code></td>
+    </tr>
+    <tr>
+      <td>Gegevens-tab</td>
+      <td><code>customer_links.customer_number</code>,
+        <code>scope_product_types</code>, <code>status</code>,
+        <code>started_at</code> / <code>ended_at</code></td>
+    </tr>
+  </table>
+</body>
+</html>
