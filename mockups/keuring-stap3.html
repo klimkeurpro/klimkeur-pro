@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Keuring — Stap 3</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="crumbs"><a href="index.html">← Overzicht mockups</a></div>
+  <h1 class="page-title">Keuring-wizard — Stap 3: overzicht (§9.4)</h1>
+  <p class="page-sub">Knop "Afronden" is disabled tot alle artikelen
+  beoordeeld zijn.</p>
+
+  <div class="phone">
+    <div class="statusbar"><span>9:41</span><span>●●●●</span></div>
+    <div class="topbar">
+      <a href="keuring-stap2.html">← Keuring Jansen BV</a>
+      <span class="step-indicator">Stap 3/4</span>
+    </div>
+    <div class="content">
+      <p class="muted" style="margin-top:0;">12 artikelen totaal</p>
+      <div class="card">
+        <div class="summary-row"><span>✅ Goed</span><b>9</b></div>
+        <div class="summary-row"><span>❌ Afgekeurd</span><b>2</b></div>
+        <div class="summary-row"><span>⏳ Nog te beoordelen</span><b>1</b></div>
+      </div>
+
+      <div class="section-title">Nog niet beoordeeld</div>
+      <div class="card">
+        <b>Stihl MS261</b> <span class="muted">SN …9012</span>
+        <a class="btn-secondary" style="margin-top:10px;" href="keuring-stap2.html">
+          Beoordelen
+        </a>
+      </div>
+
+      <div class="section-title">Volgende keuring (aanpasbaar)</div>
+      <div class="list-item">
+        <span>Petzl Avao Bod</span>
+        <span class="muted">→ 12 jun 2026</span>
+      </div>
+      <div class="list-item">
+        <span>Petzl Vertex</span>
+        <span class="muted">→ 12 jun 2026</span>
+      </div>
+      <div class="list-item">
+        <span>…</span>
+        <span class="muted">→ …</span>
+      </div>
+    </div>
+    <div style="padding:12px 16px; border-top:1px solid var(--border); background:#fff;">
+      <a class="btn-primary disabled" href="#" title="disabled tot alles beoordeeld">
+        Afronden → (1 nog te doen)
+      </a>
+      <a class="btn-primary" style="margin-top:8px;" href="afrondscherm.html">
+        Afronden → (demo: alles beoordeeld)
+      </a>
+    </div>
+  </div>
+
+  <table class="field-table">
+    <tr><th>Element</th><th>Bron / velden (DATAMODEL)</th></tr>
+    <tr>
+      <td>Overzicht / telling</td>
+      <td>aggregatie over <code>inspection_items.result</code> voor deze
+        <code>inspection_id</code></td>
+    </tr>
+    <tr>
+      <td>Volgende-keuring-datum</td>
+      <td><code>inspection_items.next_due</code>, default = vroegste van
+        (inspectiedatum + regime-interval uit
+        <code>inspection_regimes</code>) en (einde levensduur uit
+        productdata), handmatig aanpasbaar</td>
+    </tr>
+    <tr>
+      <td>Afronden-knop</td>
+      <td>disabled zolang er <code>inspection_items</code> zijn met
+        <code>result='not_assessed'</code></td>
+    </tr>
+  </table>
+</body>
+</html>
