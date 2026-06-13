@@ -268,10 +268,235 @@ simpel te houden" — de klant-app wordt in één keer goed gebouwd, met
 rolonderscheid, data-eigendom en de leadmotor vanaf fase 3 volwaardig
 ingericht, niet als latere toevoeging.
 
-## 9. Open punten volgende sparringronde
+## 9. Schermschetsen en velddekking (uitgewerkt, 2026-06-13)
 
-1. Schermschetsen/wireframes maken van het keurmeester-hoofdmenu (§7), de
-   klant-app (§8), Klantpagina, Keuring-wizard en Afrondscherm zodra het
-   bouwplan dat toelaat.
-2. Per knop de exacte velden/kolommen vastleggen tegen DATAMODEL aan, vlak
-   vóór de bouw van fase 2 (keurmeester) en fase 3 (klant).
+Tekstuele wireframes (illustratief, geen pixel-ontwerp) plus per scherm de
+koppeling naar `DATAMODEL.md`, als basis voor de wireframe-sessie en de
+bouw van fase 2/3. Iconen/labels zijn placeholders.
+
+### 9.1 Keurmeester — Hoofdmenu (§7)
+
+```
+┌───────────────────────────────────────┐
+│ KlimKeur Pro                     [≡]   │
+│ ✅ 14 items goed gekeurd vandaag       │
+│ 🔍 [ Zoek klant / serienummer...   ]   │
+│                                         │
+│  ┌──────────┐  ┌──────────┐            │
+│  │    🆕    │  │    📋    │            │
+│  │  Nieuwe  │  │ Bestaande│            │
+│  │  keuring │  │ keuringen│            │
+│  └──────────┘  └──────────┘            │
+│  ┌──────────┐  ┌──────────┐            │
+│  │    👥    │  │    🔎    │            │
+│  │  Klanten │  │ SN zoeken│            │
+│  │          │  │ / Recall │            │
+│  └──────────┘  └──────────┘            │
+│  ┌──────────┐  ┌──────────┐            │
+│  │    ⚙️    │  │    ➕    │            │
+│  │ Instel-  │  │ (gereser-│            │
+│  │  lingen  │  │  veerd)  │            │
+│  └──────────┘  └──────────┘            │
+│         [achtergrondfoto klimmers]     │
+└───────────────────────────────────────┘
+```
+
+| Element | Bron / velden (DATAMODEL) |
+|---|---|
+| Statusregel "X items goed gekeurd vandaag" | `inspection_items.result = 'passed'` waar `inspections.completed_at` = vandaag en `inspections.company_id` = huidig bedrijf |
+| Zoekbalk | `customers` (naam, adres, telefoon, e-mail) + `customer_links.customer_number`, gefilterd op actieve links van dit bedrijf; en `articles.serial_number` (bevat-match, zie §4.2) |
+| Nieuwe keuring | opent klantzoekscherm → Klantpagina (9.3) |
+| Bestaande keuringen | `inspections` waar `company_id` = huidig, `draft` + `completed` naast elkaar |
+| Klanten | `customers` via `customer_links` waar `company_id` = huidig en `status = 'active'` |
+| SN zoeken / Recall | `articles.serial_number` (suffix/bevat) → toont gekoppeld `products.recall_url` / `inspection_notice_url` als vlag |
+| Instellingen | `inspection_companies` (settings, cert_header/footer, branding, listed) + `inspectors`/`inspector_qualifications` beheer |
+| (gereserveerd) | leeg — later: catalogus-wachtrij (god-rol), rapportages |
+
+### 9.2 Klant-app — Hoofdmenu (§8)
+
+```
+┌───────────────────────────────────┐
+│ [logo keurbedrijf]      KlimKeur   │
+│                                     │
+│  ┌───────────────────────────┐    │
+│  │  ✅ Alles in orde            │    │
+│  │  (of: 3 artikelen hebben    │    │
+│  │   aandacht)            →    │    │
+│  └───────────────────────────┘    │
+│                                     │
+│  ┌──────────┐  ┌──────────┐        │
+│  │    🧰    │  │    📅    │        │
+│  │   Mijn   │  │  Keuring │        │
+│  │ materiaal│  │ aanvragen│        │
+│  └──────────┘  └──────────┘        │
+│  ┌──────────┐  ┌──────────┐        │
+│  │    📄    │  │    ⚙️    │        │
+│  │ Certifi- │  │  Beheer  │        │
+│  │  caten   │  │ (admin)  │        │
+│  └──────────┘  └──────────┘        │
+├─────────────────────────────────────┤
+│ Overzicht · Mijn materiaal ·         │
+│ Certificaten · Meer                  │
+└─────────────────────────────────────┘
+```
+
+| Element | Bron / velden (DATAMODEL) |
+|---|---|
+| "Alles in orde" / "N artikelen hebben aandacht" | berekend: `articles` van `customer_id` = huidig, status afgeleid uit `inspection_items.next_due` van laatste keuring t.o.v. vandaag (oranje/rood), zie DATAMODEL §3 |
+| Tik door → lijst aandachtspunten | dezelfde `articles`, gesorteerd op `next_due` oplopend |
+| Mijn materiaal | `articles` (incl. `free_description`/`free_brand` bij vrij artikel); rol `member` ziet primair eigen `assigned_member_id`, kan wisselen naar alles |
+| Keuring aanvragen | `inspection_requests` (insert) — gekoppeld: direct naar actieve `customer_link.company_id`; niet gekoppeld: keuze uit `inspection_companies` waar `listed = true`, of `invite_code` |
+| Certificaten | `certificates` via `inspections.customer_id` = huidig, met `verify_token` voor QR |
+| Beheer (alleen `customer_members.role = 'admin'`) | medewerkers (`customer_members` CRUD), artikelen toevoegen (`products` autocomplete of vrij artikel → `articles`, `status='pending'` bij onbekend product), `customer_links` (overstappen/koppelen) |
+| Bottom-nav "Meer" | bundelt Aanvragen + Beheer (rolafhankelijk zichtbaar) |
+
+### 9.3 Klantpagina (keurmeester-app)
+
+```
+┌───────────────────────────────────────┐
+│ ← Terug            Bedrijf Jansen BV   │
+│ 📍 Dorpsstraat 1, Hilversum             │
+│ 📞 06-12345678   ✉️ info@jansen.nl     │
+│                                         │
+│  ┌─────────────────────────────────┐  │
+│  │  ▶ HERVAT KEURING                  │  │
+│  │     concept van 12 juni            │  │
+│  │     of: start een nieuwe →         │  │
+│  └─────────────────────────────────┘  │
+│  (geen concept → primair: START KEURING)│
+│                                         │
+│  Artikelen (12)                        │
+│  ▸ 9 ok · 2 bijna · 1 verlopen         │
+│                                         │
+│  Historie (archief)                    │
+│  ▸ 12 jun 2025 — 11 ok, 1 afgekeurd    │
+│  ▸ 15 jun 2024 — 12 ok                 │
+│                                         │
+│  Gegevens                               │
+│  ▸ klantnummer, koppeling/scope        │
+└───────────────────────────────────────┘
+```
+
+| Element | Bron / velden (DATAMODEL) |
+|---|---|
+| Header (naam, adres, contact) | `customers` (name, address, postal_code, city, email, phone), via `customer_links` (actief) |
+| Primaire knop | check `inspections` waar `customer_id`=X, `company_id`=huidig, `status='draft'` → "Hervat keuring (concept van `inspection_date`)"; anders "Start keuring" (maakt nieuwe `inspections`-rij met `status='draft'`) |
+| Artikelen-tab | `articles` waar `customer_id`=X, optioneel beperkt door `customer_links.scope_product_types`; statusbadge = afgeleid van `next_due` van laatste `inspection_items` |
+| Historie-tab | `inspections` waar `status='completed'`, `customer_id`=X, desc gesorteerd; telling per `inspection_items.result` |
+| Gegevens-tab | `customer_links.customer_number`, `scope_product_types`, `status`, `started_at`/`ended_at` |
+
+### 9.4 Keuring-wizard (4 stappen, §2)
+
+**Stap 1 — artikelen toevoegen**
+
+```
+┌───────────────────────────────────────┐
+│ ← Keuring Jansen BV         Stap 1/4   │
+│                                         │
+│  [📷 Scan serienummer]  of typ:        │
+│  [ laatste cijfers...            ]    │
+│                                         │
+│  Klaargezet uit vorige keuring:        │
+│  ☑ Petzl Avao Bod   SN ...1234         │
+│  ☑ Petzl Vertex     SN ...5678         │
+│  ☑ Stihl MS261      SN ...9012         │
+│                                         │
+│  Filter: [ Alles ▾ ]  PBM  Machines     │
+│                                         │
+│  + Onbekend artikel toevoegen          │
+│                                         │
+│                  [ VOLGENDE → ]        │
+└───────────────────────────────────────┘
+```
+
+**Stap 2 — per artikel beoordelen**
+
+```
+┌───────────────────────────────────────┐
+│ ← Keuring Jansen BV         Stap 2/4   │
+│  Artikel 3 van 12                      │
+│                                         │
+│  Petzl Avao Bod   SN ...1234           │
+│  Vorige keuring: goed (12 jun 2025)    │
+│  ⚠ Levensduur: nog 8 mnd               │
+│  🚩 Recall: controleer dit SN-bereik   │
+│                                         │
+│     [ ✅ GOED ]      [ ❌ AFKEUREN ]    │
+│                                         │
+│  (bij afkeuren:)                       │
+│  Code: [ 1 — Scheur in band ▾ ]        │
+│  Opmerking: [ ...................  ]   │
+│  [📷 Foto toevoegen]  (max 3)          │
+│                                         │
+│                  [ VOLGENDE → ]        │
+└───────────────────────────────────────┘
+```
+
+**Stap 3 — overzicht**
+
+```
+┌───────────────────────────────────────┐
+│ ← Keuring Jansen BV         Stap 3/4   │
+│                                         │
+│  12 artikelen totaal                   │
+│  ✅ 9 goed  ❌ 2 afgekeurd  ⏳ 1 over   │
+│                                         │
+│  ⚠ Nog niet beoordeeld:                │
+│   - Stihl MS261 SN ...9012             │
+│     [ Beoordelen ]                     │
+│                                         │
+│  Volgende keuring (aanpasbaar):        │
+│   - Petzl Avao Bod  → 12 jun 2026      │
+│   - Petzl Vertex    → 12 jun 2026      │
+│   - ...                                │
+│                                         │
+│      [ AFRONDEN → ]                    │
+│      (disabled tot alles beoordeeld)   │
+└───────────────────────────────────────┘
+```
+
+| Element | Bron / velden (DATAMODEL) |
+|---|---|
+| Stap 1 — start | nieuwe rij `inspections` (`customer_id`, `company_id`, `inspector_id`, `inspection_date`, `location`, `examination_type`, `status='draft'`) |
+| Stap 1 — vooraf ingevuld | `inspection_items` aangemaakt per actief `article` van de klant (`result='not_assessed'`), met de uitslag van de vórige keuring als context (laatste `inspection_items.result`/`comment` per `article_id`) |
+| Stap 1 — SN-zoeken | `articles.serial_number` suffix/bevat-match binnen `customer_id`=X |
+| Stap 1 — type-filter PBM/machines | filtert op `products.product_type` (`ppe` vs `machine`/`aerial_platform`/…) |
+| Stap 1 — onbekend artikel | nieuwe `articles`-rij zonder `product_id` (`free_description`/`free_brand`/`free_material`), of nieuw `products`-voorstel met `status='pending'` |
+| Stap 2 — beoordeling | `inspection_items.result` (`passed`/`rejected`), `rejection_code_id` (uit `rejection_codes`, bedrijfseigen of platformstandaard), `comment` |
+| Stap 2 — productsnapshot | `inspection_items.product_version_id` (huidige `product_versions` van het product) + `article_snapshot` (jsonb kopie van het artikel op dat moment) |
+| Stap 2 — vlaggen | `products.recall_url`/`inspection_notice_url` (recall/inspection notice), `articles.severe_use` + naderende `next_due` (levensduur) |
+| Stap 2 — foto | `photos` (`inspection_item_id`, `storage_path`, `taken_by`), client-side verkleind, max 3 |
+| Stap 3 — overzicht/telling | aggregatie over `inspection_items.result` voor deze `inspection_id` |
+| Stap 3 — volgende-keuring-datum | `inspection_items.next_due`, default = vroegste van (inspectiedatum + regime-interval uit `inspection_regimes`) en (einde levensduur uit productdata), handmatig aanpasbaar |
+
+### 9.5 Afrondscherm (stap 4, §5.2)
+
+```
+┌───────────────────────────────────────┐
+│ ← Keuring Jansen BV         Stap 4/4   │
+│                                         │
+│  Beoordeeld:        12                 │
+│  ✅ Goed:           10                 │
+│  ❌ Afgekeurd:       2                 │
+│  ⏳ Overgeslagen:    0                 │
+│                                         │
+│  Afgekeurd:                            │
+│   - Stihl MS261 SN ...9012 (code 3)    │
+│   - Honda EU22i SN ...4455 (code 1)    │
+│                                         │
+│             [ OK – OPSLAAN ]           │
+└───────────────────────────────────────┘
+```
+
+| Element | Bron / velden (DATAMODEL) |
+|---|---|
+| Aantallenregel | aggregatie `inspection_items.result` voor deze `inspection_id` (`passed`/`rejected`/`not_assessed` — knop disabled bij `not_assessed > 0`) |
+| Afgekeurd-lijst | `inspection_items` waar `result='rejected'`, met `article_snapshot` (naam/SN) en `rejection_code_id` |
+| OK – opslaan | `inspections.status='completed'`, `completed_at=now()` (onveranderlijk vanaf hier); bij sync: `certificates` aanmaken (`number`, `storage_path`, `pdf_hash`, `verify_token`) en `usage_counters.items_inspected` ophogen met aantal beoordeelde items |
+
+## 10. Open punten volgende sparringronde
+
+1. Visuele wireframes/mockups (Figma of vergelijkbaar) op basis van de
+   tekstuele schetsen in §9, zodra het bouwplan dat toelaat.
+2. Tijdens fase 1/2-bouw: bovenstaande velddekking toetsen aan de
+   daadwerkelijke RLS-policies en formulieren; aanvullen waar nodig.
