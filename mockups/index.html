@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KlimKeur 2.0 — Schermschetsen</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  body{padding-top:48px;}
+  .intro{width:390px; margin-bottom:24px;}
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:16px; width:820px; max-width:100%;}
+  .grid-item{
+    background:#fff; border:1px solid var(--border); border-radius:14px;
+    padding:18px; text-decoration:none; color:var(--text);
+    display:flex; flex-direction:column; gap:6px;
+  }
+  .grid-item h2{margin:0; font-size:15px;}
+  .grid-item p{margin:0; font-size:13px; color:var(--muted);}
+  .grid-item .tag{
+    font-size:11px; font-weight:700; color:var(--primary);
+    text-transform:uppercase; letter-spacing:.04em;
+  }
+  @media (max-width:860px){ .grid{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+  <div class="intro">
+    <h1 class="page-title">KlimKeur 2.0 — Schermschetsen (mockups)</h1>
+    <p class="page-sub">
+      Statische HTML-mockups op basis van de tekstuele wireframes in
+      <code>UX-FLOW.md §9</code>. Klikbaar, illustratief — geen
+      pixel-perfect ontwerp. Gebruik dit als gesprekspunt voor de
+      wireframe-sessie i.p.v. Figma.
+    </p>
+  </div>
+
+  <div class="grid">
+    <a class="grid-item" href="keurmeester-hoofdmenu.html">
+      <span class="tag">Keurmeester-app · §7 / §9.1</span>
+      <h2>Hoofdmenu</h2>
+      <p>Statusregel, zoekbalk en tegels: Nieuwe keuring, Bestaande
+      keuringen, Klanten, SN zoeken/Recall, Instellingen.</p>
+    </a>
+
+    <a class="grid-item" href="klant-hoofdmenu.html">
+      <span class="tag">Klant-app · §8 / §9.2</span>
+      <h2>Hoofdmenu</h2>
+      <p>Statuskaart "Alles in orde", tegels Mijn materiaal, Keuring
+      aanvragen, Certificaten, Beheer + bottom-nav.</p>
+    </a>
+
+    <a class="grid-item" href="klantpagina.html">
+      <span class="tag">Keurmeester-app · §9.3</span>
+      <h2>Klantpagina</h2>
+      <p>Klantgegevens, primaire actie (Hervat/Start keuring),
+      tabs Artikelen / Historie / Gegevens.</p>
+    </a>
+
+    <a class="grid-item" href="keuring-stap1.html">
+      <span class="tag">Keuring-wizard · §9.4</span>
+      <h2>Stap 1 — Artikelen toevoegen</h2>
+      <p>Scannen/typen, klaargezette artikelen uit vorige keuring,
+      filter PBM/Machines, onbekend artikel toevoegen.</p>
+    </a>
+
+    <a class="grid-item" href="keuring-stap2.html">
+      <span class="tag">Keuring-wizard · §9.4</span>
+      <h2>Stap 2 — Per artikel beoordelen</h2>
+      <p>Vorige uitslag, levensduur- en recall-vlaggen, Goed/Afkeuren,
+      reden + foto bij afkeuren.</p>
+    </a>
+
+    <a class="grid-item" href="keuring-stap3.html">
+      <span class="tag">Keuring-wizard · §9.4</span>
+      <h2>Stap 3 — Overzicht</h2>
+      <p>Telling goed/afgekeurd/over, nog te beoordelen artikelen,
+      volgende-keuringsdata per artikel.</p>
+    </a>
+
+    <a class="grid-item" href="afrondscherm.html">
+      <span class="tag">Keuring-wizard · §9.5</span>
+      <h2>Stap 4 — Afronden</h2>
+      <p>Eindtelling, lijst afgekeurde artikelen, opslaan
+      (status → completed, certificaten genereren).</p>
+    </a>
+  </div>
+</body>
+</html>
