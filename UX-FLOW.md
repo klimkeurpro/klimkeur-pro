@@ -75,6 +75,8 @@ PRIMAIRE ACTIE op het dashboard wanneer relevant: [ KEURING AANVRAGEN ]
 - Navigatie onderin (voorstel): **Overzicht · Mijn materiaal · Certificaten
   · Meer**.
 - Nooit gekeurde artikelen: uitnodigende tekst, geen rood alarm (blauwdruk §7).
+- Het hoofdmenu en de rolverdeling van de klant-app staan uitgewerkt in §8
+  (makeover, 2026-06-13).
 
 ## 4. Praktijkinput Jos (2026-06-12) en wat we ermee doen
 
@@ -196,18 +198,65 @@ certificaten beheren, eigen kop/voettekst met juridische standaardtekst)
 horen vanaf fase 1/2 in het datamodel en de rollen, niet als latere
 toevoeging.
 
-## 8. Klant-app — makeover (te bevestigen)
+## 8. Klant-app — makeover (besloten, 2026-06-13)
 
-Jos vroeg of het document met de klant-app-makeover al gelezen is. In deze
-sessie is alleen `UX-FLOW.md` (incl. §3, de bestaande klant-app-kernflow),
-`BLAUWDRUK.md`, `DATAMODEL.md` en `BOUWPLAN.md` beschikbaar — een apart
-"makeover"-document voor de klant-app is hier niet aangetroffen. Mogelijk
-is dat in een andere chat/sessie voorbereid en nog niet in deze repo
-beland. **Open vraag aan Jos:** kun je dat document delen of hierheen
-kopiëren, zodat §3 ermee aangevuld kan worden?
+Zelfde lijn als het keurmeester-hoofdmenu (§7): kaal, KISS, grote knoppen,
+goed werkbaar op pc/telefoon/tablet, maar dan vanuit de klant gedacht. De
+klant-app is gratis en is tegelijk de **leadmotor** (blauwdruk §7): een
+klant zonder keurbedrijf moet in een paar tikken bij een keurbedrijf
+uitkomen. De §3-kernflow ("ben ik in orde?") blijft het hart; deze §8 maakt
+hem strakker en professioneler en legt het hoofdmenu vast.
+
+**Twee soorten klantgebruikers (DATAMODEL: `customer_members`):**
+
+- **Klantbedrijf-admin** — beheert de eigen ploeg en de eigen materiaallijst.
+- **Medewerker/eindgebruiker** — kijkt, zoekt, vraagt aan; geen beheer.
+
+De knoppen die zichtbaar zijn, hangen af van die rol (een monteur ziet geen
+"medewerkers beheren").
+
+**Hoofdmenu klant-app (knoppen):**
+
+1. **Ben ik in orde?** — het dashboard uit §3 als primair scherm: één blik,
+   "alles in orde" of "3 artikelen hebben aandacht" → tik → de artikelen in
+   kwestie. Geen statistiek-etalage, net als bij de keurmeester (§4 punt 4).
+   Nooit-gekeurde artikelen: uitnodigend, geen rood alarm (blauwdruk §7).
+
+2. **Mijn materiaal** — de eigen artikelen (incl. zelf toegevoegde). Per
+   artikel: status, volgende keuring, historie, certificaten (PDF download),
+   handleiding-link. Zoeken/scannen op serienummer net als bij de keurmeester.
+
+3. **Keuring aanvragen** — de leadmotor, primaire actie wanneer relevant:
+   - keurbedrijf al gekoppeld → aanvraag in twee tikken (vervangt het huidige
+     e-mailmechanisme; in-app, blauwdruk §7).
+   - nog geen keurbedrijf → openbare lijst / naam-zoeken / uitnodigingscode of
+     QR (vindbaarheid los van bereikbaarheid, blauwdruk §7).
+
+4. **Certificaten** — alle PDF's op een rij, downloadbaar; bewijsbaar echt
+   via de verificatie-QR (DATAMODEL: `certificates.verify_token`).
+
+5. **Beheer** *(alleen klantbedrijf-admin)* — verzameld op één plek:
+   - **Medewerkers**: eigen mensen toevoegen/verwijderen.
+   - **Artikelen toevoegen**: catalogus-autocomplete; onbekend product →
+     wachtrij voor de god-curator (DATAMODEL, blauwdruk §7).
+   - **Mijn data / overstappen**: keurbedrijf koppelen/ontkoppelen; bij
+     overstap gaat de eigen artikel- en keuringshistorie mee (data-eigendom,
+     blauwdruk). Dit vervangt het oude e-mailverzoek.
+
+6. *(gereserveerd)* — niet nu invullen, kiss.
+
+**Navigatie onderin** (max 4, §1.7): **Overzicht · Mijn materiaal ·
+Certificaten · Meer** (onder "Meer" valt Aanvragen + Beheer voor wie dat mag).
+
+**Koerslijn (Jos, 2026-06-13):** ook hier "niks meer simpel houden om het
+simpel te houden" — de klant-app wordt in één keer goed gebouwd, met
+rolonderscheid, data-eigendom en de leadmotor vanaf fase 3 volwaardig
+ingericht, niet als latere toevoeging.
 
 ## 9. Open punten volgende sparringronde
 
-1. Klant-app-makeover verwerken zodra het document (zie §8) beschikbaar is.
-2. Schermschetsen/wireframes maken van het hoofdmenu (§7), Klantpagina,
-   Keuring-wizard en Afrondscherm zodra het bouwplan er is.
+1. Schermschetsen/wireframes maken van het keurmeester-hoofdmenu (§7), de
+   klant-app (§8), Klantpagina, Keuring-wizard en Afrondscherm zodra het
+   bouwplan dat toelaat.
+2. Per knop de exacte velden/kolommen vastleggen tegen DATAMODEL aan, vlak
+   vóór de bouw van fase 2 (keurmeester) en fase 3 (klant).
