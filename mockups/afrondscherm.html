@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Afrondscherm</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="crumbs"><a href="index.html">← Overzicht mockups</a></div>
+  <h1 class="page-title">Keuring-wizard — Stap 4: afronden (§9.5)</h1>
+  <p class="page-sub">Na "OK – Opslaan" wordt de keuring onveranderlijk
+  en worden certificaten gegenereerd.</p>
+
+  <div class="phone">
+    <div class="statusbar"><span>9:41</span><span>●●●●</span></div>
+    <div class="topbar">
+      <a href="keuring-stap3.html">← Keuring Jansen BV</a>
+      <span class="step-indicator">Stap 4/4</span>
+    </div>
+    <div class="content">
+      <div class="card">
+        <div class="summary-row"><span>Beoordeeld</span><b>12</b></div>
+        <div class="summary-row"><span>✅ Goed</span><b>10</b></div>
+        <div class="summary-row"><span>❌ Afgekeurd</span><b>2</b></div>
+        <div class="summary-row"><span>⏳ Overgeslagen</span><b>0</b></div>
+      </div>
+
+      <div class="section-title">Afgekeurd</div>
+      <div class="list-item">
+        <span>Stihl MS261 <span class="muted">SN …9012</span></span>
+        <span class="badge danger">code 3</span>
+      </div>
+      <div class="list-item">
+        <span>Honda EU22i <span class="muted">SN …4455</span></span>
+        <span class="badge danger">code 1</span>
+      </div>
+    </div>
+    <div style="padding:12px 16px; border-top:1px solid var(--border); background:#fff;">
+      <a class="btn-primary" href="klantpagina.html">OK – Opslaan</a>
+    </div>
+  </div>
+
+  <table class="field-table">
+    <tr><th>Element</th><th>Bron / velden (DATAMODEL)</th></tr>
+    <tr>
+      <td>Aantallenregel</td>
+      <td>aggregatie <code>inspection_items.result</code> voor deze
+        <code>inspection_id</code> (<code>passed</code> /
+        <code>rejected</code> / <code>not_assessed</code> — knop disabled
+        bij <code>not_assessed &gt; 0</code>)</td>
+    </tr>
+    <tr>
+      <td>Afgekeurd-lijst</td>
+      <td><code>inspection_items</code> waar
+        <code>result='rejected'</code>, met <code>article_snapshot</code>
+        (naam/SN) en <code>rejection_code_id</code></td>
+    </tr>
+    <tr>
+      <td>OK – opslaan</td>
+      <td><code>inspections.status='completed'</code>,
+        <code>completed_at=now()</code> (onveranderlijk vanaf hier); bij
+        sync: <code>certificates</code> aanmaken (<code>number</code>,
+        <code>storage_path</code>, <code>pdf_hash</code>,
+        <code>verify_token</code>) en
+        <code>usage_counters.items_inspected</code> ophogen met aantal
+        beoordeelde items</td>
+    </tr>
+  </table>
+</body>
+</html>
