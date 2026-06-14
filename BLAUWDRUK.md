@@ -76,6 +76,19 @@ Aandachtspunten bij dit model:
   aanwijzen (bijv. een magazijnbeheerder naast de eigenaar) zonder dat
   daarvoor een apart rolniveau nodig is.
 
+- **Inloggen en onboarding (besloten 2026-06-14).** Geen gedeeld
+  wachtwoord en geen "kies je naam"-systeem — elke gebruiker krijgt een
+  **eigen, wachtwoordloos account** (Sign in with Apple/Google, of
+  magic-link via e-mail). De eigenaar/manager registreert het klantbedrijf
+  en deelt daarna een **uitnodigingscode/QR/link** met collega's (zelfde
+  patroon als de keurbedrijf-koppeling, zie §3). Wie die code gebruikt,
+  logt in met zijn eigen account en krijgt automatisch een
+  `customer_members`-rij (`role='end_user'`) bij dat klantbedrijf. Daarna
+  blijft iedereen gewoon ingelogd op zijn eigen toestel, zoals elke andere
+  app — geen wachtwoord te onthouden, geen herhaald inloggen. Dit geeft elke
+  `manager`/`end_user` een echte identiteit, nodig voor het rolverschil,
+  voor attributie (`article_notes`) en voor persoonlijke notificaties.
+
 ## 3. Datamodel (uitgewerkt voorstel in `DATAMODEL.md`)
 
 Het detailontwerp (tabellen, kolommen, rechten per rol, migratie) staat in
