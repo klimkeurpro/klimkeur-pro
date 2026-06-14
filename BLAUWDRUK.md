@@ -33,8 +33,8 @@ De keuringsplanner valt buiten scope en komt eventueel later als optie/module.
 | Catalogusbeheerder ("god"-keurmeester) | platform | gratis (tegenprestatie: data) | globale productdatabase bewerken en uitbreiden |
 | Keurbedrijf-admin | keurbedrijf | abonnement | keurmeesters beheren, klantbedrijven aanmaken, eigen branding |
 | Keurmeester | keurbedrijf | via keurbedrijf | keuringen uitvoeren, certificaten afgeven |
-| Klantbedrijf-admin | klantbedrijf | (zie open vraag 9.3) | eigen personeel beheren, eigen artikelen toevoegen |
-| Medewerker (eindgebruiker) | klantbedrijf | gratis | al het materiaal van het klantbedrijf inzien (zie 9.4), keuringsstatus, PDF's downloaden |
+| Klantbedrijf-manager (`manager`) | klantbedrijf | (zie open vraag 9.3) | eigen personeel beheren, eigen artikelen toevoegen |
+| Eindgebruiker (`end_user`) | klantbedrijf | gratis | al het materiaal van het klantbedrijf inzien en basisbeheer (zie 9.4), keuringsstatus, PDF's downloaden |
 | Zelfstandige gebruiker | — (nog geen keurbedrijf) | gratis | eigen materiaal invoeren, keuring aanvragen bij een keurbedrijf |
 
 Hiërarchie: platform → keurbedrijven (tenants) → klantbedrijven → medewerkers.
@@ -53,16 +53,28 @@ Aandachtspunten bij dit model:
   productgegevens tonen zoals ze waren op de keuringsdatum. Keuringsitems
   verwijzen daarom naar een snapshot/versie van het product, niet naar de
   live catalogusrij.
-- **Materiaalzichtbaarheid binnen klantbedrijf zonder materiaalbeheerder**
+- **Materiaal: zichtbaarheid en basisbeheer binnen klantbedrijf**
   (besloten 2026-06-14). Kleine klantbedrijven hebben vaak geen aangewezen
-  materiaalbeheerder/admin. Daarom kunnen **alle medewerkers** (rol `admin`
-  én `member` in `customer_members`) **al het materiaal van het
+  materiaalbeheerder. Daarom kunnen **alle medewerkers** (rol `manager`
+  én `end_user` in `customer_members`) **al het materiaal van het
   klantbedrijf inzien**, inclusief aan wie een artikel is toegewezen
   (`assigned_member_id` → naam) — zo werkt "van wie is dit? → kijk in de
-  app → gaat in Jan's tas" voor iedereen, niet alleen voor een admin. Het
-  verschil tussen `admin` en `member` zit alleen in **beheeracties**
-  (medewerkers toevoegen/verwijderen, koppelingen met keurbedrijven
-  beheren, abonnement) — niet in zichtbaarheid van materiaal.
+  app → gaat in Jan's tas" voor iedereen.
+
+  Beide rollen mogen ook: een **nieuw artikel toevoegen**, de
+  **in-gebruiknamedatum invullen** (eenmalig, daarna niet meer wijzigbaar),
+  een artikel **afvoeren** (data blijft bewaard, alleen niet meer actief),
+  en **opmerkingen plaatsen** bij een artikel (met naam + datum, zie
+  `article_notes` in DATAMODEL). Een `end_user` mag dat laatste alleen bij
+  **eigen toegewezen artikelen**; een `manager` mag het bij elk artikel.
+  Keuringen blijven uitsluitend voor keurmeesters (Pro-app, niet Klant-app).
+
+  Het verschil tussen `manager` en `end_user` zit verder alleen in
+  **beheeracties** (medewerkers toevoegen/verwijderen, koppelingen met
+  keurbedrijven beheren, abonnement). Er is **geen limiet** op het aantal
+  managers per klantbedrijf — grote klantbedrijven kunnen er meerdere
+  aanwijzen (bijv. een magazijnbeheerder naast de eigenaar) zonder dat
+  daarvoor een apart rolniveau nodig is.
 
 ## 3. Datamodel (uitgewerkt voorstel in `DATAMODEL.md`)
 
