@@ -214,6 +214,16 @@ twee blijven niet-blokkerend openstaan.
    het al ontworpen `pdf_hash` + `verify_token` audit-trail-model (DATAMODEL
    §4). Geen aanpassing nodig.
 
+   **Verduidelijking (besloten 2026-06-14):** de eis "elektronische
+   handtekening bij digitale rapporten" komt het expliciétst uit de Duitse
+   BetrSichV §14 Abs. 7, maar het `pdf_hash` + `verify_token`-mechanisme
+   (onveranderlijke PDF + naam/gegevens keurmeester + verifieerbare code) is
+   **niet DE-specifiek gebouwd en geldt voor alle markten**: het is dezelfde
+   laag die voor het VK al als "authenticated record" kwalificeert (zie
+   hierboven) en die nergens in de EU/VS-eisen wordt tegengesproken. Met
+   andere woorden: elk certificaat dat dit platform aflevert, heeft deze
+   elektronische handtekening — niet alleen waar de wet het met name noemt.
+
 Conclusie: **het besloten datamodel staat overeind** — snapshot-model,
 regime-tabel per type × land, onveranderlijk PDF-archief en berekende
 vervaldatums dekken precies wat deze vier landen vragen. De zeven
