@@ -123,15 +123,26 @@ Eigenaar van artikelen en historie (besloten: de klant bezit de data).
 | address, postal_code, city | text? | |
 | email, phone | text? | |
 | notes | text? | |
+| invite_code | text, uniek | uitnodigingscode/QR voor nieuwe medewerkers (besloten 2026-06-14, zie onboarding bij `customer_members`) |
 
 ### `customer_members` (medewerkers/eindgebruikers)
 | kolom | type | uitleg |
 |---|---|---|
 | customer_id | FK → customers | |
-| user_id | FK → users? | leeg = medewerker zonder eigen login (alleen naam) |
+| user_id | FK → users | iedere medewerker heeft een eigen account (besloten 2026-06-14, zie onboarding hieronder) |
 | name | text | weergavenaam ("gebruiker" van een artikel) |
 | role | text | `manager` (beheeracties: medewerkers, `customer_links`, abonnement) / `end_user` |
 | active | boolean | uit dienst ⇒ inactief, historie blijft |
+
+**Onboarding (besloten 2026-06-14):** geen gedeeld wachtwoord en geen
+"kies je naam"-systeem. Elke medewerker logt in met een eigen
+**wachtwoordloos account** (Sign in with Apple/Google of magic-link via
+e-mail) en koppelt zich via een **uitnodigingscode/QR/link** van het
+klantbedrijf (`customers.invite_code`, zelfde patroon als
+`inspection_companies.invite_code`) — dit maakt automatisch een
+`customer_members`-rij aan (`role='end_user'`). Zo heeft elke `manager`/
+`end_user` een echte identiteit, nodig voor het rolverschil en voor
+attributie (`article_notes.author_member_id`, zie §3).
 
 **Zichtbaarheid (besloten 2026-06-14):** `role` bepaalt alleen **beheerrechten**
 (medewerkers toevoegen/verwijderen, `customer_links` beheren, abonnement) —
