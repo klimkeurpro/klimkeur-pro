@@ -150,6 +150,15 @@ keurmeester, verwijzing naar bestand).
 - **UX-afspraak hierbij:** materiaal dat nog nooit gekeurd is toont geen rood
   alarm maar "nog niet gekeurd — vraag een keuring aan". Rood is alleen voor
   verlópen keuringen, zodat de gratis app uitnodigt in plaats van afschrikt.
+- **Niet-gekoppelde klantaccounts: zachte limiet + vrijwillige bijdrage**
+  (besloten 2026-06-14, n.a.v. het scenario "viraal bij eindgebruikers, geen
+  betalende keurmeesters"). Een klantaccount zonder actieve koppeling aan een
+  keurbedrijf is gratis tot **50 artikelen**. Daarboven: optioneel **€5/jaar
+  per 200 extra artikelen**, of een vrijwillige bijdrage — drempel laag voor
+  particulieren en kleine klanten, maar geen onbeperkte gratis groei zonder
+  betalende kant. Bijgehouden via een artikelteller per niet-gekoppelde
+  `customer` (zie DATAMODEL §`usage_counters`). Werkt de klant via een
+  betalende keurmeester, dan blijft deze limiet voor die klant irrelevant.
 
 **Spelregels openbare keurbedrijven-lijst** (besloten 2026-06-12).
 Kernprincipe: *vindbaarheid* (op de lijst staan) en *bereikbaarheid* (eigen
@@ -301,6 +310,9 @@ Bouwstenen en motivatie:
 - ~~Moet een betalend bedrijf op de lijst?~~ → Nee: lijst is een eigen
   schakelaar ("open voor nieuwe klanten"); eigen klanten koppelen altijd via
   uitnodigingscode of naam-zoeken (§7).
+- ~~Niet-gekoppelde klantaccounts bij virale groei zonder betalende
+  keurmeesters?~~ → Zachte limiet van 50 artikelen gratis, daarna optioneel
+  €5/jaar per 200 extra of vrijwillige bijdrage (§7).
 
 ## 11. Bronmateriaal
 
