@@ -95,7 +95,7 @@ Privé en zakelijk gescheiden vanaf dag één (besluit Jos 2026-06-12):
 ## Daarna (bewust buiten het plan)
 
 - Duitsland (DE-vertaling + elektronisch zegel op PDF), VS.
-- CSV-import met AI-matching voor nieuwe keurbedrijven.
+- CSV-import met fuzzy-matching voor nieuwe keurbedrijven (zie BLAUWDRUK §9).
 - Keuringsplanner als optionele module.
 - B2B-rapportages, NEN 3140-meetwaarden.
 
