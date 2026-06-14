@@ -53,6 +53,20 @@ Aandachtspunten bij dit model:
   productgegevens tonen zoals ze waren op de keuringsdatum. Keuringsitems
   verwijzen daarom naar een snapshot/versie van het product, niet naar de
   live catalogusrij.
+- **Vrij artikel: opt-in voor de catalogus-wachtrij** (besloten 2026-06-14).
+  Niet elk vrij artikel hoort in de wachtrij — soms is iets eenmalig of
+  persoonlijk en voegt het niets toe aan de globale catalogus. Daarom krijgt
+  een vrij artikel een vinkje **"voeg toe aan de productendatabase"**. Pas bij
+  aanvinken wordt het een wachtrij-item voor de catalogusbeheerders, en worden
+  een paar velden verplicht (merk, omschrijving, link naar de handleiding) —
+  zo blijft het verwerken voor de catalogusbeheerders behapbaar. Niet
+  aangevinkt = blijft een puur eigen artikel, buiten de wachtrij.
+- **Artikelcode van de fabrikant** (besloten 2026-06-14). Veel producten
+  hebben een eigen bestel-/modelcode van de fabrikant, los van ons interne
+  `id` en het serienummer van het exemplaar. Komt als apart veld
+  `manufacturer_code` in de catalogus (zie DATAMODEL §2); exact formaat
+  bewust nog open, eerst afwachten wat fabrikanten aanleveren via de
+  data-samenwerking (`manufacturer-outreach-email.md`).
 - **Materiaal: zichtbaarheid en basisbeheer binnen klantbedrijf**
   (besloten 2026-06-14). Kleine klantbedrijven hebben vaak geen aangewezen
   materiaalbeheerder. Daarom kunnen **alle medewerkers** (rol `manager`
