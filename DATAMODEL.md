@@ -130,14 +130,20 @@ Eigenaar van artikelen en historie (besloten: de klant bezit de data).
 | customer_id | FK → customers | |
 | user_id | FK → users? | leeg = medewerker zonder eigen login (alleen naam) |
 | name | text | weergavenaam ("gebruiker" van een artikel) |
-| role | text | `admin` (beheeracties: medewerkers, `customer_links`, abonnement) / `member` |
+| role | text | `manager` (beheeracties: medewerkers, `customer_links`, abonnement) / `end_user` |
 | active | boolean | uit dienst ⇒ inactief, historie blijft |
 
 **Zichtbaarheid (besloten 2026-06-14):** `role` bepaalt alleen **beheerrechten**
 (medewerkers toevoegen/verwijderen, `customer_links` beheren, abonnement) —
-niet de zichtbaarheid van materiaal. Zowel `admin` als `member` zien **alle
-`articles` van hun `customer_id`**, inclusief `assigned_member_id` (aan wie
-toegewezen). RLS-policy: scope op `customer_id`, niet op `assigned_member_id`.
+niet de zichtbaarheid van materiaal. Zowel `manager` als `end_user` zien
+**alle `articles` van hun `customer_id`**, inclusief `assigned_member_id`
+(aan wie toegewezen). RLS-policy: scope op `customer_id`, niet op
+`assigned_member_id`. Voor bewerkrechten op artikelen, zie §3.
+
+**Geen limiet op het aantal managers (besloten 2026-06-14):** een
+`customer_id` mag meerdere `customer_members` met `role='manager'` hebben.
+Grote klantbedrijven kunnen zo bijv. een magazijnbeheerder aanwijzen naast
+de eigenaar, zonder apart rolniveau.
 
 ### `customer_links` (koppeling klant ↔ keurbedrijf)
 De wisselbare relatie; historie blijft bewaard bij overstap. **Meerdere
@@ -242,7 +248,7 @@ Intervalresolutie: artikel-override → product-override → regime(type × land
 | assigned_member_id | FK? → customer_members | de "gebruiker"; leeg = poolmateriaal |
 | interval_override_months | int? | per artikel afwijken |
 | severe_use | boolean | zwaar gebruik → verkort interval uit het regime (VK) |
-| notes | text? | |
+| notes | text? | algemeen vrij veld, los van de tijdlijn in `article_notes` |
 | retired | boolean | afgevoerd |
 | retired_at | timestamptz? | |
 
@@ -260,6 +266,26 @@ gebruik — voorraad en niet-PPE hebben zelden een vaste gebruiker, en gedeelde
 PPE komt in de praktijk voor. De app straft dit niet af; bij PPE zonder vaste
 gebruiker toont de UI alleen een vriendelijke hint dat PPE persoonlijk is en
 bij één persoon hoort.
+
+**Bewerkrechten (besloten 2026-06-14):** zowel `manager` als `end_user` mogen
+een nieuw artikel toevoegen, `first_use_date` invullen (eenmalig, daarna niet
+meer wijzigbaar) en een artikel afvoeren (`retired=true` + `retired_at`, data
+blijft bewaard). Opmerkingen plaatsen (zie `article_notes` hieronder) mag een
+`end_user` alleen bij artikelen met `assigned_member_id` = zichzelf; een
+`manager` mag dit bij elk artikel van de `customer_id`. Keuringen blijven
+uitsluitend voor keurmeesters (Pro-app, niet Klant-app).
+
+### `article_notes` (opmerkingen, besloten 2026-06-14)
+Kleine, append-only lijst met opmerkingen per artikel — voorkomt dat
+meerdere mensen elkaars aantekening overschrijven (in tegenstelling tot het
+losse `notes`-veld op `articles`).
+
+| kolom | type | uitleg |
+|---|---|---|
+| article_id | FK → articles | |
+| author_member_id | FK → customer_members | automatisch de ingelogde gebruiker, niet vrij invulbaar |
+| text | text | |
+| created_at | timestamptz | |
 
 ---
 
@@ -366,12 +392,13 @@ performance gaat knellen (onwaarschijnlijk bij dit aantal), voeg dan een
 
 ## 7. Rechten per rol (RLS-schets)
 
-| | platform_admin | catalog_curator | keurbedrijf-admin | keurmeester | klant-admin | medewerker |
+| | platform_admin | catalog_curator | keurbedrijf-admin | keurmeester | klant-manager | end_user |
 |---|---|---|---|---|---|---|
 | Globale catalogus | beheer | beheer + wachtrij | lezen | lezen | lezen | lezen |
 | Eigen keurbedrijf + keurmeesters | alles | — | beheer | lezen | — | — |
 | Klanten van het keurbedrijf | alles | — | actieve links: lezen/keuren | actieve links: lezen/keuren | — | — |
-| Artikelen van het klantbedrijf | alles | — | via actieve link | via actieve link | beheer | eigen artikelen lezen |
+| Artikelen van het klantbedrijf | alles | — | via actieve link | via actieve link | alle artikelen: beheer | alle artikelen: lezen + toevoegen/afvoeren/in-gebruikname |
+| Opmerkingen (`article_notes`) | alles | — | via actieve link: lezen | via actieve link: lezen | elk artikel | eigen toegewezen artikelen |
 | Medewerkers van het klantbedrijf | alles | — | — | — | beheer | — |
 | Keuringen + certificaten | alles | — | eigen bedrijf | eigen bedrijf | eigen klantbedrijf (alle) | eigen artikelen |
 | Lijst-schakelaar, branding, instellingen | alles | — | beheer | — | — | — |
