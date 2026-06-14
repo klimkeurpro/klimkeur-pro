@@ -157,7 +157,7 @@ keurbedrijf B.
 |---|---|---|
 | brand | text | merk |
 | name | text | omschrijving |
-| product_type | text | `ppe` / `rigging` / `aerial_platform` / `machine` (kettingzaag, accuboor, versnipperaar) / … — bepaalt standaardregime |
+| product_type | text | `ppe` / `rigging` / `aerial_platform` / `machine` (kettingzaag, accuboor, versnipperaar) / `other` / … — bepaalt standaardregime |
 | category | text? | huidige `categorie` |
 | material | text? | |
 | standard | text? | EN-norm (huidige `norm`) |
@@ -173,6 +173,17 @@ keurbedrijf B.
 | interval_override_months | int? | wijkt af van het regime voor dit product |
 | status | text | `approved` / `pending` (wachtrij) / `rejected` / `archived` |
 | created_by | FK → users | wie hem aandroeg (klant of curator) |
+
+**Meertaligheid catalogus (besloten 2026-06-14):** `brand` en `name` zijn
+internationaal (merk/modelnaam, bv. "Petzl Avao Bod") en blijven ongemoeid.
+`product_type` en `category` zijn een kleine, beheerde lijst en worden — net
+als `rejection_codes.label_key` — als **i18n-sleutel** vertaald (NL/EN/DE) in
+de taalbestanden, inclusief een sleutel `other`/`overig` voor artikelen die
+nergens in passen (bv. iemands eigen computer). Dit is alléén relevant voor de
+**globale catalogus** (`status='approved'`); een **vrij artikel**
+(`free_description`/`free_brand`/`free_material` op `articles`, zie §3) blijft
+altijd vrije tekst in de eigen taal van de klant, ongeacht categorie — invoer
+mag nooit blokkeren op classificatie.
 
 ### `product_versions` (versiegeschiedenis — juridisch anker)
 Bij elke wijziging van een `approved` product wordt een versie weggeschreven.
@@ -337,6 +348,13 @@ Bij `accepted`: `customer_link` wordt `active` (en een eventuele oude link
 
 Abonnement (€5/keurmeester/maand) = telling van `inspectors.active` per
 maand, ook naar Stripe. Geen verdere eigen boekhouding in de database.
+
+**Niet-gekoppelde klantaccounts (besloten 2026-06-14):** voor de zachte
+limiet uit BLAUWDRUK §7 (50 artikelen gratis, daarna optioneel €5/jaar per
+200 extra of een vrijwillige bijdrage) volstaat `count(articles) where
+customer_id = X` — geen aparte tellertabel nodig. Pas als dit qua
+performance gaat knellen (onwaarschijnlijk bij dit aantal), voeg dan een
+`customers.articles_count` toe die per insert/delete wordt bijgehouden.
 
 ---
 
