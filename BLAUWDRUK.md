@@ -6,7 +6,7 @@ voordat er gebouwd wordt. Per onderwerp staat de huidige stand: **besloten**,
 
 Laatst bijgewerkt: 2026-06-12 (v5: lijst-spelregels definitief —
 uitnodigingscode + "open voor nieuwe klanten"-schakelaar; CSV-import met
-AI-matching uitgewerkt)
+fuzzy-matching uitgewerkt)
 
 ---
 
@@ -323,16 +323,20 @@ Bouwstenen en motivatie:
   Supabase-tabellen (klanten, producten, keuringen, keuring_items, bedrijven,
   afkeurcodes) rechtstreeks omzet naar het nieuwe schema. Volledige historie
   gaat mee; geen handmatig invoerwerk en geen "achterdeur" nodig.
-- **Andere keurbedrijven (later): CSV-import met AI-ondersteuning.** Iedereen
-  heeft een eigen schrijfwijze ("Petzl I'D S" / "PETZL ID small"), dus een
-  starre import volstaat niet. Opzet in drie stappen:
-  1. kolommen koppelen — automatische herkenning ("dit lijkt de
-     serienummer-kolom"), gebruiker bevestigt;
-  2. rijen fuzzy matchen tegen de globale catalogus (merk + omschrijving)
-     met zekerheidsscore;
-  3. alleen twijfelgevallen ter controle voorleggen; onbekende producten
-     gaan de catalogus-wachtrij in (§2).
-  Hoe voller de catalogus, hoe beter het matchen — zelfversterkend. Niet
+- **Andere keurbedrijven (later): CSV-import met fuzzy-matching, geen AI**
+  (besloten 2026-06-14). Iedereen heeft een eigen schrijfwijze ("Petzl I'D S"
+  / "PETZL ID small"), dus een starre import volstaat niet — maar dat hoeft
+  geen AI/LLM te zijn. Opzet in drie stappen, allemaal gewone
+  database-functionaliteit (Postgres trigram-zoeken), deterministisch en
+  zonder externe aanroepen:
+  1. kolommen koppelen — herkenning op kopregel-tekst ("serienummer"/"sn"/
+     "serial" → serienummer-kolom), gebruiker bevestigt/corrigeert;
+  2. rijen fuzzy matchen tegen de globale catalogus (merk + omschrijving) en
+     de beste treffers als "bedoelt u dit?"-dropdown tonen;
+  3. de gebruiker kiest uit de dropdown of laat het leeg (→ vrij artikel,
+     catalogus-wachtrij, §2); bij de eerste keuring kan de keurmeester de
+     koppeling nog corrigeren tegenover het fysieke item.
+  Hoe voller de catalogus, hoe beter de suggesties — zelfversterkend. Niet
   nodig in versie één.
 - **Gratis gebruikers:** voeren zelf in, geholpen door autocomplete op de
   globale catalogus (zo min mogelijk typwerk).
