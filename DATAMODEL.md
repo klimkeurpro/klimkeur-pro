@@ -130,8 +130,14 @@ Eigenaar van artikelen en historie (besloten: de klant bezit de data).
 | customer_id | FK → customers | |
 | user_id | FK → users? | leeg = medewerker zonder eigen login (alleen naam) |
 | name | text | weergavenaam ("gebruiker" van een artikel) |
-| role | text | `admin` (beheert medewerkers + artikelen) / `member` |
+| role | text | `admin` (beheeracties: medewerkers, `customer_links`, abonnement) / `member` |
 | active | boolean | uit dienst ⇒ inactief, historie blijft |
+
+**Zichtbaarheid (besloten 2026-06-14):** `role` bepaalt alleen **beheerrechten**
+(medewerkers toevoegen/verwijderen, `customer_links` beheren, abonnement) —
+niet de zichtbaarheid van materiaal. Zowel `admin` als `member` zien **alle
+`articles` van hun `customer_id`**, inclusief `assigned_member_id` (aan wie
+toegewezen). RLS-policy: scope op `customer_id`, niet op `assigned_member_id`.
 
 ### `customer_links` (koppeling klant ↔ keurbedrijf)
 De wisselbare relatie; historie blijft bewaard bij overstap. **Meerdere
