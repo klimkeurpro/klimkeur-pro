@@ -89,6 +89,18 @@ Aandachtspunten bij dit model:
   `manager`/`end_user` een echte identiteit, nodig voor het rolverschil,
   voor attributie (`article_notes`) en voor persoonlijke notificaties.
 
+- **Overige spullen — zelf te (laten) keuren** (besloten 2026-06-14). Naast
+  PBM/materieel uit de catalogus heeft een bedrijf vaak spullen met een eigen
+  keuringsplicht die niets met het keurbedrijf te maken hebben: EHBO-trommel,
+  brandblusser, kettingzaag bij de eigen dealer, **auto-APK**. Deze komen in
+  een eigen, vrije lijst (`articles.self_managed = true`, zie DATAMODEL §3)
+  met eigen herinneringen en een "zelf afgemeld"-knop (`self_checks`,
+  optioneel met bijlage van het externe rapport). **Belangrijk:** deze
+  artikelen komen nooit in de keuring-wizard van de keurmeester terecht —
+  ook niet via een actieve `customer_link`. Voor de keurmeester verandert er
+  niets; voor de klant wordt het overzicht compleet ("alles wat aandacht
+  nodig heeft op één plek").
+
 ## 3. Datamodel (uitgewerkt voorstel in `DATAMODEL.md`)
 
 Het detailontwerp (tabellen, kolommen, rechten per rol, migratie) staat in
