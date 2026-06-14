@@ -189,6 +189,7 @@ keurbedrijf B.
 | max_age_use_years | int? | vanaf ingebruikname (`max_leeftijd_use`) |
 | max_age_mfr_years | int? | fabrikantstermijn (`max_leeftijd_mfr`) |
 | breaking_strength | text? | breuksterkte |
+| manufacturer_code | text? | artikel-/modelcode van de fabrikant (bv. Petzl-bestelnummer) — besloten 2026-06-14, los van het eigen `id` en van `serial_number` op `articles` (exemplaar van de klant). Formaat verschilt per fabrikant; structuur evt. verfijnen zodra fabrikant-datafeeds binnenkomen (zie `manufacturer-outreach-email.md`) |
 | manual_url | text? | link naar PDF-handleiding |
 | product_page_url | text? | link naar productpagina van de fabrikant |
 | recall_url | text? | link naar recall-bericht. Bewust géén automatische waarschuwing aan eigenaren (besloten 2026-06-12): recalls gelden vrijwel altijd voor déélreeksen (serienummers van–tot, productiejaar, vóór/na datum) die een systeem niet betrouwbaar kan interpreteren — vals alarm of schijnveiligheid. In plaats daarvan: de app toont de recall als vlag aan de **keurmeester tijdens de keuring** van een gekoppeld artikel ("controleer of dit serienummer eronder valt"); beoordeling blijft mensenwerk. De recall-zoekfunctie uit KlimKeur Pro blijft als feature |
@@ -250,8 +251,9 @@ Intervalresolutie: artikel-override → product-override → regime(type × land
 | kolom | type | uitleg |
 |---|---|---|
 | customer_id | FK → customers | de eigenaar |
-| product_id | FK? → products | leeg = "vrij artikel" (nog niet in catalogus → wachtrij) |
+| product_id | FK? → products | leeg = "vrij artikel" (nog niet in catalogus); komt pas in de wachtrij als `suggest_for_catalog=true` |
 | free_description, free_brand, free_material | text? | alleen gevuld bij vrij artikel |
+| free_manufacturer_code, free_manual_url | text? | idem, alleen bij vrij artikel — verplicht zodra `suggest_for_catalog=true` (zie hieronder) |
 | serial_number | text? | |
 | manufacture_year | int? | |
 | manufacture_month | int? | |
@@ -263,6 +265,7 @@ Intervalresolutie: artikel-override → product-override → regime(type × land
 | notes | text? | algemeen vrij veld, los van de tijdlijn in `article_notes` |
 | retired | boolean | afgevoerd |
 | retired_at | timestamptz? | |
+| suggest_for_catalog | boolean | klant-vinkje "voeg toe aan de productendatabase" bij een vrij artikel (`product_id` leeg) — besloten 2026-06-14, zie BLAUWDRUK §2. Aangevinkt: artikel komt in de catalogus-wachtrij (`products`, status=`pending`) en `free_description`/`free_brand`/`free_manual_url` worden verplicht. Niet aangevinkt: blijft puur eigen artikel, buiten de wachtrij |
 | self_managed | boolean | `true` = vrij, niet-PBM artikel uit de "zelf te keuren spullen"-lijst (EHBO-trommel, brandblusser, auto-APK, kettingzaag bij externe dealer, …) — besloten 2026-06-14, zie BLAUWDRUK §2. Staat los van de catalogus (`product_id` leeg) en komt nooit in de keuring-wizard van een keurmeester, ook niet via een actieve `customer_link`. Status volgt uit `self_checks` i.p.v. `inspection_items` |
 
 Status (groen/oranje/"nog niet gekeurd"/rood) wordt **berekend**, nooit
