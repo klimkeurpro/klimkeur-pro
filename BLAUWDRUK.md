@@ -34,7 +34,7 @@ De keuringsplanner valt buiten scope en komt eventueel later als optie/module.
 | Keurbedrijf-admin | keurbedrijf | abonnement | keurmeesters beheren, klantbedrijven aanmaken, eigen branding |
 | Keurmeester | keurbedrijf | via keurbedrijf | keuringen uitvoeren, certificaten afgeven |
 | Klantbedrijf-admin | klantbedrijf | (zie open vraag 9.3) | eigen personeel beheren, eigen artikelen toevoegen |
-| Medewerker (eindgebruiker) | klantbedrijf | gratis | eigen materiaal inzien, keuringsstatus, PDF's downloaden |
+| Medewerker (eindgebruiker) | klantbedrijf | gratis | al het materiaal van het klantbedrijf inzien (zie 9.4), keuringsstatus, PDF's downloaden |
 | Zelfstandige gebruiker | — (nog geen keurbedrijf) | gratis | eigen materiaal invoeren, keuring aanvragen bij een keurbedrijf |
 
 Hiërarchie: platform → keurbedrijven (tenants) → klantbedrijven → medewerkers.
@@ -53,6 +53,16 @@ Aandachtspunten bij dit model:
   productgegevens tonen zoals ze waren op de keuringsdatum. Keuringsitems
   verwijzen daarom naar een snapshot/versie van het product, niet naar de
   live catalogusrij.
+- **Materiaalzichtbaarheid binnen klantbedrijf zonder materiaalbeheerder**
+  (besloten 2026-06-14). Kleine klantbedrijven hebben vaak geen aangewezen
+  materiaalbeheerder/admin. Daarom kunnen **alle medewerkers** (rol `admin`
+  én `member` in `customer_members`) **al het materiaal van het
+  klantbedrijf inzien**, inclusief aan wie een artikel is toegewezen
+  (`assigned_member_id` → naam) — zo werkt "van wie is dit? → kijk in de
+  app → gaat in Jan's tas" voor iedereen, niet alleen voor een admin. Het
+  verschil tussen `admin` en `member` zit alleen in **beheeracties**
+  (medewerkers toevoegen/verwijderen, koppelingen met keurbedrijven
+  beheren, abonnement) — niet in zichtbaarheid van materiaal.
 
 ## 3. Datamodel (uitgewerkt voorstel in `DATAMODEL.md`)
 
@@ -68,12 +78,21 @@ Kern-entiteiten (namen nog te bepalen, zie 9.6):
   klantbedrijf; het keurbedrijf is een wisselbare koppeling, geen eigenaar.
   Certificaten blijven altijd zichtbaar voor de klant, ook na overstap.
 
-- **Keuring aanvragen & overstappen (besloten 2026-06-12):** de huidige
-  mailknop "keuring aanvragen" in KlimKeur Klant wordt een in-app aanvraag:
-  de gebruiker kiest het gewenste keurbedrijf uit een openbare lijst van
-  deelnemende bedrijven (per regio/land) en de artikeldata gaat meteen mee.
-  Hetzelfde mechanisme dient voor nieuwe (zelfstandige) gebruikers én voor
-  overstappen naar een ander keurbedrijf.
+- **Keuring aanvragen & overstappen (besloten 2026-06-12, verduidelijkt
+  2026-06-14):** de huidige mailknop "keuring aanvragen" in KlimKeur Klant
+  wordt een in-app **toegangsverzoek**, geen dataverzending. De gebruiker
+  kiest het gewenste keurbedrijf uit een openbare lijst van deelnemende
+  bedrijven (per regio/land, puur voor vindbaarheid) en stuurt een verzoek;
+  het keurbedrijf accepteert, waarna er een nieuwe `customer_links`-rij
+  ontstaat. Er wordt **niets gedupliceerd**: de artikelen blijven één
+  record, eigendom van de klant (zie "Databezit" hierboven) — het
+  geaccepteerde keurbedrijf krijgt er alleen **inzage/bewerkrechten** bij.
+  Het verschil met de huidige mail: vroeger moest het keurbedrijf alle
+  artikelgegevens handmatig overtypen in hun eigen systeem; nu zien ze de
+  bestaande artikelen direct, zonder overtypen. Hetzelfde mechanisme dient
+  voor nieuwe (zelfstandige) gebruikers én voor overstappen/erbij-koppelen
+  van een ander keurbedrijf (meerdere actieve links mogen, zie
+  `customer_links`).
 
 - **Naamgeving (besloten 2026-06-12):** databaseschema en code in het Engels
   (`customers`, `inspections`, `items`, …); Nederlands bestaat alleen nog in
