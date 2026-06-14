@@ -50,6 +50,7 @@ erDiagram
     customers ||--o{ inspection_requests : "vraagt aan"
     inspection_companies ||--o{ inspection_requests : "ontvangt"
     inspection_regimes ||--o{ products : "standaard voor type"
+    articles ||--o{ self_checks : "zelf gecontroleerd"
 ```
 
 ---
@@ -262,6 +263,7 @@ Intervalresolutie: artikel-override → product-override → regime(type × land
 | notes | text? | algemeen vrij veld, los van de tijdlijn in `article_notes` |
 | retired | boolean | afgevoerd |
 | retired_at | timestamptz? | |
+| self_managed | boolean | `true` = vrij, niet-PBM artikel uit de "zelf te keuren spullen"-lijst (EHBO-trommel, brandblusser, auto-APK, kettingzaag bij externe dealer, …) — besloten 2026-06-14, zie BLAUWDRUK §2. Staat los van de catalogus (`product_id` leeg) en komt nooit in de keuring-wizard van een keurmeester, ook niet via een actieve `customer_link`. Status volgt uit `self_checks` i.p.v. `inspection_items` |
 
 Status (groen/oranje/"nog niet gekeurd"/rood) wordt **berekend**, nooit
 opgeslagen: de "volgende keuring uiterlijk"-datum (`next_due`) van de laatste
@@ -297,6 +299,26 @@ losse `notes`-veld op `articles`).
 | author_member_id | FK → customer_members | automatisch de ingelogde gebruiker, niet vrij invulbaar |
 | text | text | |
 | created_at | timestamptz | |
+
+### `self_checks` (zelf gecontroleerd, besloten 2026-06-14)
+Voor artikelen met `self_managed=true` (zie hierboven): de klant meldt zelf
+af, eventueel met bijlage van een extern keuringsrapport. Staat volledig los
+van `inspections`/`certificates` (keurmeester-only, juridisch onveranderlijk,
+zie §4/§10) — dit is informeel en door de klant zelf ingevuld.
+
+| kolom | type | uitleg |
+|---|---|---|
+| article_id | FK → articles | moet `self_managed=true` zijn |
+| checked_at | date | |
+| performed_by | text? | vrije tekst, bv. "Stihl-dealer Jansen", "garage Peters (APK)", "eigen controle" — géén koppeling met `inspection_companies` |
+| next_due | date? | door gebruiker ingevuld |
+| attachment_url | text? | optioneel eigen geüpload bestand (extern rapport/bonnetje) |
+| created_by_member_id | FK → customer_members | |
+
+Status/`next_due` van een `self_managed`-artikel volgt uitsluitend uit
+`self_checks`. De UI toont dit duidelijk anders ("zelf afgemeld op …") dan
+een keurmeester-certificaat, om verwarring over de juridische status te
+voorkomen.
 
 ---
 
@@ -408,8 +430,9 @@ performance gaat knellen (onwaarschijnlijk bij dit aantal), voeg dan een
 | Globale catalogus | beheer | beheer + wachtrij | lezen | lezen | lezen | lezen |
 | Eigen keurbedrijf + keurmeesters | alles | — | beheer | lezen | — | — |
 | Klanten van het keurbedrijf | alles | — | actieve links: lezen/keuren | actieve links: lezen/keuren | — | — |
-| Artikelen van het klantbedrijf | alles | — | via actieve link | via actieve link | alle artikelen: beheer | alle artikelen: lezen + toevoegen/afvoeren/in-gebruikname |
+| Artikelen van het klantbedrijf (`self_managed=false`) | alles | — | via actieve link | via actieve link | alle artikelen: beheer | alle artikelen: lezen + toevoegen/afvoeren/in-gebruikname |
 | Opmerkingen (`article_notes`) | alles | — | via actieve link: lezen | via actieve link: lezen | elk artikel | eigen toegewezen artikelen |
+| "Zelf te keuren"-spullen (`self_managed=true`, `self_checks`) | alles | — | — | — | beheer | eigen toegewezen artikelen, zie §3 |
 | Medewerkers van het klantbedrijf | alles | — | — | — | beheer | — |
 | Keuringen + certificaten | alles | — | eigen bedrijf | eigen bedrijf | eigen klantbedrijf (alle) | eigen artikelen |
 | Lijst-schakelaar, branding, instellingen | alles | — | beheer | — | — | — |
@@ -419,7 +442,10 @@ Kernregels: toegang van een keurbedrijf tot klantdata loopt áltijd via een
 deel-scope (producttypes) van die link; na overstap vervalt de inzage in nieuwe
 data, maar de eigen uitgevoerde keuringen/certificaten blijven leesbaar
 (eigen administratie). Afgeronde keuringen en certificaten zijn voor
-niemand muteerbaar.
+niemand muteerbaar. Artikelen met `self_managed=true` (en hun `self_checks`)
+zijn voor **geen enkel keurbedrijf/keurmeester** zichtbaar, ook niet via een
+actieve `customer_link` met scope "alle producttypes" — dit is bewust een
+volledig gescheiden, klant-only lijst (zie §3, BLAUWDRUK §2).
 
 ---
 
