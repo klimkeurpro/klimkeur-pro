@@ -1,4 +1,4 @@
-# Datamodel KlimKeur 2.0 — voorstel v5
+# Datamodel KlimKeur 2.0 — voorstel v6
 
 Hoort bij `BLAUWDRUK.md`. Schema- en kolomnamen in het **Engels** (besloten),
 uitleg in het Nederlands. Status: **voorstel, ter bespreking**.
@@ -8,6 +8,7 @@ kwalificaties van keurmeesters mét upload, verkort interval bij zwaar
 gebruik, certificaat-verificatie (QR + audit-trail), bewaarbeleid.
 Resultaat blijft goed/afgekeurd.)
 (v5, 2026-06-19: catalogusfilter per keurbedrijf toegevoegd — `allowed_norms` en `allowed_product_types` op `inspection_companies`. Keurbedrijf stelt eenmalig in welke normen EN types relevant zijn; alle keurmeesters zien automatisch gefilterde catalogus. Buiten de filter = volledig verborgen.)
+(v6, 2026-06-19: extra productvelden toegevoegd aan `products` vanuit brondata CSV — `working_load_limit`, `max_user_weight_kg`, `rope_diameter_min_mm`, `rope_diameter_max_mm`, `serial_number_location`. `inspection_interval_years` uit CSV wordt `interval_override_months` in het model. `created_by` verduidelijkt: wie het product aan de bibliotheek toevoegde.)
 
 ## Eigendomsgrenzen (de kern, besloten)
 
@@ -195,6 +196,11 @@ keurbedrijf B.
 | max_age_use_years | int? | vanaf ingebruikname (`max_leeftijd_use`) |
 | max_age_mfr_years | int? | fabrikantstermijn (`max_leeftijd_mfr`) |
 | breaking_strength | text? | breuksterkte |
+| working_load_limit | text? | maximale werklast (WLL) |
+| max_user_weight_kg | int? | maximaal gebruikersgewicht in kg |
+| rope_diameter_min_mm | numeric? | minimale touwdiameter in mm (voor apparaten die op touw werken) |
+| rope_diameter_max_mm | numeric? | maximale touwdiameter in mm |
+| serial_number_location | text? | waar het serienummer te vinden is op het product, bijv. "label aan binnenkant gordel" |
 | manufacturer_code | text? | artikel-/modelcode van de fabrikant (bv. Petzl-bestelnummer) — besloten 2026-06-14, los van het eigen `id` en van `serial_number` op `articles` (exemplaar van de klant). Formaat verschilt per fabrikant; structuur evt. verfijnen zodra fabrikant-datafeeds binnenkomen (zie `manufacturer-outreach-email.md`) |
 | manual_url | text? | link naar PDF-handleiding |
 | product_page_url | text? | link naar productpagina van de fabrikant |
