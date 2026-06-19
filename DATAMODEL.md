@@ -1,4 +1,4 @@
-# Datamodel KlimKeur 2.0 — voorstel v3
+# Datamodel KlimKeur 2.0 — voorstel v4
 
 Hoort bij `BLAUWDRUK.md`. Schema- en kolomnamen in het **Engels** (besloten),
 uitleg in het Nederlands. Status: **voorstel, ter bespreking**.
@@ -7,6 +7,9 @@ uitleg in het Nederlands. Status: **voorstel, ter bespreking**.
 kwalificaties van keurmeesters mét upload, verkort interval bij zwaar
 gebruik, certificaat-verificatie (QR + audit-trail), bewaarbeleid.
 Resultaat blijft goed/afgekeurd.)
+(v4, 2026-06-19: sets van artikelen toegevoegd — `article_sets` +
+`article_set_members` in §3. Besloten: elk onderdeel behoudt eigen keuring
+en serienummer; de set is puur een groepering.)
 
 ## Eigendomsgrenzen (de kern, besloten)
 
@@ -39,9 +42,12 @@ erDiagram
     customers ||--o{ customer_links : "gekoppeld via"
     customers ||--o{ customer_members : "heeft"
     customers ||--o{ articles : "bezit"
+    customers ||--o{ article_sets : "bezit"
     products ||--o{ product_versions : "versies"
     products ||--o{ articles : "catalogus-koppeling"
     articles ||--o{ inspection_items : "gekeurd in"
+    articles ||--o{ article_set_members : "onderdeel van"
+    article_sets ||--o{ article_set_members : "bevat"
     inspections ||--o{ inspection_items : "bevat"
     inspection_companies ||--o{ inspections : "voert uit"
     inspectors ||--o{ inspections : "uitgevoerd door"
@@ -303,6 +309,46 @@ losse `notes`-veld op `articles`).
 | text | text | |
 | created_at | timestamptz | |
 
+### `article_sets` (sets / samengestelde uitrustingen, besloten 2026-06-19)
+Een set is een **groepering** van losse artikelen die bij elkaar horen, zoals
+een fliplijn (lijmklem + lijn + karabiner(s)) of een klimgordel met extra
+ring. De set heeft geen eigen serienummer en geen eigen keuring — elk
+onderdeel behoudt zijn eigen `articles`-rij, eigen SN en eigen
+keuringsuitslag. De set is puur organisatorisch: het helpt de gebruiker en
+keurmeester om bij elkaar horende artikelen in één oogopslag te zien.
+
+Spelregels (besloten 2026-06-19):
+- Een artikel mag in meerdere sets zitten (een karabiner die ook los bestaat).
+- Een set verwijderen verwijdert de losse artikelen **niet** — alleen de
+  groepering verdwijnt.
+- Keuring van onderdelen is altijd per artikel; één afgekeurd onderdeel
+  maakt niet automatisch de hele set afgekeurd.
+- Sets zijn zichtbaar voor zowel de klant als de keurmeester (via de
+  actieve `customer_link`).
+- Aanmaken mag door zowel de klant (`manager` of `end_user`) als de
+  keurmeester (besloten 2026-06-19).
+
+| kolom | type | uitleg |
+|---|---|---|
+| customer_id | FK → customers | eigenaar van de set |
+| name | text | bijv. "Fliplijn Jan", "Gordel + extra ring Piet" |
+| notes | text? | vrij veld voor toelichting |
+| created_by_member_id | FK? → customer_members | gevuld als een klantgebruiker de set aanmaakt |
+| created_by_inspector_id | FK? → inspectors | gevuld als een keurmeester de set aanmaakt |
+
+### `article_set_members` (koppeltabel: welke artikelen zitten in een set)
+| kolom | type | uitleg |
+|---|---|---|
+| set_id | FK → article_sets | |
+| article_id | FK → articles | het losse artikel |
+| role | text? | optionele omschrijving van de rol in de set: "lijn", "lijmklem", "karabiner", "extra ring", … — vrije tekst, geen vaste lijst |
+
+**UI-weergave:** een set toont als een uitklapbare kaart. Bovenin de naam
+van de set; uitklappen toont elk onderdeel met zijn eigen statusindicator
+(groen/oranje/rood). De slechtste status van de onderdelen bepaalt de kleur
+van de set-kaart — zo valt een afgekeurd onderdeel meteen op zonder dat je
+hoeft uit te klappen.
+
 ### `self_checks` (zelf gecontroleerd, besloten 2026-06-14)
 Voor artikelen met `self_managed=true` (zie hierboven): de klant meldt zelf
 af, eventueel met bijlage van een extern keuringsrapport. Staat volledig los
@@ -434,6 +480,7 @@ performance gaat knellen (onwaarschijnlijk bij dit aantal), voeg dan een
 | Eigen keurbedrijf + keurmeesters | alles | — | beheer | lezen | — | — |
 | Klanten van het keurbedrijf | alles | — | actieve links: lezen/keuren | actieve links: lezen/keuren | — | — |
 | Artikelen van het klantbedrijf (`self_managed=false`) | alles | — | via actieve link | via actieve link | alle artikelen: beheer | alle artikelen: lezen + toevoegen/afvoeren/in-gebruikname |
+| Sets (`article_sets` + `article_set_members`) | alles | — | via actieve link: lezen + aanmaken | via actieve link: lezen + aanmaken | alle sets van `customer_id`: beheer | alle sets van `customer_id`: lezen + aanmaken |
 | Opmerkingen (`article_notes`) | alles | — | via actieve link: lezen | via actieve link: lezen | elk artikel | eigen toegewezen artikelen |
 | "Zelf te keuren"-spullen (`self_managed=true`, `self_checks`) | alles | — | — | — | beheer | eigen toegewezen artikelen, zie §3 |
 | Medewerkers van het klantbedrijf | alles | — | — | — | beheer | — |
@@ -465,6 +512,7 @@ volledig gescheiden, klant-only lijst (zie §3, BLAUWDRUK §2).
 | `afkeurcodes` | `rejection_codes` |
 | `instellingen` | `inspection_companies.settings` |
 | klimkeur-klant accounts | `users` + `customer_members` |
+| — (nieuw) | `article_sets` + `article_set_members` (geen migratie nodig: sets worden na lancering handmatig aangemaakt door klanten/keurmeesters) |
 
 Aandachtspunt: in het huidige model zíjn artikelen geen eigen entiteit —
 elk keuringsitem draagt de artikelgegevens. Het script moet dus artikelen
@@ -491,6 +539,11 @@ elk keuringsitem draagt de artikelgegevens. Het script moet dus artikelen
 6. ~~Derde keuringsuitkomst "monitoren"?~~ → **Nee** (besloten 2026-06-12):
    geen EN 365-eis maar Petzl-formulierpraktijk; goed/afgekeurd +
    opmerkingenveld volstaat.
+7. ~~Sets van artikelen?~~ → **Ja** (besloten 2026-06-19): puur een
+   groepering, geen eigen keuring of SN. Elk onderdeel blijft een los
+   artikel. Een onderdeel mag in meerdere sets zitten. Aanmaken door
+   zowel klant als keurmeester. Zie §3 (`article_sets`,
+   `article_set_members`).
 
 ## 10. Bewaarbeleid
 
