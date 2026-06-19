@@ -1,4 +1,4 @@
-# Datamodel KlimKeur 2.0 — voorstel v4
+# Datamodel KlimKeur 2.0 — voorstel v5
 
 Hoort bij `BLAUWDRUK.md`. Schema- en kolomnamen in het **Engels** (besloten),
 uitleg in het Nederlands. Status: **voorstel, ter bespreking**.
@@ -7,9 +7,7 @@ uitleg in het Nederlands. Status: **voorstel, ter bespreking**.
 kwalificaties van keurmeesters mét upload, verkort interval bij zwaar
 gebruik, certificaat-verificatie (QR + audit-trail), bewaarbeleid.
 Resultaat blijft goed/afgekeurd.)
-(v4, 2026-06-19: sets van artikelen toegevoegd — `article_sets` +
-`article_set_members` in §3. Besloten: elk onderdeel behoudt eigen keuring
-en serienummer; de set is puur een groepering.)
+(v5, 2026-06-19: catalogusfilter per keurbedrijf toegevoegd — `allowed_norms` en `allowed_product_types` op `inspection_companies`. Keurbedrijf stelt eenmalig in welke normen EN types relevant zijn; alle keurmeesters zien automatisch gefilterde catalogus. Buiten de filter = volledig verborgen.)
 
 ## Eigendomsgrenzen (de kern, besloten)
 
@@ -93,6 +91,8 @@ de koppeltabellen (`inspectors`, `customer_members`, `platform_admins`).
 | settings | jsonb | kolomweergave e.d. (nu `instellingen`-tabel) |
 | invite_code | text, uniek | uitnodigingscode/QR voor eigen klanten |
 | listed | boolean | de schakelaar "open voor nieuwe klanten" |
+| allowed_norms | text[] | welke normen dit bedrijf keurt, bijv. `["EN", "ANSI", "AS"]` — catalogus filtert hier automatisch op; keurmeesters zien alleen producten binnen deze normen |
+| allowed_product_types | text[] | welke types dit bedrijf keurt, bijv. `["ppe", "rigging"]` — zelfde filterlogica; leeg = alles zichtbaar |
 | billing_status | text | `active` / `past_due` / `suspended` — past_due ⇒ automatisch van de lijst |
 | stripe_customer_id | text? | facturatie |
 
