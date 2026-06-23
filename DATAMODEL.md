@@ -287,6 +287,14 @@ Intervalresolutie: artikel-override → product-override → regime(type × land
 > (functie + FK `articles.product_id → products`). RLS uit, grant `authenticated`.
 > NB: `search_products` zat eerder alleen in de DB (niet in de repo) en is nu
 > vastgelegd als migratie.
+>
+> **Aanvulling 2026-06-23:** toevoegformulier heeft nu ook gebruiker,
+> ingebruikname-datum, set en opmerkingen. `first_use_date`/`notes` = bestaande
+> kolommen. **Tijdelijk** als vrije tekst toegevoegd (migratie
+> `20260623_article_extra_fields.sql`): `assigned_user_name` (wordt later
+> `assigned_member_id → customer_members`) en `set_label` (wordt later de echte
+> `article_sets`-tabel). Nog niet in de UI: bouwjaar/maand, aankoopdatum,
+> severe_use, interval-override — die kolommen bestaan al.
 
 | kolom | type | uitleg |
 |---|---|---|

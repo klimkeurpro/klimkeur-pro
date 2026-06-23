@@ -13,9 +13,15 @@ Hoort bij `BLAUWDRUK.md`, `DATAMODEL.md`, `UX-FLOW.md` en
   i18n nl/en, domeinlogica met tests (status/next_due/regimes),
   e-mail+wachtwoord-login werkend in de inspector-app. ✅ grotendeels af.
 - **Fase 2 — in uitvoering:** hoofdmenu werkt; **Klanten-lijst + uitgebreid
-  klantformulier af** (zie DATAMODEL `customers`). Nog te bouwen: het
-  klantdetailscherm `/customers/:id` en de overige tegels (keuringen,
-  SN-zoeken, instellingen).
+  klantformulier af** (zie DATAMODEL `customers`); **klantdetailscherm**
+  `/customers/:id` af (bekijken/bewerken/verwijderen); **artikelen per klant**
+  met catalogus-zoeken (fuzzy `search_products` + merkfilter, toetsenbord-nav)
+  en velden gebruiker/ingebruikname/set/opmerkingen (gebruiker+set voorlopig
+  vrije tekst — zie DATAMODEL `articles`). Nog te bouwen: artikeldetail/bewerken,
+  echte sets + medewerkers, en de keuring-wizard (het hart van fase 2), plus de
+  overige tegels (keuringen, SN-zoeken, instellingen).
+  > Detailvelden staan in **DATAMODEL.md**, niet in dit bouwplan: het bouwplan
+  > is de fasering, het datamodel is de veldenbron.
 - **Live:** de inspector-app draait op **https://gearonimo.net** (GitHub
   Pages; auto-deploy bij elke push naar `main`, zie
   `.github/workflows/deploy.yml`). De repo is daarvoor **openbaar** gemaakt.
