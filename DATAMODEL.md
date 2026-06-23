@@ -278,11 +278,15 @@ Intervalresolutie: artikel-override → product-override → regime(type × land
 
 ### `articles`
 
-> **Implementatie 2026-06-23 (fase 2):** eerste slice live — "vrije artikelen"
-> (`product_id` leeg) per klant, getoond op het klantdetailscherm in de
-> inspector-app. Migratie `20260623_articles.sql`; RLS uit, grant `authenticated`.
-> Toevoegformulier nu: omschrijving (verplicht), merk, serienummer, bouwjaar,
-> opmerkingen. Overige kolommen bestaan al maar nog niet in de UI.
+> **Implementatie 2026-06-23 (fase 2):** artikelen per klant live op het
+> klantdetailscherm (inspector-app). Toevoegen via **catalogus-zoeken**
+> (fuzzy/typo-tolerant, DB-functie `search_products` met `pg_trgm`) + merkfilter
+> met autocomplete en toetsenbordnavigatie; gekozen product koppelt via
+> `product_id`. Fallback "vrij artikel" (`free_*` + `suggest_for_catalog`).
+> Migraties: `20260623_articles.sql` (tabel + grant) en `20260623_search_products.sql`
+> (functie + FK `articles.product_id → products`). RLS uit, grant `authenticated`.
+> NB: `search_products` zat eerder alleen in de DB (niet in de repo) en is nu
+> vastgelegd als migratie.
 
 | kolom | type | uitleg |
 |---|---|---|
