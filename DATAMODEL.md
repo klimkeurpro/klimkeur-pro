@@ -391,6 +391,17 @@ Spelregels (besloten 2026-06-19):
 | article_id | FK → articles | het losse artikel |
 | role | text? | optionele omschrijving van de rol in de set: "lijn", "lijmklem", "karabiner", "extra ring", … — vrije tekst, geen vaste lijst |
 
+> **Implementatie 2026-06-23 (fase 2):** `article_sets` +
+> `article_set_members` live (migratie `20260623_article_sets.sql`, RLS uit,
+> grant `authenticated`). UI: op het klantdetailscherm een set aanmaken
+> (naam + artikelen aanvinken uit de bestaande lijst van de klant);
+> `/sets/:id` toont de leden, laat artikelen toe/verwijderen uit de set en
+> de set hernoemen/verwijderen (verwijdert nooit de onderliggende
+> artikelen). `created_by_member_id`/`created_by_inspector_id` staan al in
+> de tabel maar worden nog niet gevuld (`customer_members`/`inspectors`
+> bestaan nog niet). `role` per lid en de uitklapbare statuskaart
+> (slechtste status van de leden) zijn nog niet gebouwd.
+
 **UI-weergave:** een set toont als een uitklapbare kaart. Bovenin de naam
 van de set; uitklappen toont elk onderdeel met zijn eigen statusindicator
 (groen/oranje/rood). De slechtste status van de onderdelen bepaalt de kleur
