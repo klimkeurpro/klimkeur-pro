@@ -293,8 +293,14 @@ Intervalresolutie: artikel-override → product-override → regime(type × land
 > kolommen. **Tijdelijk** als vrije tekst toegevoegd (migratie
 > `20260623_article_extra_fields.sql`): `assigned_user_name` (wordt later
 > `assigned_member_id → customer_members`) en `set_label` (wordt later de echte
-> `article_sets`-tabel). Nog niet in de UI: bouwjaar/maand, aankoopdatum,
-> severe_use, interval-override — die kolommen bestaan al.
+> `article_sets`-tabel).
+>
+> **Artikeldetailscherm 2026-06-23:** `/articles/:id` (vanuit de klantenlijst
+> aanklikbaar) toont/bewerkt nu ook bouwjaar/-maand, aankoopdatum en
+> severe_use; `first_use_date` is eenmalig invulbaar (daarna alleen-lezen, zie
+> bewerkrechten hieronder). Geen harde delete: "afvoeren" zet
+> `retired=true`/`retired_at` (data blijft bewaard). Nog niet in de UI:
+> interval-override, het wisselen van gekoppeld catalogusproduct.
 
 | kolom | type | uitleg |
 |---|---|---|

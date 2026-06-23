@@ -17,9 +17,10 @@ Hoort bij `BLAUWDRUK.md`, `DATAMODEL.md`, `UX-FLOW.md` en
   `/customers/:id` af (bekijken/bewerken/verwijderen); **artikelen per klant**
   met catalogus-zoeken (fuzzy `search_products` + merkfilter, toetsenbord-nav)
   en velden gebruiker/ingebruikname/set/opmerkingen (gebruiker+set voorlopig
-  vrije tekst — zie DATAMODEL `articles`). Nog te bouwen: artikeldetail/bewerken,
-  echte sets + medewerkers, en de keuring-wizard (het hart van fase 2), plus de
-  overige tegels (keuringen, SN-zoeken, instellingen).
+  vrije tekst — zie DATAMODEL `articles`); **artikeldetailscherm**
+  `/articles/:id` af (bekijken/bewerken/afvoeren, geen harde delete). Nog te
+  bouwen: echte sets + medewerkers, en de keuring-wizard (het hart van fase 2),
+  plus de overige tegels (keuringen, SN-zoeken, instellingen).
   > Detailvelden staan in **DATAMODEL.md**, niet in dit bouwplan: het bouwplan
   > is de fasering, het datamodel is de veldenbron.
 - **Live:** de inspector-app draait op **https://gearonimo.net** (GitHub
