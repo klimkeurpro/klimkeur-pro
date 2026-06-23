@@ -125,13 +125,30 @@ Eigenaar van artikelen en historie (besloten: de klant bezit de data).
 
 | kolom | type | uitleg |
 |---|---|---|
-| name | text | bedrijfsnaam of persoonsnaam |
-| type | text | `company` / `individual` (zelfstandige gratis gebruiker) |
-| country_code | text | |
-| address, postal_code, city | text? | |
-| email, phone | text? | |
-| notes | text? | |
+| name | text | bedrijfsnaam of persoonsnaam — **verplicht** in het invoerformulier |
+| customer_number | text? | eigen klantnummer (toegevoegd 2026-06-23) |
+| kvk_number | text? | KvK-nummer (toegevoegd 2026-06-23) |
+| vat_number | text? | BTW-nummer (toegevoegd 2026-06-23) |
+| contact_person | text? | contactpersoon (toegevoegd 2026-06-23) |
+| email | text | **verplicht** in het invoerformulier (basis voor latere magic-link-uitnodiging) |
+| phone | text? | |
+| street | text? | straat — adres opgesplitst (2026-06-23), vervangt `address` |
+| house_number | text? | huisnummer (2026-06-23) |
+| house_number_addition | text? | toevoeging, bv. A / bis (2026-06-23) |
+| postal_code | text? | postcode |
+| city | text? | woonplaats |
+| province | text? | provincie (toegevoegd 2026-06-23) |
+| country | text? | land, vrije tekst (toegevoegd 2026-06-23, naast `country_code`) |
+| notes | text? | opmerkingen |
+| type | text | `company` / `individual` — kolom bestaat nog, maar **niet meer in het inspector-invoerformulier** (besloten 2026-06-23) |
+| country_code | text | legacy; de UI gebruikt nu het vrije tekstveld `country` |
+| address | text? | **niet meer gebruikt** — vervangen door `street`/`house_number` (2026-06-23) |
 | invite_code | text, uniek | uitnodigingscode/QR voor nieuwe medewerkers (besloten 2026-06-14, zie onboarding bij `customer_members`) |
+
+> **Implementatie fase 2.2 (2026-06-23):** bovenstaande extra velden zijn als
+> kolommen toegevoegd via `supabase/migrations/20260622_customers_extra_fields.sql`
+> in de Gearonimo-repo. Alleen `name` en `email` zijn in de UI verplicht; de rest
+> is vrije invoer (data-minimalisatie/AVG).
 
 ### `customer_members` (medewerkers/eindgebruikers)
 | kolom | type | uitleg |

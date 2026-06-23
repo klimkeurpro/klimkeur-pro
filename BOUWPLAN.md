@@ -3,6 +3,28 @@
 Hoort bij `BLAUWDRUK.md`, `DATAMODEL.md`, `UX-FLOW.md` en
 `ONDERZOEK-CERTIFICAATEISEN.md`. Status: vastgesteld 2026-06-12.
 
+---
+
+## Voortgang (bijgewerkt 2026-06-23)
+
+- **GitHub:** github.com/Gearonimo-app/gearonimo · **Supabase:**
+  buitfeiclivzzldfdelp.supabase.co (EU).
+- **Fase 1 (skelet):** monorepo (packages/core+ui, apps/inspector+customer),
+  i18n nl/en, domeinlogica met tests (status/next_due/regimes),
+  e-mail+wachtwoord-login werkend in de inspector-app. ✅ grotendeels af.
+- **Fase 2 — in uitvoering:** hoofdmenu werkt; **Klanten-lijst + uitgebreid
+  klantformulier af** (zie DATAMODEL `customers`). Nog te bouwen: het
+  klantdetailscherm `/customers/:id` en de overige tegels (keuringen,
+  SN-zoeken, instellingen).
+- **Live:** de inspector-app draait op **https://gearonimo.net** (GitHub
+  Pages; auto-deploy bij elke push naar `main`, zie
+  `.github/workflows/deploy.yml`). De repo is daarvoor **openbaar** gemaakt.
+- **Let op — beveiliging:** RLS staat momenteel **UIT** op `customers`
+  (tijdelijk, voor testen); tabelrechten zijn toegekend aan de rol
+  `authenticated`. RLS moet later aan, met scope op `customer_id` (zie
+  BLAUWDRUK). Dit was ook de "permission denied" die deze sessie is opgelost:
+  een GRANT-kwestie, geen sessie-/RLS-probleem.
+
 Uitgangspunten:
 
 - **Elke fase eindigt met iets dat Jos kan vasthouden en testen.** Geen
@@ -20,13 +42,14 @@ Uitgangspunten:
 
 Privé en zakelijk gescheiden vanaf dag één (besluit Jos 2026-06-12):
 
-1. **Domeinen registreren: gearonimo.io/.app/.nl/.eu** (gearonimo.com is
-   geparkeerd — aankoop via broker later verkennen) — zie blauwdruk §8.
-2. **Zakelijk e-mailadres** op het domein (bijv. jos@gearonimo.app of
-   @gearonimo.nl); kan bij de registrar of via een mailpakket.
-3. **GitHub-organisatie "gearonimo"** aanmaken met het zakelijke adres —
-   nieuwe repo's los van klimkeurpro.
-4. **Supabase-account op het zakelijke adres**, nieuw project in EU-regio.
+1. ~~**Domeinen registreren**~~ — uitgevoerd: **gearonimo.net** geregistreerd
+   (bij Porkbun) en in gebruik als live-adres. (Oorspronkelijk plan noemde
+   .io/.app/.nl/.eu; uiteindelijk .net gekozen.)
+2. ~~**Zakelijk e-mailadres**~~ — uitgevoerd: **info@gearonimo.net** (via Zoho
+   Mail). (Oorspronkelijk plan noemde jos@gearonimo.app/.nl.)
+3. ~~**GitHub-organisatie**~~ — uitgevoerd: org **Gearonimo-app**.
+4. ~~**Supabase-account**, nieuw project in EU-regio~~ — uitgevoerd:
+   project buitfeiclivzzldfdelp (EU).
 5. ~~Merkcheck~~ gedaan (TMview: alleen beëindigd Mattel-merk klasse 28 —
    geen blokkade). Nog doen: **naam checken in App Store en Play Store**.
 6. *Pas later nodig:* Stripe-account (fase 5), Apple Developer $99/jaar en
