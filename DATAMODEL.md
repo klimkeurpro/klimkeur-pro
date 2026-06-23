@@ -277,6 +277,13 @@ Intervalresolutie: artikel-override → product-override → regime(type × land
 ## 3. Artikelen (het bezit van de klant)
 
 ### `articles`
+
+> **Implementatie 2026-06-23 (fase 2):** eerste slice live — "vrije artikelen"
+> (`product_id` leeg) per klant, getoond op het klantdetailscherm in de
+> inspector-app. Migratie `20260623_articles.sql`; RLS uit, grant `authenticated`.
+> Toevoegformulier nu: omschrijving (verplicht), merk, serienummer, bouwjaar,
+> opmerkingen. Overige kolommen bestaan al maar nog niet in de UI.
+
 | kolom | type | uitleg |
 |---|---|---|
 | customer_id | FK → customers | de eigenaar |
