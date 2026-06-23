@@ -181,6 +181,19 @@ niet de zichtbaarheid van materiaal. Zowel `manager` als `end_user` zien
 Grote klantbedrijven kunnen zo bijv. een magazijnbeheerder aanwijzen naast
 de eigenaar, zonder apart rolniveau.
 
+> **Implementatie fase 2.3 (2026-06-23, inspector-app):** eerste slice is
+> simpeler dan bovenstaand model: `customer_members` heeft nu `name`, `role`
+> (vrije tekst, geen `manager`/`end_user`-onderscheid), `phone`, `email`,
+> `notes`, `active`. Géén `user_id`/eigen account en géén
+> uitnodigingscode-onboarding — de keurmeester voert medewerkers zelf in
+> (zelfde aanpak als `assigned_user_name` op `articles`: eerst vrij invullen,
+> later pas de echte koppeling). Migratie:
+> `supabase/migrations/20260623_customer_members.sql`. RLS uit, GRANT aan
+> `authenticated`, zelfde tijdelijke opzet als `customers`/`articles`.
+> `articles.assigned_member_id` en `article_sets.created_by_member_id` wijzen
+> nog niet naar deze tabel (blijven losse uuid-kolommen tot de koppeling
+> gebouwd wordt).
+
 ### `customer_links` (koppeling klant ↔ keurbedrijf)
 De wisselbare relatie; historie blijft bewaard bij overstap. **Meerdere
 actieve links tegelijk zijn toegestaan** (besloten 2026-06-12): bijv. PPE

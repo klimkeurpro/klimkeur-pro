@@ -21,10 +21,13 @@ Hoort bij `BLAUWDRUK.md`, `DATAMODEL.md`, `UX-FLOW.md` en
   `/articles/:id` af (bekijken/bewerken/afvoeren, geen harde delete); **echte
   sets af** — samengestelde artikelen (bv. een fliplijn van lijn + lijnklem +
   karabiner) groeperen via `article_sets`/`article_set_members`, los van het
-  tijdelijke vrije-tekstveld `set_label` op artikelen zelf. Nog te bouwen:
-  medewerkers (`customer_members`, nodig voor "per gebruiker" en wie een set
-  aanmaakte), en de keuring-wizard (het hart van fase 2), plus de overige
-  tegels (keuringen, SN-zoeken, instellingen).
+  tijdelijke vrije-tekstveld `set_label` op artikelen zelf. **Medewerkers af**
+  — eerste slice van `customer_members` (naam, functie, telefoon, e-mail,
+  actief/inactief) op de klantkaart, simpeler dan het einddoel uit DATAMODEL
+  (nog geen eigen account/uitnodigingscode per medewerker — zie DATAMODEL
+  §`customer_members`). Nog te bouwen: UI-opmaak/styling-pas, de
+  keuring-wizard (het hart van fase 2), plus de overige tegels (keuringen,
+  SN-zoeken, instellingen).
   > Detailvelden staan in **DATAMODEL.md**, niet in dit bouwplan: het bouwplan
   > is de fasering, het datamodel is de veldenbron.
 - **Live:** de inspector-app draait op **https://gearonimo.net** (GitHub
