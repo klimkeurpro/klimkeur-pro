@@ -52,8 +52,24 @@ Hoort bij `BLAUWDRUK.md`, `DATAMODEL.md`, `UX-FLOW.md` en
   — zonder de volledige klant-/keuringdata aan anonieme bezoekers te geven.
   Certificaatnummer-formaat volgt Jos' huidige praktijk
   (`JJJJMMDD-KLANTNAAM`). Migratie: `supabase/migrations/20260624_certificates.sql`.
-  Bewust nog buiten scope: foto's bij afkeuring, en de inhoud van de
-  afkeurcodes 1-8 (`rejection_codes` bestaat al, moet Jos nog aanleveren).
+  **Echte bedrijfsgegevens + afkeurcodes ingevuld (2026-06-25):** Jos heeft
+  de echte naam/adres/kop-/voettekst van Safety Green B.V. en de 8
+  afkeurcodes uit de huidige praktijk aangeleverd (1 slijtage/opgebruikt,
+  2 mechanisch beschadigd, 3 brand- of smeltplekken, 4 roest, 5 leeftijd of
+  label, 6 defecte sluiting, 7 modificatie, 8 anders/zie opmerkingen) — zie
+  `supabase/migrations/20260625_company_details_and_rejection_codes.sql`,
+  uitgevoerd in Supabase. Afkeurcodes zijn nog **niet** door de gebruiker
+  zelf te beheren (geen instellingenscherm); dat staat nog open.
+  **Gemerged naar `main` en live (2026-06-25):** de feature-branch is
+  fast-forward gemerged naar `main` en gepusht; gearonimo.net (GitHub
+  Pages, auto-deploy bij push naar `main`) draait nu met de
+  certificaat-functionaliteit. **We staan op het punt van de eerste echte
+  test**: Jos gaat een volledige keuring afronden op
+  https://gearonimo.net en controleren of het certificaat klopt
+  (PDF-inhoud, QR-link naar `/verify/:token`, downloadlink). Resultaat van
+  die test nog niet teruggekoppeld — vervolgsessie begint hiermee.
+  Bewust nog buiten scope: foto's bij afkeuring, instellingenscherm voor
+  afkeurcodes.
   Nog te bouwen: UI-opmaak/styling-pas, plus de overige tegels
   (keuringen-overzicht is een eerste opzet, SN-zoeken, instellingen).
   > Detailvelden staan in **DATAMODEL.md**, niet in dit bouwplan: het bouwplan
