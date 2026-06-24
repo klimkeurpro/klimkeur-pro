@@ -5,7 +5,7 @@ Hoort bij `BLAUWDRUK.md`, `DATAMODEL.md`, `UX-FLOW.md` en
 
 ---
 
-## Voortgang (bijgewerkt 2026-06-23)
+## Voortgang (bijgewerkt 2026-06-24)
 
 - **GitHub:** github.com/Gearonimo-app/gearonimo · **Supabase:**
   buitfeiclivzzldfdelp.supabase.co (EU).
@@ -25,9 +25,21 @@ Hoort bij `BLAUWDRUK.md`, `DATAMODEL.md`, `UX-FLOW.md` en
   — eerste slice van `customer_members` (naam, functie, telefoon, e-mail,
   actief/inactief) op de klantkaart, simpeler dan het einddoel uit DATAMODEL
   (nog geen eigen account/uitnodigingscode per medewerker — zie DATAMODEL
-  §`customer_members`). Nog te bouwen: UI-opmaak/styling-pas, de
-  keuring-wizard (het hart van fase 2), plus de overige tegels (keuringen,
-  SN-zoeken, instellingen).
+  §`customer_members`). **Keuring-wizard af** (het hart van fase 2, zie
+  UX-FLOW §9.3-9.5): Start/Hervat-knop op de klantpagina, en de wizard zelf
+  in 4 stappen (artikelen kiezen, per artikel goed-/afkeuren met
+  vorige-keuring-context en recall/levensduur-vlaggen, overzicht met
+  aanpasbare volgende-keuringsdatum, afronden). Hiervoor is meteen de echte
+  multi-tenant basis uit DATAMODEL aangelegd — `inspection_companies`,
+  `inspectors` (automatisch aangemaakt per gebruiker, geen apart
+  beheerscherm nodig), `customer_links` (automatisch gekoppeld, ook voor
+  nieuwe klanten) — ook al is er vandaag nog maar één keurbedrijf; dit
+  voorkomt dat dit straks alsnog moet worden rechtgetrokken. Bewust nog
+  buiten scope: PDF-certificaat (opslag, hash, verify_token, QR-verificatie),
+  foto's bij afkeuring, en de inhoud van de afkeurcodes 1-8 (`rejection_codes`
+  bestaat al, moet Jos nog aanleveren). Nog te bouwen: UI-opmaak/styling-pas,
+  PDF-certificaat, plus de overige tegels (keuringen-overzicht is een eerste
+  opzet, SN-zoeken, instellingen).
   > Detailvelden staan in **DATAMODEL.md**, niet in dit bouwplan: het bouwplan
   > is de fasering, het datamodel is de veldenbron.
 - **Live:** de inspector-app draait op **https://gearonimo.net** (GitHub

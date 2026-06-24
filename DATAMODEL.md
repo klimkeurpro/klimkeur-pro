@@ -471,6 +471,21 @@ voorkomen.
 | rejection_code_id | FK? → rejection_codes | |
 | comment | text? | |
 
+> **Implementatie fase 2.4 (2026-06-24, inspector-app):** `inspections` en
+> `inspection_items` zijn nu gebouwd zoals hierboven, inclusief de
+> next_due-berekening via `packages/core` (interval × bouwjaar/eerste-gebruik-
+> begrenzing, zie §status/next_due-logica). Niet meegebouwd: `product_version_id`
+> (er is nog geen `product_versions`-tabel — de productdata in `article_snapshot`
+> is de huidige stand, niet een onveranderlijke versie), `certificate_number`
+> wordt nog niet gezet, en `rejection_codes` bestaat als tabel maar is nog
+> ongevuld (Jos moet de echte codes 1-8 aanleveren) — tot dan is de
+> afkeur-opmerking in de wizard vrije tekst. Om de wizard te kunnen draaien
+> zijn ook `inspection_companies` en `inspectors` (met automatische
+> provisionering per ingelogde gebruiker, geen apart beheerscherm) en
+> `customer_links` (automatisch gekoppeld/backfilled) al volgens het volledige
+> DATAMODEL aangelegd, ook al is er vandaag nog maar één keurbedrijf — zie de
+> migraties `supabase/migrations/20260624_*.sql`.
+
 ### `photos` (besloten 2026-06-12: ja, met maat-discipline)
 Foto's bij keuringsitems (bewijs bij afkeur) en optioneel bij artikelen.
 
