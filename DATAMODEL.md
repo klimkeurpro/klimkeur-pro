@@ -101,9 +101,15 @@ de koppeltabellen (`inspectors`, `customer_members`, `platform_admins`).
 > `email`, `phone`, `cert_header`, `cert_footer` zijn als kolommen toegevoegd
 > (migratie `20260624_certificates.sql`) zodat de PDF-kop/-voet iets te tonen
 > heeft; leeg blijft prima, de PDF valt dan terug op een kale juridische
-> standaardtekst. `logo_url`/`brand_color`/`registration_number`/
-> `allowed_norms`/`allowed_product_types`/`billing_status`/
-> `stripe_customer_id` zijn nog niet aangelegd.
+> standaardtekst. **Ingevuld (2026-06-25):** het enige bestaande bedrijf is
+> bijgewerkt naar de echte gegevens van **Safety Green B.V.** — naam, adres
+> (Energieweg 3, 6662NS Elst (Gld)), e-mail (jos@safetygreen.nl, telefoon nog
+> niet aangeleverd), en de echte kop-/voettekst (kwalificatie-/
+> aansprakelijkheidstekst resp. leveringsvoorwaarden/KvK-inschrijving) — zie
+> `supabase/migrations/20260625_company_details_and_rejection_codes.sql`.
+> `logo_url`/`brand_color`/`registration_number`/`allowed_norms`/
+> `allowed_product_types`/`billing_status`/`stripe_customer_id` zijn nog niet
+> aangelegd.
 
 ### `inspectors` (keurmeesters)
 | kolom | type | uitleg |
@@ -299,6 +305,17 @@ Intervalresolutie: artikel-override → product-override → regime(type × land
 | label | text? | vrije tekst voor eigen codes |
 | active | boolean | |
 
+> **Implementatie fase 2.5 (2026-06-25):** de 8 codes zijn ingevuld als
+> platformstandaard (`company_id = null`), aangeleverd door Jos uit de
+> huidige praktijk: 1 slijtage/opgebruikt, 2 mechanisch beschadigd,
+> 3 brand- of smeltplekken, 4 roest, 5 leeftijd of label, 6 defecte sluiting,
+> 7 modificatie, 8 anders/zie opmerkingen — als vrije tekst in `label`
+> (`label_key`/i18n-vertaling nog niet gebruikt). Migratie:
+> `supabase/migrations/20260625_company_details_and_rejection_codes.sql`.
+> Er is nog **geen instellingenscherm** waarmee een gebruiker deze codes zelf
+> kan beheren (toevoegen/wijzigen/uitzetten) — dat staat nog open, alleen via
+> SQL aan te passen.
+
 ---
 
 ## 3. Artikelen (het bezit van de klant)
@@ -491,14 +508,12 @@ voorkomen.
 > begrenzing, zie §status/next_due-logica). Niet meegebouwd: `product_version_id`
 > (er is nog geen `product_versions`-tabel — de productdata in `article_snapshot`
 > is de huidige stand, niet een onveranderlijke versie). `certificate_number`
-> wordt sinds fase 2.5 (zie hieronder) wel gezet, en `rejection_codes` bestaat
-> als tabel maar is nog ongevuld (Jos moet de echte codes 1-8 aanleveren) —
-> tot dan is de afkeur-opmerking in de wizard vrije tekst. Om de wizard te
-> kunnen draaien zijn ook `inspection_companies` en `inspectors` (met
-> automatische provisionering per ingelogde gebruiker, geen apart
-> beheerscherm) en `customer_links` (automatisch gekoppeld/backfilled) al
-> volgens het volledige DATAMODEL aangelegd, ook al is er vandaag nog maar
-> één keurbedrijf — zie de migraties `supabase/migrations/20260624_*.sql`.
+> wordt sinds fase 2.5 wel gezet. Om de wizard te kunnen draaien zijn ook
+> `inspection_companies` en `inspectors` (met automatische provisionering per
+> ingelogde gebruiker, geen apart beheerscherm) en `customer_links`
+> (automatisch gekoppeld/backfilled) al volgens het volledige DATAMODEL
+> aangelegd, ook al is er vandaag nog maar één keurbedrijf — zie de migraties
+> `supabase/migrations/20260624_*.sql`.
 
 ### `photos` (besloten 2026-06-12: ja, met maat-discipline)
 Foto's bij keuringsitems (bewijs bij afkeur) en optioneel bij artikelen.
@@ -556,6 +571,21 @@ markt later uitbreidbaar met een automatisch cryptografisch zegel
 > statische `REGIMES`-lijst in `packages/core` (zie §`inspection_regimes`),
 > niet uit een DB-tabel. Certificaatnummer-formaat: `JJJJMMDD-KLANTNAAM`
 > (Jos' huidige praktijk).
+>
+> **Bedrijfsgegevens en afkeurcodes ingevuld (2026-06-25):** Safety Green
+> B.V.'s echte bedrijfsgegevens en de 8 echte afkeurcodes zijn nu gezet (zie
+> §`inspection_companies` en §`rejection_codes`). Migratie:
+> `supabase/migrations/20260625_company_details_and_rejection_codes.sql`,
+> uitgevoerd in Supabase.
+>
+> **Live op `main` (2026-06-25):** de feature-branch
+> (`claude/quirky-darwin-blp1o8`) is fast-forward gemerged naar `main` en
+> gepusht; https://gearonimo.net draait nu met de certificaat-functionaliteit
+> (auto-deploy via GitHub Pages bij push naar `main`). **Stand: net live,
+> eerste echte test (Jos rondt een keuring af en controleert het
+> certificaat/QR/downloadlink) is nog niet teruggekoppeld — dat is de
+> volgende stap.** Geen instellingenscherm voor afkeurcodes en geen foto's
+> bij afkeuring (zie §`rejection_codes`/§`photos`) — bewust nog niet gebouwd.
 
 ---
 
@@ -658,7 +688,9 @@ elk keuringsitem draagt de artikelgegevens. Het script moet dus artikelen
    los onderzoek worden uitgevoerd vóór de bouw van de PDF-module.
 4. ~~Afkeurcodes platformbreed?~~ → Waarschijnlijk ja; **Jos overlegt met
    andere keurmeesters.** Schema ondersteunt beide (standaard + eigen codes
-   per keurbedrijf), dus dit blokkeert niets.
+   per keurbedrijf), dus dit blokkeert niets. **Update 2026-06-25:** de 8
+   codes uit de huidige praktijk zijn nu als platformstandaard ingevuld
+   (zie §`rejection_codes`).
 5. ~~Poolmateriaal?~~ → **Ja**, leeg `assigned_member_id` is normaal; geen
    afstraffing, alleen een vriendelijke PPE-hint (§3).
 6. ~~Derde keuringsuitkomst "monitoren"?~~ → **Nee** (besloten 2026-06-12):
