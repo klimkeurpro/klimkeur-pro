@@ -1,0 +1,88 @@
+name: Supabase heartbeat
+
+# Houdt het Supabase-project wakker.
+#
+# Gratis projecten worden gepauzeerd na circa 7 dagen zonder activiteit.
+# Deze workflow tikt de database elke dag aan via de RPC
+# public.heartbeat_ping() — een echte schrijfactie, geen loze HTTP-call.
+#
+# EENMALIG NODIG: voer sql/heartbeat.sql uit in de Supabase SQL-editor,
+# anders geeft de ping 404 en faalt deze workflow met een duidelijke melding.
+#
+# Let op: geplande workflows draaien alleen vanaf de standaardtak (main).
+# Zolang dit bestand op een feature-branch staat, gebeurt er niets.
+
+on:
+  schedule:
+    - cron: '17 4 * * *'   # elke dag om 04:17 UTC
+  workflow_dispatch:       # handmatig te starten via de Actions-tab
+
+permissions:
+  contents: write          # nodig voor de keepalive-commit onderaan
+
+concurrency:
+  group: supabase-heartbeat
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    env:
+      # Publieke waarden: deze staan ook in js/config.js en zijn bedoeld
+      # voor de browser. Nooit de service_role key hier zetten.
+      SUPABASE_URL: 'https://vyptkeqcibtgyrnrcxrj.supabase.co'
+      SUPABASE_ANON_KEY: 'sb_publishable_94HAHA4s4elNEiP3-Mmz3g_UZGd4pgu'
+
+    steps:
+      - name: Database aantikken
+        run: |
+          set -euo pipefail
+          status=$(curl -sS -o antwoord.json -w '%{http_code}' \
+            -X POST "$SUPABASE_URL/rest/v1/rpc/heartbeat_ping" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            -H 'Content-Type: application/json' \
+            --max-time 30 --retry 3 --retry-delay 15 --retry-all-errors \
+            -d '{}')
+          antwoord=$(cat antwoord.json)
+          echo "HTTP $status — $antwoord"
+
+          if [ "$status" = "404" ]; then
+            echo "::error::RPC heartbeat_ping bestaat niet. Voer sql/heartbeat.sql uit in de Supabase SQL-editor."
+            exit 1
+          fi
+          if [ "$status" != "200" ]; then
+            echo "::error::Onverwachte status $status van Supabase — project gepauzeerd of sleutel gewijzigd?"
+            exit 1
+          fi
+          echo "Laatste ping staat nu op $antwoord" >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/checkout@v4
+
+      - name: Cron levend houden
+        # GitHub schakelt geplande workflows uit na 60 dagen zonder
+        # repo-activiteit. Blijft het hier lang stil, dan zetten we een lege
+        # commit op de tak 'heartbeat'. Dat telt als activiteit, raakt main
+        # niet en zet dus ook geen nieuwe versie live op GitHub Pages.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          laatste=$(gh api "repos/${{ github.repository }}" --jq .pushed_at)
+          dagen=$(( ( $(date -u +%s) - $(date -u -d "$laatste" +%s) ) / 86400 ))
+          echo "Laatste push naar de repo: $laatste ($dagen dagen geleden)"
+
+          if [ "$dagen" -lt 45 ]; then
+            echo "Nog ruim binnen de 60 dagen, geen keepalive-commit nodig."
+            exit 0
+          fi
+
+          git config user.name  'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git fetch --depth 1 origin heartbeat; then
+            git checkout -B heartbeat FETCH_HEAD
+          else
+            git checkout -B heartbeat
+          fi
+          git commit --allow-empty -m "chore: keepalive zodat de heartbeat-cron aan blijft"
+          git push origin heartbeat
