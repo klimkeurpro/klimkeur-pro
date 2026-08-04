@@ -57,7 +57,7 @@ jobs:
           fi
           echo "Laatste ping staat nu op $antwoord" >> "$GITHUB_STEP_SUMMARY"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Cron levend houden
         # GitHub schakelt geplande workflows uit na 60 dagen zonder
